@@ -162,7 +162,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   background:#E24B4A;border-radius:50%;border:none;color:white;
   font-size:26px;font-weight:300;cursor:pointer;z-index:150;
   box-shadow:0 4px 14px rgba(226,75,74,0.45);
-  display:flex;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
   transition:transform 0.15s,opacity 0.15s}
 .fab:active{transform:scale(0.92)}
 .fab-label{position:fixed;bottom:100px;right:76px;
@@ -513,6 +513,7 @@ async function doLogin(){
 
 function doLogout(){
   currentUser=null;
+  document.querySelector('.fab').style.display='none';
   showScreen('login-screen');
   init();
 }
@@ -526,6 +527,7 @@ function showScreen(id){
 // ── STAFF / ADMIN APP ──
 function showApp(){
   showScreen('app-screen');
+  document.querySelector('.fab').style.display='flex';
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
   document.getElementById('admin-tab').style.display=currentUser.role==='admin'?'flex':'none';
   quantities={};currentTab='dist';currentCat='All';isReturnMode=false;
@@ -544,14 +546,39 @@ function setTab(tab,el){
   el.classList.add('active');buildTab();
 }
 
-function toggleMode(){
+async function toggleMode(){
   isReturnMode=!isReturnMode;
   const b=document.getElementById('mode-btn'),s=document.getElementById('submit-btn');
   b.textContent=isReturnMode?'RETURN':'LOAD';
   b.className='mode-btn'+(isReturnMode?' return-mode':'');
   s.className='submit-btn'+(isReturnMode?' return-mode':'');
   s.textContent=isReturnMode?'Submit Return to Google Sheets':'Submit to Google Sheets';
-  buildSkuList(); // Rebuild to apply locking
+
+  if(isReturnMode){
+    // Fetch today's LOAD data and pre-fill loaded quantities
+    const unit=document.getElementById('unit-select').value;
+    b.textContent='Loading...';b.disabled=true;
+    try{
+      const r=await api({action:'getTodayLoads',unit});
+      if(r.status==='ok'&&r.rows&&r.rows.length>0){
+        r.rows.forEach(item=>{
+          const code=item.code;
+          if(!quantities[code])quantities[code]={loaded:0,returned:0,cat:item.cat||''};
+          quantities[code].loaded=Number(item.loaded)||0;
+          quantities[code].cat=item.cat||quantities[code].cat;
+        });
+        showBanner('success-bar',
+          `Loaded ${r.rows.length} SKU quantities from today\'s morning load`);
+      }else{
+        showBanner('success-bar',
+          'No LOAD submission found for today — enter loaded quantities manually if needed');
+      }
+    }catch(e){
+      showBanner('success-bar','Could not fetch today\'s load — check connection');
+    }
+    b.textContent='RETURN';b.disabled=false;
+  }
+  buildSkuList();
 }
 
 function buildTab(){buildChips();buildSkuList();updateTotals();}
@@ -595,9 +622,24 @@ function buildSkuList(){
       const sold=Math.max(0,q.loaded-q.returned);
       const sid='sold_'+sku.code.replace(/[^a-z0-9]/gi,'_');
 
-      // Mode-locked: LOAD mode locks Returned, RETURN mode locks Loaded
+      // Mode-locked: LOAD mode locks Returned, RETURN mode shows loaded as badge
       const loadedLocked=isReturnMode;
       const returnedLocked=!isReturnMode;
+
+      // In RETURN mode: show loaded as a read-only display badge (not an input)
+      // This way the pre-filled value from Sheets is visible but not editable
+      const loadedDisplay = isReturnMode
+        ? `<div class="qty-col">
+            <div class="qty-lbl">Loaded</div>
+            <div class="sold-val ${q.loaded===0?'zero':''}" style="width:44px;font-size:13px;border-radius:8px;border:1.5px solid #85B7EB;background:#EEF5FE;color:#0C447C;padding:5px 2px;">${q.loaded||0}</div>
+           </div>`
+        : `<div class="qty-col">
+            <div class="qty-lbl">Loaded</div>
+            <input class="qty-input loaded active-input"
+              type="number" min="0" step="1"
+              value="${q.loaded||''}" placeholder="0"
+              oninput="setQty('${sku.code}','loaded',this.value,'${cat}')">
+           </div>`;
 
       const row=document.createElement('div');row.className='sku-row';
       row.innerHTML=`
@@ -606,16 +648,9 @@ function buildSkuList(){
           <div class="sku-code">${sku.code}</div>
         </div>
         <div class="qty-group">
+          ${loadedDisplay}
           <div class="qty-col">
-            <div class="qty-lbl">${loadedLocked?'🔒':''} Loaded</div>
-            <input class="qty-input loaded ${loadedLocked?'locked-input':'active-input'}"
-              type="number" min="0" step="1"
-              value="${q.loaded||''}" placeholder="0"
-              ${loadedLocked?'disabled':''}
-              oninput="setQty('${sku.code}','loaded',this.value,'${cat}')">
-          </div>
-          <div class="qty-col">
-            <div class="qty-lbl">${returnedLocked?'🔒':''} Returned</div>
+            <div class="qty-lbl">Returned</div>
             <input class="qty-input returned ${returnedLocked?'locked-input':'active-input'}"
               type="number" min="0" step="1"
               value="${q.returned||''}" placeholder="0"
@@ -687,6 +722,7 @@ function showBanner(id,msg){
 // ── DRIVER SCREEN ──
 async function showDriver(){
   showScreen('driver-screen');
+  document.querySelector('.fab').style.display='flex';
   const unit=currentUser.assignedUnit||'Bajaj1';
   document.getElementById('driver-topbar-user').textContent=`${currentUser.username} · driver`;
   document.getElementById('driver-unit-badge').textContent=unit;
