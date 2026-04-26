@@ -9,43 +9,60 @@
 body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll-behavior:none}
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
+
+/* LOGIN */
 #login-screen{background:#0A5C46;align-items:center;justify-content:center;padding:2rem}
 .login-card{background:white;border-radius:16px;padding:2rem 1.75rem;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
-.login-logo{text-align:center;margin-bottom:1.75rem}
 .logo-icon{width:56px;height:56px;background:#0A5C46;border-radius:14px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center}
 .logo-icon span{color:white;font-size:24px;font-weight:900}
-.logo-title{font-size:19px;font-weight:700;color:#0A5C46}
-.logo-sub{font-size:12px;color:#999;margin-top:3px}
+.logo-title{font-size:19px;font-weight:700;color:#0A5C46;text-align:center}
+.logo-sub{font-size:12px;color:#999;margin-top:3px;text-align:center}
 .login-card label{font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:5px;margin-top:16px}
-.login-card input{width:100%;padding:11px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;transition:border 0.15s}
+.login-card input{width:100%;padding:11px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none}
 .login-card input:focus{border-color:#0A5C46}
 .login-status{font-size:12px;margin-top:10px;text-align:center;min-height:18px;font-weight:500}
 .login-status.loading{color:#0A5C46}
 .login-status.error{color:#E24B4A}
-.login-btn{width:100%;margin-top:22px;padding:13px;background:#0A5C46;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity 0.15s}
-.login-btn:active{opacity:0.85}
+.login-btn{width:100%;margin-top:22px;padding:13px;background:#0A5C46;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
 .login-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* TOPBAR */
 .topbar{background:#0A5C46;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.topbar-left .topbar-title{color:white;font-size:15px;font-weight:700}
-.topbar-left .topbar-user{color:rgba(255,255,255,0.7);font-size:11px;margin-top:2px}
+.topbar-title{color:white;font-size:15px;font-weight:700}
+.topbar-user{color:rgba(255,255,255,0.7);font-size:11px;margin-top:2px}
 .topbar-right{display:flex;gap:8px;align-items:center}
 .mode-btn{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.12);color:white;letter-spacing:0.5px}
-.mode-btn.return{background:#FAC775;border-color:#FAC775;color:#5C3A00}
-.logout-btn{background:none;border:none;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;padding:4px 2px}
+.mode-btn.return-mode{background:#FAC775;border-color:#FAC775;color:#5C3A00}
+.logout-btn{background:none;border:none;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;padding:4px}
+
+/* DRIVER BANNER */
+.driver-banner{background:#1F4E78;color:white;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.driver-banner-text{font-size:12px;font-weight:600}
+.driver-banner-unit{font-size:11px;background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px}
+.driver-refresh-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600}
+
+/* UNIT BAR (staff/admin only) */
 .unit-bar{padding:8px 12px;background:white;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .unit-label{font-size:12px;color:#666;font-weight:600;white-space:nowrap}
 .unit-select{flex:1;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;background:white;outline:none;color:#222}
+
+/* TABS */
 .tab-bar{display:flex;background:white;border-bottom:1.5px solid #e8e8e8;flex-shrink:0}
 .tab{flex:1;padding:10px 4px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;color:#999;border-bottom:2.5px solid transparent;white-space:nowrap}
 .tab.active{color:#0A5C46;border-bottom-color:#0A5C46}
 .tab.admin-tab{color:#1F4E78}
+
+/* CHIPS */
 .chips-bar{padding:8px 12px;display:flex;gap:6px;overflow-x:auto;background:white;border-bottom:1px solid #eee;flex-shrink:0;scrollbar-width:none}
 .chips-bar::-webkit-scrollbar{display:none}
 .chip{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1.5px solid #e0e0e0;color:#666;background:white;flex-shrink:0}
 .chip.active{background:#0A5C46;color:white;border-color:#0A5C46}
+
 .success-bar{display:none;background:#0A5C46;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0}
 .main-content{flex:1;overflow-y:auto;background:#f0f2f5}
 .cat-header{padding:8px 14px 5px;font-size:10px;font-weight:700;letter-spacing:1px;color:#999;background:#f0f2f5;text-transform:uppercase;border-bottom:1px solid #e8e8e8}
+
+/* STAFF SKU ROW */
 .sku-row{display:flex;align-items:center;padding:9px 12px;background:white;border-bottom:1px solid #f0f0f0;gap:8px}
 .sku-info{flex:1;min-width:0}
 .sku-name{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -55,31 +72,58 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .qty-lbl{font-size:9px;color:#bbb;margin-bottom:3px;font-weight:600;letter-spacing:0.3px}
 .qty-input{width:44px;text-align:center;font-size:13px;font-weight:700;padding:5px 2px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fafafa;color:#222;outline:none}
 .qty-input:focus{border-color:#0A5C46;background:white}
-.qty-input.loaded:not(:placeholder-shown){border-color:#85B7EB;background:#EEF5FE;color:#0C447C}
-.qty-input.returned:not(:placeholder-shown){border-color:#7DC459;background:#EDF8E6;color:#2A6B0A}
+/* LOAD mode — loaded active, returned locked */
+.qty-input.loaded.active-input{border-color:#85B7EB;background:#EEF5FE;color:#0C447C}
+.qty-input.loaded.locked-input{border-color:#f0f0f0;background:#f7f7f7;color:#ccc;cursor:not-allowed}
+/* RETURN mode — returned active, loaded locked */
+.qty-input.returned.active-input{border-color:#7DC459;background:#EDF8E6;color:#2A6B0A}
+.qty-input.returned.locked-input{border-color:#f0f0f0;background:#f7f7f7;color:#ccc;cursor:not-allowed}
 .sold-col{display:flex;flex-direction:column;align-items:center}
 .sold-val{font-size:14px;font-weight:700;color:#1a1a1a;width:30px;text-align:center}
 .sold-val.zero{color:#ddd}
+
+/* DRIVER SKU ROW */
+.driver-sku-row{display:flex;align-items:center;padding:10px 14px;background:white;border-bottom:1px solid #f0f0f0;gap:10px}
+.driver-sku-info{flex:1;min-width:0}
+.driver-sku-name{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.driver-sku-code{font-size:10px;color:#bbb;margin-top:2px}
+.driver-qty-chips{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.driver-qty-chip{text-align:center;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:700;min-width:46px}
+.driver-qty-chip.loaded{background:#EEF5FE;color:#0C447C;border:1px solid #85B7EB}
+.driver-qty-chip.sold{background:#EDF8E6;color:#2A6B0A;border:1px solid #7DC459}
+.driver-qty-chip.pending{background:#FFF8E6;color:#7A5500;border:1px solid #FAC775}
+.deliver-btn{padding:5px 10px;border:1.5px solid #0A5C46;color:#0A5C46;background:white;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.deliver-btn.done{background:#0A5C46;color:white;border-color:#0A5C46;opacity:0.7;cursor:default}
+.driver-empty{padding:30px 14px;text-align:center;color:#aaa;font-size:13px}
+
+/* TOTALS */
 .totals-bar{display:flex;justify-content:space-around;padding:11px 14px;background:white;border-top:1.5px solid #e8e8e8;flex-shrink:0}
 .total-item{text-align:center}
 .total-num{font-size:20px;font-weight:700;color:#1a1a1a}
 .total-num.green{color:#0A5C46}
 .total-lbl{font-size:10px;color:#bbb;margin-top:2px;font-weight:600;letter-spacing:0.3px;text-transform:uppercase}
+
+/* SUBMIT */
 .submit-area{padding:12px 14px 16px;background:white;border-top:1px solid #eee;flex-shrink:0}
 .submit-btn{width:100%;padding:14px;background:#0A5C46;color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
 .submit-btn:disabled{background:#ccc;cursor:not-allowed}
-.submit-btn.return{background:#7A4500}
+.submit-btn.return-mode{background:#7A4500}
 .submit-note{font-size:11px;color:#bbb;text-align:center;margin-top:7px}
+
+/* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal-card{background:white;border-radius:16px;padding:1.5rem;width:100%;max-width:300px}
+.modal-card{background:white;border-radius:16px;padding:1.5rem;width:100%;max-width:320px}
 .modal-title{font-size:16px;font-weight:700;color:#1F4E78;margin-bottom:4px}
 .modal-sub{font-size:12px;color:#888;margin-bottom:16px}
-.modal-card input{width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;margin-bottom:10px}
-.modal-card input:focus{border-color:#1F4E78}
-.modal-err{color:#E24B4A;font-size:12px;margin-bottom:10px;min-height:18px;font-weight:500}
+.modal-card input,.modal-card select{width:100%;padding:11px 13px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;margin-bottom:10px;background:white;color:#222}
+.modal-card input:focus,.modal-card select:focus{border-color:#0A5C46}
+.modal-err{color:#E24B4A;font-size:12px;margin-bottom:10px;min-height:16px;font-weight:500}
 .modal-btns{display:flex;gap:8px}
 .modal-cancel{flex:1;padding:11px;border:1.5px solid #e0e0e0;background:white;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600;color:#666}
-.modal-ok{flex:1;padding:11px;background:#1F4E78;color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.modal-ok{flex:1;padding:11px;background:#0A5C46;color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.modal-ok.blue{background:#1F4E78}
+
+/* ADMIN */
 #admin-screen{background:#f0f2f5}
 .admin-topbar{background:#1F4E78;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .admin-topbar-title{color:white;font-size:15px;font-weight:700}
@@ -89,17 +133,19 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .admin-section-hdr{padding:12px 14px;font-size:13px;font-weight:700;color:#1F4E78;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
 .admin-refresh{background:none;border:1px solid #1F4E78;color:#1F4E78;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
 .staff-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #f5f5f5;gap:10px}
+.staff-info{flex:1}
 .staff-name{font-size:13px;font-weight:600;color:#222}
-.staff-role{font-size:11px;color:#999;margin-top:2px}
+.staff-meta{font-size:11px;color:#999;margin-top:2px}
 .staff-del{background:none;border:1.5px solid #E24B4A;color:#E24B4A;padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer}
 .admin-add{padding:12px 14px;display:flex;flex-direction:column;gap:8px;border-top:1px solid #f0f0f0}
 .admin-add input,.admin-add select{padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:white;color:#222}
-.admin-add-btn{padding:11px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;color:white}
-.admin-add-btn.blue{background:#1F4E78}
+.admin-add input:focus,.admin-add select:focus{border-color:#1F4E78}
+.admin-add-btn{padding:11px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;color:white;background:#1F4E78}
 .admin-add-btn.green{background:#0A5C46}
+.unit-field{display:none}
 .cs-cat-hdr{padding:6px 14px;background:#f0f2f5;font-size:10px;font-weight:700;color:#999;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #eee}
 .cs-row{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid #f5f5f5;gap:10px}
-.cs-name{flex:1;font-size:12px;font-weight:600;color:#222}
+.cs-name{font-size:12px;font-weight:600;color:#222}
 .cs-code{font-size:10px;color:#bbb;margin-top:2px}
 .cs-del{background:none;border:1.5px solid #E24B4A;color:#E24B4A;padding:3px 9px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer}
 .log-row{padding:9px 14px;border-bottom:1px solid #f5f5f5}
@@ -107,13 +153,17 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .log-what{font-size:11px;color:#666;margin-top:2px}
 .log-when{font-size:10px;color:#bbb;margin-top:2px}
 .empty-state{padding:20px 14px;text-align:center;font-size:12px;color:#bbb}
+
+/* DELIVER MODAL */
+#deliver-modal .modal-card{max-width:310px}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div id="login-screen" class="screen active">
   <div class="login-card">
-    <div class="login-logo">
+    <div style="margin-bottom:1.75rem">
       <div class="logo-icon"><span>A</span></div>
       <div class="logo-title">Alfrisco Inventory</div>
       <div class="logo-sub">Staff Access Portal</div>
@@ -127,9 +177,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   </div>
 </div>
 
+<!-- MAIN APP (Staff / Admin) -->
 <div id="app-screen" class="screen" style="position:relative">
   <div class="topbar">
-    <div class="topbar-left">
+    <div>
       <div class="topbar-title">Alfrisco Inventory</div>
       <div class="topbar-user" id="topbar-user"></div>
     </div>
@@ -165,6 +216,8 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
     <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit to Google Sheets</button>
     <div class="submit-note">Only SKUs with quantities entered will be logged</div>
   </div>
+
+  <!-- Admin password modal -->
   <div class="modal-overlay" id="admin-modal" style="display:none">
     <div class="modal-card">
       <div class="modal-title">Admin access</div>
@@ -173,16 +226,65 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
       <div class="modal-err" id="admin-pass-err"></div>
       <div class="modal-btns">
         <button class="modal-cancel" onclick="closeAdminModal()">Cancel</button>
-        <button class="modal-ok" onclick="verifyAdmin()">Enter</button>
+        <button class="modal-ok blue" onclick="verifyAdmin()">Enter</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- DRIVER SCREEN -->
+<div id="driver-screen" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Alfrisco Inventory</div>
+      <div class="topbar-user" id="driver-topbar-user"></div>
+    </div>
+    <div class="topbar-right">
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="driver-banner">
+    <span class="driver-banner-text">Today's Manifest — View Only</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="driver-banner-unit" id="driver-unit-badge">Bajaj 1</span>
+      <button class="driver-refresh-btn" onclick="loadDriverManifest()">Refresh</button>
+    </div>
+  </div>
+  <div class="chips-bar" id="driver-chips-bar"></div>
+  <div class="success-bar" id="driver-success-bar"></div>
+  <div class="main-content" id="driver-sku-list"></div>
+  <div class="totals-bar">
+    <div class="total-item"><div class="total-num" id="d-loaded">0</div><div class="total-lbl">Loaded</div></div>
+    <div class="total-item"><div class="total-num green" id="d-delivered">0</div><div class="total-lbl">Delivered</div></div>
+    <div class="total-item"><div class="total-num" id="d-remaining">0</div><div class="total-lbl">Remaining</div></div>
+  </div>
+
+  <!-- Delivery modal -->
+  <div class="modal-overlay" id="deliver-modal" style="display:none">
+    <div class="modal-card" id="deliver-modal-card">
+      <div class="modal-title">Mark as delivered</div>
+      <div class="modal-sub" id="deliver-modal-sub"></div>
+      <input type="number" id="deliver-qty" placeholder="Qty delivered" min="1">
+      <input type="text" id="deliver-dealer" placeholder="Dealer name (optional)">
+      <select id="deliver-backorder">
+        <option value="No">Not a backorder</option>
+        <option value="Yes">Yes — fulfills a backorder</option>
+      </select>
+      <input type="text" id="deliver-notes" placeholder="Notes (optional)">
+      <div class="modal-err" id="deliver-err"></div>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="closeDeliverModal()">Cancel</button>
+        <button class="modal-ok" onclick="confirmDelivery()">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN SCREEN -->
 <div id="admin-screen" class="screen" style="flex-direction:column">
   <div class="admin-topbar">
     <span class="admin-topbar-title">Admin Dashboard</span>
-    <button class="admin-back" onclick="closeAdmin()">Back to app</button>
+    <button class="admin-back" onclick="closeAdmin()">← Back</button>
   </div>
   <div class="admin-body">
     <div class="admin-section">
@@ -194,12 +296,16 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
       <div class="admin-add">
         <input type="text" id="new-username" placeholder="Username">
         <input type="password" id="new-password" placeholder="Password">
-        <select id="new-role">
+        <select id="new-role" onchange="toggleUnitField()">
           <option value="driver">Driver</option>
-          <option value="staff">Staff</option>
+          <option value="staff">Staff (Warehouse)</option>
           <option value="admin">Admin</option>
         </select>
-        <button class="admin-add-btn blue" onclick="addStaff()">Add Staff Member</button>
+        <select id="new-unit" class="unit-field" style="display:block">
+          <option value="Bajaj1">Bajaj 1</option>
+          <option value="Bajaj2">Bajaj 2</option>
+        </select>
+        <button class="admin-add-btn" onclick="addStaff()">Add Staff Member</button>
       </div>
     </div>
     <div class="admin-section">
@@ -224,7 +330,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 <script>
 // ── CONFIG ──
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec';
+const WEBHOOK = 'https://script.google.com/macros/s/AKfycbxw0ley1GV3mgnngYPHVJaKq3pJhP0P6lzaFPkzS_1bwV42st5Y9k7Iyr2h-wDuYJugBw/exec';
 
 // ── SKU DATA ──
 const DIST_CATS = ["Pet Food","Accessories","Grains","Other Pet Products","Medicines & Supplements"];
@@ -305,23 +411,24 @@ const CS_BASE = {
 };
 
 // ── STATE ──
-let currentUser=null,isReturnMode=false,currentTab='dist',currentCat='All';
-let quantities={},staff=[],csskus={},accessLog=[];
+let currentUser=null, isReturnMode=false, currentTab='dist', currentCat='All';
+let quantities={}, staff=[], csskus={}, accessLog=[];
+let driverManifest=[], driverCat='All', deliverTarget=null;
 
-// ── LOCAL STORAGE (non-staff data only) ──
+// ── STORAGE ──
 const LS={
   get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
 function saveLocal(){LS.set('alf_csskus',csskus);LS.set('alf_log',accessLog.slice(0,100));}
 
-// ── WEBHOOK — no Content-Type to avoid CORS preflight ──
+// ── API ──
 async function api(payload){
-  const r=await fetch(WEBHOOK_URL,{method:'POST',redirect:'follow',body:JSON.stringify(payload)});
+  const r = await fetch(WEBHOOK,{method:'POST',redirect:'follow',body:JSON.stringify(payload)});
   return r.json();
 }
 
-// ── LOAD STAFF FROM GOOGLE SHEETS ──
+// ── STAFF LOADING ──
 async function loadStaff(){
   try{
     const r=await api({action:'getStaff'});
@@ -338,18 +445,18 @@ async function loadStaff(){
 async function init(){
   csskus=LS.get('alf_csskus')||JSON.parse(JSON.stringify(CS_BASE));
   accessLog=LS.get('alf_log')||[];
-  setStatus('Connecting to server...','loading');
+  setLoginStatus('Connecting...','loading');
   document.getElementById('login-btn').disabled=true;
   const ok=await loadStaff();
   if(!ok){
     const cache=LS.get('alf_staff_cache');
-    if(cache&&cache.length>0){staff=cache;setStatus('Offline mode — using cached accounts','error');}
-    else{staff=[{username:'Adrian',password:'admin2026',role:'admin'}];setStatus('Could not connect — default account only','error');}
-  }else{setStatus('','');}
+    if(cache&&cache.length){staff=cache;setLoginStatus('Offline — using cached accounts','error');}
+    else{staff=[{username:'Adrian',password:'admin2026',role:'admin',assignedUnit:'All'}];setLoginStatus('Default account only','error');}
+  }else{setLoginStatus('','');}
   document.getElementById('login-btn').disabled=false;
 }
 
-function setStatus(msg,type){
+function setLoginStatus(msg,type){
   const el=document.getElementById('login-status');
   el.textContent=msg;el.className='login-status'+(type?' '+type:'');
 }
@@ -358,41 +465,51 @@ function setStatus(msg,type){
 async function doLogin(){
   const u=document.getElementById('login-user').value.trim();
   const p=document.getElementById('login-pass').value;
-  if(!u||!p){setStatus('Please enter username and password.','error');return;}
-  setStatus('Verifying...','loading');
+  if(!u||!p){setLoginStatus('Enter username and password.','error');return;}
+  setLoginStatus('Verifying...','loading');
   document.getElementById('login-btn').disabled=true;
-  // Always fetch fresh staff from Sheets before verifying — picks up new accounts
-  await loadStaff();
+  await loadStaff(); // Always refresh from Sheets
   const found=staff.find(s=>s.username.toLowerCase()===u.toLowerCase()&&s.password===p);
   document.getElementById('login-btn').disabled=false;
-  if(!found){setStatus('Incorrect username or password.','error');return;}
-  currentUser=found;setStatus('','');
+  if(!found){setLoginStatus('Incorrect username or password.','error');return;}
+  currentUser=found;
+  setLoginStatus('','');
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
-  showApp();
+  if(currentUser.role==='driver') showDriver();
+  else showApp();
 }
 
 function doLogout(){
-  currentUser=null;showScreen('login-screen');
-  init(); // Re-fetch staff for next login
+  currentUser=null;
+  showScreen('login-screen');
+  init();
 }
 
 // ── NAVIGATION ──
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
 
+// ── STAFF / ADMIN APP ──
 function showApp(){
   showScreen('app-screen');
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
   document.getElementById('admin-tab').style.display=currentUser.role==='admin'?'flex':'none';
-  quantities={};currentTab='dist';currentCat='All';
+  quantities={};currentTab='dist';currentCat='All';isReturnMode=false;
+  document.getElementById('mode-btn').textContent='LOAD';
+  document.getElementById('mode-btn').className='mode-btn';
+  document.getElementById('submit-btn').className='submit-btn';
+  document.getElementById('submit-btn').textContent='Submit to Google Sheets';
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector('.tab').classList.add('active');
+  document.querySelector('#app-screen .tab').classList.add('active');
   buildTab();
 }
 
 function setTab(tab,el){
   currentTab=tab;currentCat='All';
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#app-screen .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');buildTab();
 }
 
@@ -400,13 +517,12 @@ function toggleMode(){
   isReturnMode=!isReturnMode;
   const b=document.getElementById('mode-btn'),s=document.getElementById('submit-btn');
   b.textContent=isReturnMode?'RETURN':'LOAD';
-  b.className='mode-btn'+(isReturnMode?' return':'');
-  s.className='submit-btn'+(isReturnMode?' return':'');
+  b.className='mode-btn'+(isReturnMode?' return-mode':'');
+  s.className='submit-btn'+(isReturnMode?' return-mode':'');
   s.textContent=isReturnMode?'Submit Return to Google Sheets':'Submit to Google Sheets';
-  buildSkuList();
+  buildSkuList(); // Rebuild to apply locking
 }
 
-// ── UI ──
 function buildTab(){buildChips();buildSkuList();updateTotals();}
 
 function buildChips(){
@@ -424,8 +540,14 @@ function buildChips(){
 }
 
 function getGroups(){
-  if(currentTab==='dist'){const cats=currentCat==='All'?DIST_CATS:[currentCat];return cats.map(c=>({cat:c,skus:DIST_SKUS[c]||[]}));}
-  if(currentTab==='retail'){const cats=currentCat==='All'?Object.keys(csskus):[currentCat];return cats.map(c=>({cat:c,skus:csskus[c]||[]}));}
+  if(currentTab==='dist'){
+    const cats=currentCat==='All'?DIST_CATS:[currentCat];
+    return cats.map(c=>({cat:c,skus:DIST_SKUS[c]||[]}));
+  }
+  if(currentTab==='retail'){
+    const cats=currentCat==='All'?Object.keys(csskus):[currentCat];
+    return cats.map(c=>({cat:c,skus:csskus[c]||[]}));
+  }
   const g=DIST_CATS.map(c=>({cat:`DIST — ${c}`,skus:DIST_SKUS[c]||[]}));
   Object.keys(csskus).forEach(c=>g.push({cat:`RETAIL — ${c}`,skus:csskus[c]||[]}));
   return g;
@@ -441,16 +563,38 @@ function buildSkuList(){
       const q=quantities[sku.code];
       const sold=Math.max(0,q.loaded-q.returned);
       const sid='sold_'+sku.code.replace(/[^a-z0-9]/gi,'_');
+
+      // Mode-locked: LOAD mode locks Returned, RETURN mode locks Loaded
+      const loadedLocked=isReturnMode;
+      const returnedLocked=!isReturnMode;
+
       const row=document.createElement('div');row.className='sku-row';
       row.innerHTML=`
-        <div class="sku-info"><div class="sku-name">${sku.name}</div><div class="sku-code">${sku.code}</div></div>
+        <div class="sku-info">
+          <div class="sku-name">${sku.name}</div>
+          <div class="sku-code">${sku.code}</div>
+        </div>
         <div class="qty-group">
-          <div class="qty-col"><div class="qty-lbl">Loaded</div>
-            <input class="qty-input loaded" type="number" min="0" step="1" value="${q.loaded||''}" placeholder="0" oninput="setQty('${sku.code}','loaded',this.value,'${cat}')"></div>
-          <div class="qty-col"><div class="qty-lbl">Returned</div>
-            <input class="qty-input returned" type="number" min="0" step="1" value="${q.returned||''}" placeholder="0" oninput="setQty('${sku.code}','returned',this.value,'${cat}')"></div>
-          <div class="sold-col"><div class="qty-lbl">Sold</div>
-            <div class="sold-val ${sold===0?'zero':''}" id="${sid}">${sold}</div></div>
+          <div class="qty-col">
+            <div class="qty-lbl">${loadedLocked?'🔒':''} Loaded</div>
+            <input class="qty-input loaded ${loadedLocked?'locked-input':'active-input'}"
+              type="number" min="0" step="1"
+              value="${q.loaded||''}" placeholder="0"
+              ${loadedLocked?'disabled':''}
+              oninput="setQty('${sku.code}','loaded',this.value,'${cat}')">
+          </div>
+          <div class="qty-col">
+            <div class="qty-lbl">${returnedLocked?'🔒':''} Returned</div>
+            <input class="qty-input returned ${returnedLocked?'locked-input':'active-input'}"
+              type="number" min="0" step="1"
+              value="${q.returned||''}" placeholder="0"
+              ${returnedLocked?'disabled':''}
+              oninput="setQty('${sku.code}','returned',this.value,'${cat}')">
+          </div>
+          <div class="sold-col">
+            <div class="qty-lbl">Sold</div>
+            <div class="sold-val ${sold===0?'zero':''}" id="${sid}">${sold}</div>
+          </div>
         </div>`;
       list.appendChild(row);
     });
@@ -459,7 +603,8 @@ function buildSkuList(){
 
 function setQty(code,field,val,cat){
   if(!quantities[code])quantities[code]={loaded:0,returned:0,cat};
-  quantities[code][field]=Math.max(0,parseFloat(val)||0);quantities[code].cat=cat;
+  quantities[code][field]=Math.max(0,parseFloat(val)||0);
+  quantities[code].cat=cat;
   const sold=Math.max(0,quantities[code].loaded-quantities[code].returned);
   const el=document.getElementById('sold_'+code.replace(/[^a-z0-9]/gi,'_'));
   if(el){el.textContent=sold;el.className='sold-val'+(sold===0?' zero':'');}
@@ -467,13 +612,13 @@ function setQty(code,field,val,cat){
 }
 
 function updateTotals(){
-  let tl=0,tr=0;Object.values(quantities).forEach(q=>{tl+=q.loaded;tr+=q.returned;});
+  let tl=0,tr=0;
+  Object.values(quantities).forEach(q=>{tl+=q.loaded;tr+=q.returned;});
   document.getElementById('t-loaded').textContent=Math.round(tl);
   document.getElementById('t-returned').textContent=Math.round(tr);
   document.getElementById('t-sold').textContent=Math.round(Math.max(0,tl-tr));
 }
 
-// ── SUBMIT ──
 async function submitForm(){
   const entries=Object.entries(quantities).filter(([k,v])=>v.loaded>0||v.returned>0);
   if(!entries.length){alert('Please enter at least one quantity before submitting.');return;}
@@ -485,23 +630,179 @@ async function submitForm(){
   const allSkus={};
   Object.values(DIST_SKUS).flat().forEach(s=>allSkus[s.code]=s.name);
   Object.values(csskus).flat().forEach(s=>allSkus[s.code]=s.name);
-  const rows=entries.map(([code,q])=>[now,currentUser.username,unit,mode,code,allSkus[code]||code,q.cat||'',q.loaded,q.returned,Math.max(0,q.loaded-q.returned)]);
+  const rows=entries.map(([code,q])=>[
+    now,currentUser.username,unit,mode,code,
+    allSkus[code]||code,q.cat||'',q.loaded,q.returned,
+    Math.max(0,q.loaded-q.returned)
+  ]);
   try{
     const r=await api({sheet:'Stock Movements',rows});
     if(r.status==='ok'){
-      const bar=document.getElementById('success-bar');
-      bar.textContent=`${mode} submitted — ${rows.length} SKUs logged by ${currentUser.username}`;
-      bar.style.display='block';setTimeout(()=>bar.style.display='none',5000);
+      showBanner('success-bar',`${mode} submitted — ${rows.length} SKUs logged by ${currentUser.username}`);
       accessLog.unshift({who:currentUser.username,what:`${mode} — ${rows.length} SKUs via ${unit}`,when:now});
       saveLocal();quantities={};buildSkuList();updateTotals();
-    }else{alert('Submission error: '+(r.msg||'Unknown error'));}
+    }else{alert('Error: '+(r.msg||'Unknown'));}
   }catch(e){alert('Network error: '+e.message);}
   btn.disabled=false;
   btn.textContent=isReturnMode?'Submit Return to Google Sheets':'Submit to Google Sheets';
 }
 
+function showBanner(id,msg){
+  const b=document.getElementById(id);
+  b.textContent=msg;b.style.display='block';
+  setTimeout(()=>b.style.display='none',5000);
+}
+
+// ── DRIVER SCREEN ──
+async function showDriver(){
+  showScreen('driver-screen');
+  const unit=currentUser.assignedUnit||'Bajaj1';
+  document.getElementById('driver-topbar-user').textContent=`${currentUser.username} · driver`;
+  document.getElementById('driver-unit-badge').textContent=unit;
+  driverCat='All';
+  await loadDriverManifest();
+}
+
+async function loadDriverManifest(){
+  const unit=currentUser.assignedUnit||'Bajaj1';
+  const listEl=document.getElementById('driver-sku-list');
+  listEl.innerHTML='<div class="driver-empty">Loading manifest...</div>';
+  try{
+    const r=await api({action:'getTodayLoads',unit});
+    if(r.status==='ok'){
+      driverManifest=r.rows||[];
+      // Preserve delivered state across refresh
+      driverManifest.forEach(item=>{if(item.delivered===undefined)item.delivered=0;});
+      buildDriverChips();
+      buildDriverList();
+      updateDriverTotals();
+    }else{
+      listEl.innerHTML='<div class="driver-empty">Could not load manifest. Pull to refresh.</div>';
+    }
+  }catch(e){
+    listEl.innerHTML='<div class="driver-empty">Network error. Please check your connection.</div>';
+  }
+}
+
+function buildDriverChips(){
+  const bar=document.getElementById('driver-chips-bar');bar.innerHTML='';
+  const cats=['All',...new Set(driverManifest.map(i=>i.cat).filter(Boolean))];
+  cats.forEach(cat=>{
+    const c=document.createElement('div');
+    c.className='chip'+(cat===driverCat?' active':'');
+    c.textContent=cat;
+    c.onclick=()=>{driverCat=cat;buildDriverChips();buildDriverList();};
+    bar.appendChild(c);
+  });
+}
+
+function buildDriverList(){
+  const list=document.getElementById('driver-sku-list');list.innerHTML='';
+  const visible=driverCat==='All'?driverManifest:driverManifest.filter(i=>i.cat===driverCat);
+  if(!visible.length){
+    list.innerHTML='<div class="driver-empty">No items loaded yet for today.<br>Ask warehouse staff to submit the morning load.</div>';
+    return;
+  }
+  // Group by category
+  const cats=[...new Set(visible.map(i=>i.cat||'Uncategorised'))];
+  cats.forEach(cat=>{
+    if(driverCat==='All'){
+      const hdr=document.createElement('div');hdr.className='cat-header';hdr.textContent=cat;list.appendChild(hdr);
+    }
+    visible.filter(i=>(i.cat||'Uncategorised')===cat).forEach((item,idx)=>{
+      const remaining=Math.max(0,(item.loaded||0)-(item.delivered||0));
+      const done=remaining===0&&(item.delivered||0)>0;
+      const row=document.createElement('div');row.className='driver-sku-row';
+      row.innerHTML=`
+        <div class="driver-sku-info">
+          <div class="driver-sku-name" style="${done?'text-decoration:line-through;color:#aaa':''}">${item.name}</div>
+          <div class="driver-sku-code">${item.code}</div>
+        </div>
+        <div class="driver-qty-chips">
+          <div class="driver-qty-chip loaded" title="Loaded">${item.loaded||0}</div>
+          <div class="driver-qty-chip sold" title="Delivered">${item.delivered||0}</div>
+          <div class="driver-qty-chip pending" title="Remaining">${remaining}</div>
+        </div>
+        <button class="deliver-btn ${done?'done':''}"
+          onclick="${done?'':'openDeliverModal('+driverManifest.indexOf(item)+')'}"
+          ${done?'disabled':''}>
+          ${done?'Done ✓':'Deliver'}
+        </button>`;
+      list.appendChild(row);
+    });
+  });
+}
+
+function updateDriverTotals(){
+  const totalLoaded=driverManifest.reduce((s,i)=>s+(i.loaded||0),0);
+  const totalDelivered=driverManifest.reduce((s,i)=>s+(i.delivered||0),0);
+  const totalRemaining=Math.max(0,totalLoaded-totalDelivered);
+  document.getElementById('d-loaded').textContent=Math.round(totalLoaded);
+  document.getElementById('d-delivered').textContent=Math.round(totalDelivered);
+  document.getElementById('d-remaining').textContent=Math.round(totalRemaining);
+}
+
+function openDeliverModal(idx){
+  deliverTarget=idx;
+  const item=driverManifest[idx];
+  const remaining=Math.max(0,(item.loaded||0)-(item.delivered||0));
+  document.getElementById('deliver-modal-sub').textContent=`${item.name} — ${remaining} units remaining`;
+  document.getElementById('deliver-qty').value=remaining;
+  document.getElementById('deliver-dealer').value='';
+  document.getElementById('deliver-backorder').value='No';
+  document.getElementById('deliver-notes').value='';
+  document.getElementById('deliver-err').textContent='';
+  document.getElementById('deliver-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('deliver-qty').focus(),100);
+}
+
+function closeDeliverModal(){
+  document.getElementById('deliver-modal').style.display='none';
+  deliverTarget=null;
+}
+
+async function confirmDelivery(){
+  if(deliverTarget===null)return;
+  const qty=parseFloat(document.getElementById('deliver-qty').value)||0;
+  if(qty<=0){document.getElementById('deliver-err').textContent='Enter a quantity greater than 0.';return;}
+  const item=driverManifest[deliverTarget];
+  const dealer=document.getElementById('deliver-dealer').value.trim();
+  const backorder=document.getElementById('deliver-backorder').value;
+  const notes=document.getElementById('deliver-notes').value.trim();
+  const unit=currentUser.assignedUnit||'Bajaj1';
+  document.getElementById('deliver-err').textContent='';
+  try{
+    const r=await api({
+      action:'markDelivered',
+      driver:currentUser.username,
+      unit,
+      code:item.code,
+      name:item.name,
+      qty,
+      notes:dealer?(dealer+(notes?', '+notes:'')):notes,
+      backorder
+    });
+    if(r.status==='ok'){
+      driverManifest[deliverTarget].delivered=(driverManifest[deliverTarget].delivered||0)+qty;
+      closeDeliverModal();
+      buildDriverList();
+      updateDriverTotals();
+      showBanner('driver-success-bar',`Delivered ${qty} × ${item.name} — recorded ✓`);
+    }else{
+      document.getElementById('deliver-err').textContent='Error: '+(r.msg||'Could not record delivery');
+    }
+  }catch(e){
+    document.getElementById('deliver-err').textContent='Network error. Please try again.';
+  }
+}
+
 // ── ADMIN MODAL ──
-function openAdminModal(){document.getElementById('admin-modal').style.display='flex';document.getElementById('admin-pass-input').value='';document.getElementById('admin-pass-err').textContent='';setTimeout(()=>document.getElementById('admin-pass-input').focus(),100);}
+function openAdminModal(){
+  document.getElementById('admin-modal').style.display='flex';
+  document.getElementById('admin-pass-input').value='';
+  document.getElementById('admin-pass-err').textContent='';
+  setTimeout(()=>document.getElementById('admin-pass-input').focus(),100);
+}
 function closeAdminModal(){document.getElementById('admin-modal').style.display='none';}
 function verifyAdmin(){
   const p=document.getElementById('admin-pass-input').value;
@@ -511,7 +812,16 @@ function verifyAdmin(){
 
 // ── ADMIN SCREEN ──
 function showAdmin(){showScreen('admin-screen');renderStaff();renderCs();renderLog();}
-function closeAdmin(){showScreen('app-screen');}
+function closeAdmin(){
+  if(currentUser.role==='driver')showDriver();
+  else showApp();
+}
+
+// Show/hide unit field based on role selection
+function toggleUnitField(){
+  const role=document.getElementById('new-role').value;
+  document.getElementById('new-unit').style.display=role==='driver'?'block':'none';
+}
 
 async function refreshStaff(){
   const btn=document.querySelector('.admin-refresh');
@@ -527,7 +837,13 @@ function renderStaff(){
   if(!staff.length){el.innerHTML='<div class="empty-state">No staff accounts found</div>';return;}
   staff.forEach((s,i)=>{
     const row=document.createElement('div');row.className='staff-row';
-    row.innerHTML=`<div style="flex:1"><div class="staff-name">${s.username}</div><div class="staff-role">${s.role}</div></div>${s.username!==currentUser.username?`<button class="staff-del" onclick="removeStaff(${i})">Remove</button>`:''}`;
+    const unitTag=s.role==='driver'&&s.assignedUnit?` · ${s.assignedUnit}`:'';
+    row.innerHTML=`
+      <div class="staff-info">
+        <div class="staff-name">${s.username}</div>
+        <div class="staff-meta">${s.role}${unitTag}</div>
+      </div>
+      ${s.username!==currentUser.username?`<button class="staff-del" onclick="removeStaff(${i})">Remove</button>`:''}`;
     el.appendChild(row);
   });
 }
@@ -536,28 +852,28 @@ async function addStaff(){
   const u=document.getElementById('new-username').value.trim();
   const p=document.getElementById('new-password').value;
   const r=document.getElementById('new-role').value;
+  const unit=r==='driver'?document.getElementById('new-unit').value:'All';
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
       renderStaff();
-      alert(`${u} added. They can now log in from any device immediately.`);
-    }else{alert('Error: '+(result.msg||'Could not add staff'));}
-  }catch(e){alert('Network error. Please check your connection.');}
+      alert(`${u} added (${r}${r==='driver'?' — '+unit:''}). They can log in immediately.`);
+    }else{alert('Error: '+(result.msg||'Could not add'));}
+  }catch(e){alert('Network error.');}
 }
 
 async function removeStaff(i){
-  const username=staff[i].username;
-  if(!confirm(`Remove ${username}? They will no longer be able to log in.`))return;
+  if(!confirm(`Remove ${staff[i].username}?`))return;
   try{
-    const result=await api({action:'removeStaff',username});
-    if(result.status==='ok'){staff.splice(i,1);LS.set('alf_staff_cache',staff);renderStaff();}
-    else alert('Error: '+(result.msg||'Could not remove'));
+    const r=await api({action:'removeStaff',username:staff[i].username});
+    if(r.status==='ok'){staff.splice(i,1);LS.set('alf_staff_cache',staff);renderStaff();}
+    else alert('Error: '+(r.msg||'Could not remove'));
   }catch(e){alert('Network error.');}
 }
 
@@ -567,7 +883,9 @@ function renderCs(){
     const hdr=document.createElement('div');hdr.className='cs-cat-hdr';hdr.textContent=cat;el.appendChild(hdr);
     (csskus[cat]||[]).forEach((s,i)=>{
       const row=document.createElement('div');row.className='cs-row';
-      row.innerHTML=`<div style="flex:1"><div class="cs-name">${s.name}</div><div class="cs-code">${s.code}</div></div><button class="cs-del" onclick="removeCsSku('${cat}',${i})">Remove</button>`;
+      row.innerHTML=`
+        <div style="flex:1"><div class="cs-name">${s.name}</div><div class="cs-code">${s.code}</div></div>
+        <button class="cs-del" onclick="removeCsSku('${cat}',${i})">Remove</button>`;
       el.appendChild(row);
     });
   });
@@ -577,7 +895,7 @@ function addCsSku(){
   const code=document.getElementById('cs-code').value.trim();
   const name=document.getElementById('cs-name').value.trim();
   const cat=document.getElementById('cs-cat').value;
-  if(!code||!name){alert('Code and name are required.');return;}
+  if(!code||!name){alert('Code and name required.');return;}
   if(!csskus[cat])csskus[cat]=[];
   csskus[cat].push({code,name});saveLocal();
   document.getElementById('cs-code').value='';document.getElementById('cs-name').value='';
@@ -602,6 +920,7 @@ function renderLog(){
 // ── KEYBOARD ──
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('admin-pass-input').addEventListener('keydown',e=>{if(e.key==='Enter')verifyAdmin();});
+document.getElementById('deliver-qty').addEventListener('keydown',e=>{if(e.key==='Enter')confirmDelivery();});
 
 // ── START ──
 init();
