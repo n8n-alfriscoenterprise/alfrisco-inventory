@@ -271,7 +271,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 // ═══════════════════════════════════════════════════════
 // CONFIGURATION — update WEBHOOK_URL after deploying
 // ═══════════════════════════════════════════════════════
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwcRxa4BN8qvf294HWuhtCRuDaX1yH9LB_W-eCdmkmesyWcO5dMbwPQoCMdkHx83a_thA/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec';
 
 // ═══════════════════════════════════════════════════════
 // SKU DATA
@@ -591,7 +591,7 @@ async function submitForm() {
   ]);
 
   try {
-    if (WEBHOOK_URL === 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL') {
+    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec') {
       // Demo mode — no real webhook configured yet
       await new Promise(r => setTimeout(r, 600));
       showSuccess(`${mode} submitted — ${rows.length} SKUs logged by ${currentUser.username}`);
