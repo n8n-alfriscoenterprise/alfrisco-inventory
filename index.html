@@ -271,7 +271,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 // ═══════════════════════════════════════════════════════
 // CONFIGURATION — update WEBHOOK_URL after deploying
 // ═══════════════════════════════════════════════════════
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec'; // Update this with your new deployment URL
 
 // ═══════════════════════════════════════════════════════
 // SKU DATA
@@ -371,20 +371,53 @@ let accessLog = [];
 // ═══════════════════════════════════════════════════════
 // STORAGE
 // ═══════════════════════════════════════════════════════
+// Cross-sell SKUs and access log remain in localStorage (device-independent data)
+// Staff accounts live in Google Sheets so all devices share the same list
 const LS = {
   get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } },
   set: (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} },
 };
 
-function loadData() {
-  staff = LS.get('alf_staff') || [{username:'Adrian',password:'admin2026',role:'admin'}];
-  csskus = LS.get('alf_csskus') || JSON.parse(JSON.stringify(CS_SKUS_BASE));
-  accessLog = LS.get('alf_log') || [];
-  if (!LS.get('alf_staff')) saveData();
+async function callWebhook(payload) {
+  const resp = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  return resp.json();
 }
 
-function saveData() {
-  LS.set('alf_staff', staff);
+async function loadData() {
+  // Load cross-sell SKUs from localStorage (admin manages per-device)
+  csskus = LS.get('alf_csskus') || JSON.parse(JSON.stringify(CS_SKUS_BASE));
+  accessLog = LS.get('alf_log') || [];
+
+  // Load staff from Google Sheets (shared across all devices)
+  showLoginStatus('Loading...');
+  try {
+    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec') {
+      // Demo mode fallback
+      staff = [{username:'Adrian',password:'admin2026',role:'admin'}];
+    } else {
+      const result = await callWebhook({action:'getStaff'});
+      if (result.status === 'ok') staff = result.staff;
+      else staff = [{username:'Adrian',password:'admin2026',role:'admin'}];
+    }
+  } catch(e) {
+    // Network error — use cached staff if available
+    staff = LS.get('alf_staff_cache') || [{username:'Adrian',password:'admin2026',role:'admin'}];
+  }
+  // Cache staff locally as fallback
+  LS.set('alf_staff_cache', staff);
+  showLoginStatus('');
+}
+
+function showLoginStatus(msg) {
+  const err = document.getElementById('login-err');
+  if (err) err.textContent = msg;
+}
+
+function saveLocalData() {
   LS.set('alf_csskus', csskus);
   LS.set('alf_log', accessLog.slice(0, 100));
 }
@@ -615,7 +648,7 @@ async function submitForm() {
       what: `${mode} — ${rows.length} SKUs via ${unit}`,
       when: now
     });
-    saveData();
+    saveLocalData();
 
     // Reset
     quantities = {};
@@ -684,23 +717,44 @@ function renderStaff() {
     el.appendChild(row);
   });
 }
-function addStaff() {
+async function addStaff() {
   const u = document.getElementById('new-username').value.trim();
   const p = document.getElementById('new-password').value;
   const r = document.getElementById('new-role').value;
   if (!u || !p) { alert('Username and password are required.'); return; }
   if (staff.find(s => s.username.toLowerCase() === u.toLowerCase())) { alert('Username already exists.'); return; }
-  staff.push({username:u, password:p, role:r});
-  saveData();
-  document.getElementById('new-username').value = '';
-  document.getElementById('new-password').value = '';
-  renderStaff();
+
+  try {
+    const result = await callWebhook({action:'addStaff', username:u, password:p, role:r});
+    if (result.status === 'ok') {
+      staff.push({username:u, password:p, role:r});
+      LS.set('alf_staff_cache', staff);
+      document.getElementById('new-username').value = '';
+      document.getElementById('new-password').value = '';
+      renderStaff();
+      alert(`${u} added successfully. They can now log in on any device.`);
+    } else {
+      alert('Error adding staff: ' + result.msg);
+    }
+  } catch(e) {
+    alert('Network error. Check your connection and try again.');
+  }
 }
-function removeStaff(i) {
-  if (!confirm(`Remove ${staff[i].username}?`)) return;
-  staff.splice(i,1);
-  saveData();
-  renderStaff();
+async function removeStaff(i) {
+  const username = staff[i].username;
+  if (!confirm(`Remove ${username}? They will no longer be able to log in.`)) return;
+  try {
+    const result = await callWebhook({action:'removeStaff', username});
+    if (result.status === 'ok') {
+      staff.splice(i,1);
+      LS.set('alf_staff_cache', staff);
+      renderStaff();
+    } else {
+      alert('Error removing staff: ' + result.msg);
+    }
+  } catch(e) {
+    alert('Network error. Check your connection and try again.');
+  }
 }
 
 function renderCs() {
@@ -732,7 +786,7 @@ function addCsSku() {
   if (!code || !name) { alert('Code and name are required.'); return; }
   if (!csskus[cat]) csskus[cat] = [];
   csskus[cat].push({code,name});
-  saveData();
+  saveLocalData();
   document.getElementById('cs-code').value = '';
   document.getElementById('cs-name').value = '';
   renderCs();
@@ -740,7 +794,7 @@ function addCsSku() {
 function removeCsSku(cat, i) {
   if (!confirm(`Remove ${csskus[cat][i].name}?`)) return;
   csskus[cat].splice(i,1);
-  saveData();
+  saveLocalData();
   renderCs();
 }
 
