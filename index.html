@@ -379,9 +379,10 @@ const LS = {
 };
 
 async function callWebhook(payload) {
+  // Note: No Content-Type header — avoids CORS preflight with Google Apps Script
   const resp = await fetch(WEBHOOK_URL, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    redirect: 'follow',
     body: JSON.stringify(payload)
   });
   return resp.json();
@@ -395,7 +396,7 @@ async function loadData() {
   // Load staff from Google Sheets (shared across all devices)
   showLoginStatus('Loading...');
   try {
-    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec') {
+    if (WEBHOOK_URL === 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL') {
       // Demo mode fallback
       staff = [{username:'Adrian',password:'admin2026',role:'admin'}];
     } else {
@@ -624,14 +625,14 @@ async function submitForm() {
   ]);
 
   try {
-    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec') {
+    if (WEBHOOK_URL === 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL') {
       // Demo mode — no real webhook configured yet
       await new Promise(r => setTimeout(r, 600));
       showSuccess(`${mode} submitted — ${rows.length} SKUs logged by ${currentUser.username}`);
     } else {
       const resp = await fetch(WEBHOOK_URL, {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        redirect:'follow',
         body: JSON.stringify({sheet:'Stock Movements', rows})
       });
       const result = await resp.json();
