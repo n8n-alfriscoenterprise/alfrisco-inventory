@@ -271,7 +271,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 // ═══════════════════════════════════════════════════════
 // CONFIGURATION — update WEBHOOK_URL after deploying
 // ═══════════════════════════════════════════════════════
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec'; // Update this with your new deployment URL
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec'; // Update this with your new deployment URL
 
 // ═══════════════════════════════════════════════════════
 // SKU DATA
@@ -395,7 +395,7 @@ async function loadData() {
   // Load staff from Google Sheets (shared across all devices)
   showLoginStatus('Loading...');
   try {
-    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec') {
+    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec') {
       // Demo mode fallback
       staff = [{username:'Adrian',password:'admin2026',role:'admin'}];
     } else {
@@ -624,7 +624,7 @@ async function submitForm() {
   ]);
 
   try {
-    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw9ZEfFAxQEEozAlv9fSUP7UHhXzQ9-3oDQWFezVcCYuf1CUKAODz7Gky83VJjmSUFn/exec') {
+    if (WEBHOOK_URL === 'https://script.google.com/macros/s/AKfycbw6cUF8GdES4rZeeNUt9OjAL-X4AI2pghp9TwmRwGXZrwynZDsPGaaawFI6J7mzkAh7YA/exec') {
       // Demo mode — no real webhook configured yet
       await new Promise(r => setTimeout(r, 600));
       showSuccess(`${mode} submitted — ${rows.length} SKUs logged by ${currentUser.username}`);
