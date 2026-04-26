@@ -156,6 +156,35 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 /* DELIVER MODAL */
 #deliver-modal .modal-card{max-width:310px}
+
+/* FLOATING BACKORDER BUTTON */
+.fab{position:fixed;bottom:90px;right:16px;width:52px;height:52px;
+  background:#E24B4A;border-radius:50%;border:none;color:white;
+  font-size:26px;font-weight:300;cursor:pointer;z-index:150;
+  box-shadow:0 4px 14px rgba(226,75,74,0.45);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.15s,opacity 0.15s}
+.fab:active{transform:scale(0.92)}
+.fab-label{position:fixed;bottom:100px;right:76px;
+  background:rgba(30,30,30,0.82);color:white;
+  font-size:11px;font-weight:600;padding:4px 10px;
+  border-radius:20px;z-index:150;pointer-events:none;
+  white-space:nowrap;opacity:0;transition:opacity 0.2s}
+.fab:hover + .fab-label,.fab:focus + .fab-label{opacity:1}
+
+/* BACKORDER MODAL */
+#bo-modal .modal-card{max-width:340px}
+#bo-modal label{font-size:11px;font-weight:600;color:#666;
+  display:block;margin-bottom:4px;margin-top:12px}
+#bo-modal input,#bo-modal select{
+  width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;
+  border-radius:9px;font-size:13px;outline:none;
+  background:white;color:#222;margin-bottom:0}
+#bo-modal input:focus,#bo-modal select:focus{border-color:#E24B4A}
+.bo-submit{width:100%;padding:12px;background:#E24B4A;color:white;
+  border:none;border-radius:10px;font-size:14px;font-weight:700;
+  cursor:pointer;margin-top:14px}
+.bo-submit:disabled{background:#ccc;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -917,6 +946,82 @@ function renderLog(){
   });
 }
 
+
+// ── BACKORDER FLOATING BUTTON ──
+function openBoModal(){
+  document.getElementById('bo-modal').style.display='flex';
+  document.getElementById('bo-dealer').value='';
+  document.getElementById('bo-sku').value='';
+  document.getElementById('bo-qty').value='';
+  document.getElementById('bo-unit').value='bag';
+  document.getElementById('bo-date').value='';
+  document.getElementById('bo-notes').value='';
+  document.getElementById('bo-err').textContent='';
+  document.getElementById('bo-submit-btn').disabled=false;
+  setTimeout(()=>document.getElementById('bo-dealer').focus(),150);
+}
+function closeBoModal(){
+  document.getElementById('bo-modal').style.display='none';
+}
+
+async function submitBackorder(){
+  const dealer=document.getElementById('bo-dealer').value.trim();
+  const skuRaw=document.getElementById('bo-sku').value.trim();
+  const qty=parseFloat(document.getElementById('bo-qty').value)||0;
+  const unit=document.getElementById('bo-unit').value;
+  const date=document.getElementById('bo-date').value;
+  const notes=document.getElementById('bo-notes').value.trim();
+  const errEl=document.getElementById('bo-err');
+
+  if(!dealer){errEl.textContent='Please enter a dealer name.';return;}
+  if(!skuRaw){errEl.textContent='Please enter a SKU or item name.';return;}
+  if(qty<=0){errEl.textContent='Please enter a quantity greater than 0.';return;}
+
+  // Parse SKU from datalist format "DIST|CODE|Name" or "RETAIL|CODE|Name" or raw text
+  let skuCode='', skuName='';
+  if(skuRaw.includes('|')){
+    const parts=skuRaw.split('|');
+    skuCode=parts[1]||'';skuName=parts[2]||skuRaw;
+  }else{
+    skuCode=skuRaw;skuName=skuRaw;
+  }
+
+  const btn=document.getElementById('bo-submit-btn');
+  btn.disabled=true;btn.textContent='Submitting...';
+  errEl.textContent='';
+
+  const now=new Date().toLocaleString('en-PH');
+  const promisedDate=date?new Date(date).toLocaleDateString('en-PH'):'';
+
+  const rows=[[
+    now,
+    currentUser?currentUser.username:'Unknown',
+    dealer,'', // Dealer phone left blank — captured if needed later
+    skuCode, skuName,
+    qty, unit,
+    promisedDate,
+    'OPEN',
+    notes
+  ]];
+
+  try{
+    const r=await api({sheet:'Backorders',rows});
+    if(r.status==='ok'){
+      closeBoModal();
+      // Show success on whichever screen is active
+      const activeScreen=document.querySelector('.screen.active');
+      const barId=activeScreen&&activeScreen.id==='driver-screen'?'driver-success-bar':'success-bar';
+      showBanner(barId,`Backorder logged — ${dealer} wants ${qty} ${unit} of ${skuName}`);
+    }else{
+      errEl.textContent='Error: '+(r.msg||'Could not submit');
+      btn.disabled=false;btn.textContent='Submit Backorder';
+    }
+  }catch(e){
+    errEl.textContent='Network error. Please check your connection.';
+    btn.disabled=false;btn.textContent='Submit Backorder';
+  }
+}
+
 // ── KEYBOARD ──
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('admin-pass-input').addEventListener('keydown',e=>{if(e.key==='Enter')verifyAdmin();});
@@ -925,5 +1030,689 @@ document.getElementById('deliver-qty').addEventListener('keydown',e=>{if(e.key==
 // ── START ──
 init();
 </script>
+
+<!-- FLOATING BACKORDER BUTTON -->
+<button class="fab" onclick="openBoModal()" title="Log Backorder">+</button>
+<div class="fab-label">Log Backorder</div>
+
+<!-- BACKORDER MODAL -->
+<div class="modal-overlay" id="bo-modal" style="display:none">
+  <div class="modal-card" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" style="color:#E24B4A">Log Backorder</div>
+    <div class="modal-sub">Dealer is requesting an out-of-stock item</div>
+    <label>Dealer Name</label>
+    <input type="text" id="bo-dealer" placeholder="Search dealer..." list="dealer-list" autocomplete="off">
+    <label>SKU / Item</label>
+    <input type="text" id="bo-sku" placeholder="Search SKU or item name..." list="sku-list" autocomplete="off">
+    <label>Quantity Requested</label>
+    <input type="number" id="bo-qty" placeholder="0" min="1" step="1">
+    <label>Purchase Unit</label>
+    <select id="bo-unit">
+      <option value="bag">bag</option>
+      <option value="sack">sack</option>
+      <option value="box">box</option>
+      <option value="case">case</option>
+      <option value="pc">pc</option>
+      <option value="bottle">bottle</option>
+      <option value="kg">kg</option>
+    </select>
+    <label>Promised Date (optional)</label>
+    <input type="date" id="bo-date">
+    <label>Notes (optional)</label>
+    <input type="text" id="bo-notes" placeholder="Any special instructions...">
+    <div class="modal-err" id="bo-err"></div>
+    <button class="bo-submit" id="bo-submit-btn" onclick="submitBackorder()">Submit Backorder</button>
+    <div class="modal-btns" style="margin-top:8px">
+      <button class="modal-cancel" style="width:100%" onclick="closeBoModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DATALISTS -->
+<datalist id="dealer-list">
+<option value="3RG Agri Supply">
+<option value="A&L Agricultural Supply">
+<option value="A&T Agri Trading">
+<option value="AG Store">
+<option value="AGM Pet Supplies & Accessories">
+<option value="AJ Store">
+<option value="ATDC">
+<option value="AUSTRIA POULTRY SUPPLY">
+<option value="Aguirre P/S">
+<option value="Aldrin Store">
+<option value="Alfrisco Retail">
+<option value="Alicia Althea Agri Supply">
+<option value="Amang Store">
+<option value="Amon- Divina Agri Suppy">
+<option value="Anoit's Poultry Supply">
+<option value="Aquino Store">
+<option value="BALDERAMA POULTRY SUPPLY">
+<option value="BALLIGI POULTRY SUPPLY">
+<option value="BJ Kennel Petshop">
+<option value="BeeZee Poultry Supply">
+<option value="Benzon Agricultural Supply">
+<option value="Big Savers Mini Grocery">
+<option value="Bloodline Poultry Supply">
+<option value="Boquiren Store">
+<option value="Boquiren Store-Aliaga">
+<option value="Brynn's Rice Agri and Poultry Supply">
+<option value="C&C Petshop">
+<option value="C&Y Store">
+<option value="CAI SHEN AGRIVET SUPPLY">
+<option value="CJ Store">
+<option value="CVM AGRIVET SUPPLY">
+<option value="Caguioa Store">
+<option value="Calpito Store">
+<option value="Camat-Ambrose Agricultural supply">
+<option value="Carbonel Agri and P/S">
+<option value="Carla Bella">
+<option value="Chowmin Agri Supply">
+<option value="Criselda Martinez Store">
+<option value="D'AMORE POULTRY SUPPLY">
+<option value="DAISUKI Agri Trading">
+<option value="DJD Agri Supply">
+<option value="DONG-USON POULTRY SUPPLY">
+<option value="Dantri Poultry and Agricultural Supply">
+<option value="De Guzman Store">
+<option value="Deguzman Store">
+<option value="Denzel Poultry Supply">
+<option value="Duran Lumen Poultry Supply">
+<option value="E&M POULTRY SUPPLY">
+<option value="EA Agri Trading">
+<option value="EJ Tawatao">
+<option value="EPJ Store">
+<option value="Edzena Enterprises">
+<option value="Emily Variety Store">
+<option value="FERRER STORE">
+<option value="Fely Jugo">
+<option value="Fernandez Rice">
+<option value="Francisco Rice & P/S">
+<option value="Franz Poultry Supply">
+<option value="Furpect Paws Grooming Salon">
+<option value="G&C POULTRY">
+<option value="G'S POULTRY SUPPLY">
+<option value="GAB'S STORE">
+<option value="GS Poultry Supply">
+<option value="Gab & Chelsea">
+<option value="Gatinga Poultry Supply">
+<option value="Grane8 Poultry Supply">
+<option value="H-Lawin">
+<option value="HLSYSU Agricultural Supplies">
+<option value="HMP AGRI SUPPLY">
+<option value="Harveym Poultry Supply">
+<option value="ILAGAN AGRI SUPPLY">
+<option value="J Tadeo Agricultural Supply">
+<option value="J and C Poultry Supply">
+<option value="J&C Agricultural and P/S">
+<option value="J&C Variety Store">
+<option value="J&J Trading">
+<option value="J&K Agricultural Supply">
+<option value="J&K DAILY AGRICULTURAL SUPPLY">
+<option value="J&S PETSHOP">
+<option value="JAS P/S">
+<option value="JEMs Poultry Supply">
+<option value="JL Agri Supply">
+<option value="JR Vistro Poultry Supply">
+<option value="Jacob's P/S">
+<option value="Jan Carlos Agri Supply">
+<option value="Jasmine Beltran">
+<option value="Jellian Mhae Poultry Supply">
+<option value="Jendels A/S">
+<option value="Jethan Agri Store">
+<option value="Jo-cel Agri Supply">
+<option value="Jojo Jimenez Rice Store & P/S">
+<option value="Juan & Isay Variety Store">
+<option value="KAPAWSO AGRIVET SUPPLY">
+<option value="KICHEL AGRICULTURAL SUPPLY/KIMO AGRI TRADING">
+<option value="KNJ Feeds">
+<option value="KUYA'S STORE">
+<option value="Ka Dulce A/S">
+<option value="Kayas Agri Trading">
+<option value="Kiba's Store">
+<option value="Kuya Dong's Agri Poultry Supply">
+<option value="Kuyas Store">
+<option value="L&C Variety Store">
+<option value="LGSP Trading">
+<option value="Laranang-Dizon Poultry Supplies">
+<option value="Larry Lavarias Poultry Supply">
+<option value="Latoja's Poultry Supply">
+<option value="Lie-Ann's Agricultural Supply">
+<option value="Lilo's Pets and Agri">
+<option value="Lyslie Luck">
+<option value="M&C Rice and Poultry Store">
+<option value="MAKAARO2 POULTRY SUPPLY">
+<option value="MAKHIMURA AGRI SUPPLY">
+<option value="MB Uson Poultry Supply">
+<option value="MBL Agri Supply">
+<option value="MG Paray Piggery & Poultry Supply">
+<option value="MM POULTRY SUPPLY">
+<option value="MORALES POULTRY SUPPLY">
+<option value="MPThree P/S">
+<option value="Macaraeg Poultry Supply">
+<option value="Magalong Agri Poultry Supply">
+<option value="Magalong Agrivet Supply">
+<option value="Marcos Rice Retailer and Agri supply">
+<option value="Maronong Poultry Supply">
+<option value="Marte Store">
+<option value="Max Agri Supply">
+<option value="Mich and Marvin Agri Supply">
+<option value="Mildred Poultry Supply">
+<option value="Molina Store">
+<option value="Mon-shine Store">
+<option value="N. BAUTISTA AGRICULTURAL SUPPLY">
+<option value="Noli Sari Sari Store">
+<option value="O & C Pet Supplies">
+<option value="PAGAL AGRICULTURAL AND POULTRY SUPPLY">
+<option value="PEREZ STORE">
+<option value="PET ICON PET SUPPLY">
+<option value="PSK Agri Trading">
+<option value="Padios Agri Supply/ Jhay R Poultry Supply">
+<option value="Pagnam-Ayam Agricultural Supply">
+<option value="Patague Agri And Poultry Supply">
+<option value="Pia Poultry Supply">
+<option value="QL PETSHOP">
+<option value="QUC Agri Feeds and Variety Store">
+<option value="QUILATES A/S">
+<option value="Quilates Poultry Supply">
+<option value="Quinto Store">
+<option value="R Madrid Agricultural Supply">
+<option value="R&C Variety Store">
+<option value="RAM-RENZ STORE">
+<option value="RJC Rice Retailing">
+<option value="ROBERT V. POULTRY SUPPLY">
+<option value="RRC Poultry Supply">
+<option value="RRM Consumer Goods">
+<option value="Rafanan Agri Trading">
+<option value="Regi-rays Agri Supply">
+<option value="Rencekate P/S">
+<option value="Rodghelle Agri Supply">
+<option value="Rosella Rice Store">
+<option value="SAM AND ZEKE">
+<option value="SEVA POULTRY SUPPLY">
+<option value="SS Bigasan">
+<option value="SV Poultry Supply">
+<option value="SWEET THOTS">
+<option value="Samson Petshop">
+<option value="San Manuel Agri & Poultry">
+<option value="Sanchez Quinto">
+<option value="Sarmiento Beth">
+<option value="Sarmiento Poultry Supply">
+<option value="Sew Agri Supply">
+<option value="Siapno Poultry Supply">
+<option value="Siapno Variety Store Malued">
+<option value="Siapno Variety Store- Dagupan City">
+<option value="TCQ Petshop">
+<option value="TURING VARIETY STORE">
+<option value="Tawatao Poultry Supply">
+<option value="Theo's Agriculture P/S">
+<option value="Travis Rice and Feeds Retailer">
+<option value="UNAHCO - GELO LUCAS">
+<option value="V/P Agri Supply">
+<option value="VIRGO FARM">
+<option value="WENZO'S THINGS">
+<option value="Wil-An Trading 2">
+<option value="YUNO AGRICULTURAL SUPPLY">
+<option value="ZYKEN POULTRY SUPPLY">
+<option value="Zaldy Merchandise">
+</datalist>
+<datalist id="sku-list">
+<option value="DIST|AP RB|ALPHA PRO 5KG PALE REGULAR BITES">
+<option value="DIST|AP SB10|ALPHA PRO SMALL BITES 10KG">
+<option value="DIST|AMT500|AMTYL500">
+<option value="DIST|CBM|BABANG MAIS 40kg">
+<option value="DIST|BAC-CO2|BATTERY CAGE - COATED 2 DOORS">
+<option value="DIST|BAC-CO4|BATTERY CAGE - COATED 4 DOORS">
+<option value="DIST|BC-CPU|BIRD CAGE - CPU">
+<option value="DIST|BC-DO|BIRD CAGE - DOUBLE">
+<option value="DIST|BC-DOAC|BIRD CAGE - DOUBLE -AC TYPE">
+<option value="DIST|BC-SIN|BIRD CAGE - SINGLE">
+<option value="DIST|CC2|CC2 40KG">
+<option value="DIST|CPC-2XL|COLLAPSIBLE PETCAGE - 2EXTRA LARGE">
+<option value="DIST|CPC-XL|COLLAPSIBLE PETCAGE - EXTRA LARGE">
+<option value="DIST|CPC-XL|COLLAPSIBLE PETCAGE - EXTRA LARGECALASIAO">
+<option value="DIST|CPC-XL|COLLAPSIBLE PETCAGE - EXTRA LARGEDAGUPAN">
+<option value="DIST|CPC-XL|COLLAPSIBLE PETCAGE - EXTRA LARGESANTA BARBARA">
+<option value="DIST|CPC-L|COLLAPSIBLE PETCAGE - LARGE">
+<option value="DIST|CPC-M|COLLAPSIBLE PETCAGE - MEDIUM">
+<option value="DIST|VL VIT4|COLOMBINE VITA 4KG">
+<option value="DIST|CF-L|CUP FEEDER - Large">
+<option value="DIST|CF-M|CUP FEEDER - Medium">
+<option value="DIST|CF-S|CUP FEEDER - Small">
+<option value="DIST|TM-CG|CURE GOLD 100 TABLETS">
+<option value="DIST|CL10|Catty Lov 10kg (400gx25)">
+<option value="DIST|DK20|Dear Kat 20kg/bag">
+<option value="DIST|DF|Delivery Fee">
+<option value="DIST|DJ10|Doggy Joy 10kg">
+<option value="DIST|DJ20|Doggy Joy 20kg/bag">
+<option value="DIST|FP-STD|FLYING PEN STANDARD">
+<option value="DIST|FF-AP|Feline Fresh - Apple 10L">
+<option value="DIST|FF-CO|Feline Fresh - Coffee 10L">
+<option value="DIST|FF-LV|Feline Fresh - Lavender 10L">
+<option value="DIST|FF-LE|Feline Fresh - Lemon 10L">
+<option value="DIST|FF-LG|Feline Fresh - Lemon Grass 10L">
+<option value="DIST|FD|Food For The Dog 18kg/bag">
+<option value="DIST|GH-AF|GOLDEN HARVEST - AFRICAN MIX">
+<option value="DIST|GH-BM|GOLDEN HARVEST - BIRD MIX">
+<option value="DIST|GH-CM|GOLDEN HARVEST - CANARY MIX">
+<option value="DIST|HO AD|Holistic Recipe Adult">
+<option value="DIST|HO PU|Holistic Recipe Puppy">
+<option value="DIST|FEI-HA|Honey Aid 20 tablets">
+<option value="DIST|VL-IP|IDEAL PILLS 500">
+<option value="DIST|VL-IP|IDEAL PILLS 500Dagupan Branch">
+<option value="DIST|TM-IO|IN & OUT 100 TABLETS">
+<option value="DIST|INT 2|INTEGRA 2 50kg">
+<option value="DIST|INT3|INTEGRA 3 50KG">
+<option value="DIST|IC COF|Ichi & Co Coffee">
+<option value="DIST|IC LAV|Ichi & Co Lavender">
+<option value="DIST|IC LEM|Ichi & Co Lemon">
+<option value="DIST|IC SA|Ichi & Co Sakura">
+<option value="DIST|INT 2|Integra 3 50kg">
+<option value="DIST|FEI-IV|Iron-Vit 15mL">
+<option value="DIST|KM|KABALEN MIX 1KG">
+<option value="DIST|KBM|Kalapatids Breeder 25kg">
+<option value="DIST|KFM|Kalapatids Flyer Mix 25kg">
+<option value="DIST|KFM|Kalapatids Flyer Mix 25kgDagupan Branch">
+<option value="DIST|LV GK100|LEVIMIN GK 100g">
+<option value="DIST|LF12|LINEAR FEEDER 12'">
+<option value="DIST|MATS|MATTY SALMON">
+<option value="DIST|MATU|MATTY TUNA">
+<option value="DIST|MI 10|Mighty Ocean Fish 10kg">
+<option value="DIST|NC A10|NUTRICHUNKS ADULT 10KG">
+<option value="DIST|NC P10|NUTRICHUNKS PUPPY10KG">
+<option value="DIST|NBM|Nutrena Breeder Mix">
+<option value="DIST|NFM|Nutrena Flyer Mix">
+<option value="DIST|ORDCON|ORDINARYCONDITIONER 25KG">
+<option value="DIST|PM 131|PLASTIC MATTING 1x3 BLACK">
+<option value="DIST|PY20-C|Pet Yum Cat 20kg - Carnivore / bag">
+<option value="DIST|PY20-S|Pet Yum Cat 20kg - Seafood/ bag">
+<option value="DIST|PC22.7|Princess Cat All Stages">
+<option value="DIST|QBM|Queen Mary Breeder 25kg">
+<option value="DIST|QFM|Queen Mary Flyer 25kg">
+<option value="DIST|RD-AS|RD Astig 30s">
+<option value="DIST|RD-CO|RD CANCARE 30S">
+<option value="DIST|RD-DO|RD DOXIPLUS 30s">
+<option value="DIST|RD-PW|RD POWER WINGS 10ML">
+<option value="DIST|RD-RP|RD RELOAD PLUS 10ML">
+<option value="DIST|RD-RP|RD RELOAD PLUS 10MLDagupan Branch">
+<option value="DIST|RD-VP|RD VOLTPLEX 30s">
+<option value="DIST|RP|RUBBER POT">
+<option value="DIST|FEI RP|Respicure 20s">
+<option value="DIST|RG|Rubber Gloves 1 set">
+<option value="DIST|SP-BRO|SCRATCH PEN - BREEDING PEN">
+<option value="DIST|SP-CHP|SCRATCH PEN - CHICK PEN">
+<option value="DIST|SP-DB|SCRATCH PEN - DARK BLUE 10 LINES">
+<option value="DIST|SP-GREEN|SCRATCH PEN - GREEN 8 LINES">
+<option value="DIST|SP-LB|SCRATCH PEN - LIGHT BLUE 17 LINES">
+<option value="DIST|SP-RED|SCRATCH PEN - RED 16 LINES">
+<option value="DIST|SP-BAN|SCRATCH PEN-BANTAM">
+<option value="DIST|SQP-HD|SQUARE PEN-HEAVY DUTY">
+<option value="DIST|FEI-B12|SUPER B12">
+<option value="DIST|SC|SUPER CEE 100 PILLS">
+<option value="DIST|VL-SP|SUPRA PILLS 250 PILLS">
+<option value="DIST|VL-SP50|SUPRA PILLS 50 PILLS REPACK">
+<option value="DIST|SPL-CAT|Special Cat 7kg-All Stages">
+<option value="DIST|SPL-CAT|Special Cat 7kg-All StagesCalasiao">
+<option value="DIST|SPL-CAT|Special Cat 7kg-All StagesDagupan">
+<option value="DIST|SPL-CAT|Special Cat 7kg-All StagesSta. Barbara">
+<option value="DIST|SPL-CUR|Special Cat 7kg-Urinary">
+<option value="DIST|SPL-CUR|Special Cat 7kg-UrinaryCalasiao">
+<option value="DIST|SPL-CUR|Special Cat 7kg-UrinaryDagupan">
+<option value="DIST|SPL-CUR|Special Cat 7kg-UrinarySta. Barbara">
+<option value="DIST|SPL-DAD|Special Dog 9kg - Adult">
+<option value="DIST|SPL-DAD|Special Dog 9kg - AdultSANTA BARBARA">
+<option value="DIST|SPL-DPU|Special Dog 9kg - Puppy">
+<option value="DIST|FEI-B12|Super B12">
+<option value="DIST|TO-PR|TOLOME PROBIOTICS">
+<option value="DIST|TO-SAL|Toei Cat 20kg - Salmon">
+<option value="DIST|TO-SAL|Toei Cat 20kg - SalmonCalasiao Branch">
+<option value="DIST|TO-SAL|Toei Cat 20kg - SalmonDagupan Branch">
+<option value="DIST|TO-TU|Toei Cat 20kg - Tuna">
+<option value="DIST|TO-TU|Toei Cat 20kg - TunaCalasiao Branch">
+<option value="DIST|TO-TU|Toei Cat 20kg - TunaDagupan Branch">
+<option value="DIST|TD20|Toei Dog 20kg/bag">
+<option value="DIST|TD20|Toei Dog 20kg/bagCalasiao">
+<option value="DIST|TD20|Toei Dog 20kg/bagDagupan">
+<option value="DIST|TD20|Toei Dog 20kg/bagDagupan Branch">
+<option value="DIST|TOM20|Tommy Cat 20kg">
+<option value="DIST|VL-GR|VERSELE LAGA GRITS+RS 20KG">
+<option value="DIST|VCL15|VITALITY CLASSIC 15KG">
+<option value="DIST|VVMA|VITALITY VALUE MEAL ADULT 20KG">
+<option value="DIST|VVMP20|VITALITY VALUE MEAL PUPPY 20KG">
+<option value="DIST|WAL|WATERER LARGE">
+<option value="DIST|WAM|WATERER MEDIUM">
+<option value="DIST|WAS|WATERER SMALL">
+<option value="DIST|WAS|WATERER SMALLFACTORY DISCOUNTED">
+<option value="RETAIL|10506|Ace Grower Floater/bag">
+<option value="RETAIL|10515|Ace Grower Floater/kg">
+<option value="RETAIL|10338|Aeroclear Yellow Drops">
+<option value="RETAIL|10621|African Mix/kg">
+<option value="RETAIL|10424|Alpha Pro Adult Regular Bites 10kg/bag">
+<option value="RETAIL|10425|Alpha Pro Adult Small Bites 10kg/bag">
+<option value="RETAIL|10400|Alpha Pro Adult-Regular Bites/5kg tub">
+<option value="RETAIL|10377|Alpha Pro Adult-Small Bites/5kg tub">
+<option value="RETAIL|10428|Alpha Pro Puppy Bites 10kg/bag">
+<option value="RETAIL|10582|Ambroxitil 5g/pc">
+<option value="RETAIL|10103|Amtyl 500/pc">
+<option value="RETAIL|10673|Aozi Adult Gold/1kg">
+<option value="RETAIL|10694|Aozi Silver Puppy/pack">
+<option value="RETAIL|10210|Arvet B12/1 bottle">
+<option value="RETAIL|10829|Arvet Calcium Lactate/1 Bottle">
+<option value="RETAIL|10830|Arvet Multivitamins/1 Bottle">
+<option value="RETAIL|10007|Astig/tablet">
+<option value="RETAIL|10149|Axylin 5g/pc">
+<option value="RETAIL|10477|B50 Forten/pc">
+<option value="RETAIL|10256|BBM/kg">
+<option value="RETAIL|10246|BFM/kg">
+<option value="RETAIL|10548|BMEG Premium Grower1/kg">
+<option value="RETAIL|10549|BMEG Premium Starter/kg">
+<option value="RETAIL|10114|BULATIGOK SD 7g">
+<option value="RETAIL|10476|Babang mais/kg">
+<option value="RETAIL|10183|Balancer">
+<option value="RETAIL|10069|Bastonero Plus 5g">
+<option value="RETAIL|10318|Battery Cage 2 Doors Coated">
+<option value="RETAIL|10199|Baxidil 7g/pc">
+<option value="RETAIL|10597|Bee Pollen/pc">
+<option value="RETAIL|10171|Belamyl 10ML box">
+<option value="RETAIL|10600|Belamyl 10ml">
+<option value="RETAIL|10241|Belamyl 1cc">
+<option value="RETAIL|10359|Belamyl 20ML">
+<option value="RETAIL|10601|Bexan 10ml">
+<option value="RETAIL|10696|Bingo Adult/1kg">
+<option value="RETAIL|10539|Bird Cage CPU">
+<option value="RETAIL|10188|Bird Cage Double">
+<option value="RETAIL|10296|Bird Cage Single">
+<option value="RETAIL|10059|Bird Mix/1kg">
+<option value="RETAIL|10200|Bitamax 10mL">
+<option value="RETAIL|10441|Breeder ADE 5g/pc">
+<option value="RETAIL|10150|Brooding Nest - Clay">
+<option value="RETAIL|10456|Buko Pandan/kg">
+<option value="RETAIL|10632|CC1/bag">
+<option value="RETAIL|10625|CC1/kg">
+<option value="RETAIL|10633|CC2/bag">
+<option value="RETAIL|10623|CC2/kg">
+<option value="RETAIL|10656|CC3/bag">
+<option value="RETAIL|10627|CC3/kg">
+<option value="RETAIL|10030|CT Williams/pc">
+<option value="RETAIL|10299|CXD-3 4g Sachet">
+<option value="RETAIL|10431|Calci-X/pc">
+<option value="RETAIL|10449|Canary Mix/kg">
+<option value="RETAIL|10239|Cattylov/pack">
+<option value="RETAIL|10169|Clay Pot">
+<option value="RETAIL|10161|Clay Pot">
+<option value="RETAIL|10181|Clay Pot">
+<option value="RETAIL|10816|Collapsible Pet Cage">
+<option value="RETAIL|10282|Cup Feeder">
+<option value="RETAIL|10276|Cup Feeder">
+<option value="RETAIL|10273|Cup Feeder">
+<option value="RETAIL|10362|DOX-C-LIN Gold 5g/pc">
+<option value="RETAIL|10322|Dear Kat/kg">
+<option value="RETAIL|10237|Decis">
+<option value="RETAIL|10224|Dentastix 3 in 1 Adult">
+<option value="RETAIL|10335|Derby Box">
+<option value="RETAIL|10668|Detick 2cc">
+<option value="RETAIL|10275|Dextrose Powder 100g">
+<option value="RETAIL|10193|Dextrose Powder 300g">
+<option value="RETAIL|10364|Doggy Joy 20kg/bag">
+<option value="RETAIL|10372|Doggy Joy/kg">
+<option value="RETAIL|10243|Doxylak Powder 7g/pc">
+<option value="RETAIL|10205|Doxylak Tablet/pc">
+<option value="RETAIL|10151|Egg 1000 20g/pc">
+<option value="RETAIL|10724|El Toro/pc">
+<option value="RETAIL|10009|Electrogen D+ 20g/pc">
+<option value="RETAIL|10514|Electrogen D+ 6g/pc">
+<option value="RETAIL|10186|Feathershine 10mL/pc">
+<option value="RETAIL|10039|Feline Fresh 10L Carbon Activated/pack">
+<option value="RETAIL|10098|Feline Fresh 10L Coffee/pack">
+<option value="RETAIL|10187|Feline Fresh 10L Lavender/pack">
+<option value="RETAIL|10371|Feline Fresh 10L Lemon/pack">
+<option value="RETAIL|10110|Feline Fresh 10L Lemongrass/pack">
+<option value="RETAIL|10140|Feline Gourmet">
+<option value="RETAIL|10139|Fixed Pet Cage">
+<option value="RETAIL|10129|Fixed Pet Cage">
+<option value="RETAIL|10131|Flugfit Dragees/pc">
+<option value="RETAIL|10153|Flugfit Dragees/pc">
+<option value="RETAIL|10269|Food For The Dog/kg">
+<option value="RETAIL|10439|Foster Milk 500g">
+<option value="RETAIL|10032|GA caplet/pc">
+<option value="RETAIL|10215|GMP3 Maintenance 50kg.">
+<option value="RETAIL|10354|GMP3/kg">
+<option value="RETAIL|10355|GMP4/kg">
+<option value="RETAIL|10298|Gallimax 2+/kg">
+<option value="RETAIL|10550|Gallimax 2/kg">
+<option value="RETAIL|10014|GastiPro Probiotics">
+<option value="RETAIL|10365|HMP/kg">
+<option value="RETAIL|10594|HONEY AID 20 TABLETS/bottle">
+<option value="RETAIL|10657|Hagibis Spl/bag">
+<option value="RETAIL|10629|Hagibis Spl/kg">
+<option value="RETAIL|10658|Hagibis Spr/bag">
+<option value="RETAIL|10631|Hagibis Spr/kg">
+<option value="RETAIL|10722|Hammer/pc">
+<option value="RETAIL|10595|Honey Aid/pc">
+<option value="RETAIL|10538|Honey ni Boss Idol">
+<option value="RETAIL|10471|Ichi & Co 10L">
+<option value="RETAIL|10473|Ichi & Co 10L">
+<option value="RETAIL|10478|Ichi & Co 10L">
+<option value="RETAIL|10488|Int1/bag">
+<option value="RETAIL|10461|Int1/kg">
+<option value="RETAIL|10570|Int2.5/bag">
+<option value="RETAIL|10569|Int2.5/kg">
+<option value="RETAIL|10568|Int2/bag">
+<option value="RETAIL|10567|Int2/kg">
+<option value="RETAIL|10571|Int3/kg">
+<option value="RETAIL|10575|Int3PLUS/bag">
+<option value="RETAIL|10574|Int3PLUS/kg">
+<option value="RETAIL|10577|Int4/bag">
+<option value="RETAIL|10576|Int4/kg">
+<option value="RETAIL|10062|Int5/kg">
+<option value="RETAIL|10607|Iron-Vit 15ml/bottle">
+<option value="RETAIL|10012|Ivermectin Agmectin 5g">
+<option value="RETAIL|10469|Jasmine RC 160/bag">
+<option value="RETAIL|10463|Jasmine RC 160/kg">
+<option value="RETAIL|10418|Jectran Premium 10ml">
+<option value="RETAIL|10661|KBM/bag">
+<option value="RETAIL|10639|KBM/kg">
+<option value="RETAIL|10662|KFM/bag">
+<option value="RETAIL|10641|KFM/kg">
+<option value="RETAIL|10222|KPB/bag">
+<option value="RETAIL|10230|KPB/kg">
+<option value="RETAIL|10223|KPF/kg">
+<option value="RETAIL|10087|Kabalen Mix/kg">
+<option value="RETAIL|10120|LC Vit 120mL">
+<option value="RETAIL|10164|LC Vit 60mL">
+<option value="RETAIL|10610|LDI B12/pc">
+<option value="RETAIL|10612|LDI Calveex/pc">
+<option value="RETAIL|10480|Laktaminom XE">
+<option value="RETAIL|10233|Latigo 1000 MIXED BERRIES 10g/pc">
+<option value="RETAIL|10207|Leather Gloves">
+<option value="RETAIL|10297|Linear Feeder 12'">
+<option value="RETAIL|10352|Linear Feeder 36'">
+<option value="RETAIL|10378|Lori amitraz">
+<option value="RETAIL|10248|Lori soap pure madre cacao">
+<option value="RETAIL|10050|Lucy Cat Adult/kg">
+<option value="RETAIL|10144|Lucy Cat All Stages/kg">
+<option value="RETAIL|10455|MBM/kg">
+<option value="RETAIL|10459|MFM/kg">
+<option value="RETAIL|10300|MP Immunoform (Holistic Oil)">
+<option value="RETAIL|10617|Majesty Cat Food/kg">
+<option value="RETAIL|10147|Malathion 60mL">
+<option value="RETAIL|10681|Matty Salmon/kg">
+<option value="RETAIL|10689|Matty Tuna/kg">
+<option value="RETAIL|10450|Maxwell Cat Canned">
+<option value="RETAIL|10619|Mighty Ocean Fish/1kg pack">
+<option value="RETAIL|10154|Multimax D5">
+<option value="RETAIL|10198|NBM/kg">
+<option value="RETAIL|10234|NFM/kg">
+<option value="RETAIL|10113|Norovit 10mL">
+<option value="RETAIL|10174|Nutrichunks Puppy/10kg Bag">
+<option value="RETAIL|10076|Nutrichunks Puppy/kg">
+<option value="RETAIL|10018|Optima High Protein/1kg">
+<option value="RETAIL|10643|Ordinary Con/kg">
+<option value="RETAIL|10194|Ordinary Gloves">
+<option value="RETAIL|10177|Oxy-Rid Drops 5mL">
+<option value="RETAIL|10125|PHA Ring 2025">
+<option value="RETAIL|10347|PM Baby Stag Developer Crumble/pack">
+<option value="RETAIL|10329|PM Chick Booster Crumble/pack">
+<option value="RETAIL|10675|PM Conditioning/pack">
+<option value="RETAIL|10368|PM Stag Developer/pack">
+<option value="RETAIL|10544|PROGEN-Z/24 PCS BOX">
+<option value="RETAIL|10016|Pakyaw tablet/pc">
+<option value="RETAIL|10310|Pedigree Dentastix Adult">
+<option value="RETAIL|10552|Pedigree Pouch Adult">
+<option value="RETAIL|10159|Pedigree Pouch, Adult Beef 130g,box 12pcs">
+<option value="RETAIL|10390|Pet Yum - Seafood/1kg">
+<option value="RETAIL|10561|Pet Yum Carnivore/1kg">
+<option value="RETAIL|10154|Plastic Gloves/ 2 Pairs">
+<option value="RETAIL|10196|Plastic Gloves/2 Pairs">
+<option value="RETAIL|10320|Plastic Matting Black">
+<option value="RETAIL|10604|Premoxil 550 100/pc">
+<option value="RETAIL|10127|Premoxil powder/pc">
+<option value="RETAIL|10042|Princess Cat All Stages/1kg">
+<option value="RETAIL|10055|Princess Cat Food Maintenance/1kg">
+<option value="RETAIL|10584|Progen-Z 20g">
+<option value="RETAIL|10281|Promotor 43 Tablet">
+<option value="RETAIL|10504|Pureblend Grower/kg">
+<option value="RETAIL|10503|Pureblend Starter/kg">
+<option value="RETAIL|10665|QBM- Breeder/bag">
+<option value="RETAIL|10645|QBM/kg">
+<option value="RETAIL|10666|QFM- Flyer/bag">
+<option value="RETAIL|10647|QFM-flyer/kg">
+<option value="RETAIL|10440|Quickheal 50mL">
+<option value="RETAIL|10035|RD ASTIG 30s/bottle">
+<option value="RETAIL|10366|RD ASTIG/pc">
+<option value="RETAIL|10192|RD Cancare/pc">
+<option value="RETAIL|10760|RD Doxiplus 30s/bottle">
+<option value="RETAIL|10075|RD Doxiplus/pc">
+<option value="RETAIL|10401|RD POWER WINGS">
+<option value="RETAIL|10402|RD RELOAD PLUS 10mL">
+<option value="RETAIL|10173|RD Salmostop/pc">
+<option value="RETAIL|10423|Ratol(Zinc Phsophide) 1g">
+<option value="RETAIL|10324|Red Cell 100ml">
+<option value="RETAIL|10148|Red gel forte/cap">
+<option value="RETAIL|10613|Reload Max 15ml">
+<option value="RETAIL|10288|Reload Max 5ml">
+<option value="RETAIL|10605|Respicure/bottle">
+<option value="RETAIL|10119|Rubber Gloves">
+<option value="RETAIL|10044|Rubber Pot">
+<option value="RETAIL|10043|Rubber Pot">
+<option value="RETAIL|10579|SAG High Action/pack">
+<option value="RETAIL|10316|SAG Ready to Fight/pack">
+<option value="RETAIL|10649|Safflower/kg">
+<option value="RETAIL|10518|Sako">
+<option value="RETAIL|10517|Sako">
+<option value="RETAIL|10825|Scratchpen">
+<option value="RETAIL|10826|Scratchpen">
+<option value="RETAIL|10828|Scratchpen">
+<option value="RETAIL|10824|Scratchpen">
+<option value="RETAIL|10827|Scratchpen">
+<option value="RETAIL|10556|Scratchpen">
+<option value="RETAIL|10823|Scratchpen">
+<option value="RETAIL|10201|Selectrogen 20g/pc">
+<option value="RETAIL|10766|Smp tab/pc">
+<option value="RETAIL|10653|Sneaky mixture 250g">
+<option value="RETAIL|10564|Special Cat-Urinary/kg">
+<option value="RETAIL|10565|Special Cat/kg">
+<option value="RETAIL|10481|Special Dog Adult Lamb & Rice/9kg bag">
+<option value="RETAIL|10553|Special Dog Adult/kg">
+<option value="RETAIL|10559|Special Dog Puppy/kg">
+<option value="RETAIL|10648|Special Dog/can">
+<option value="RETAIL|10419|Spectromax-L 10mL">
+<option value="RETAIL|10091|Spectromax-L 1mL">
+<option value="RETAIL|10216|Sulpar QR tab/pc">
+<option value="RETAIL|10203|Sulpar powder/pc">
+<option value="RETAIL|10591|Super B12/bottle">
+<option value="RETAIL|10593|Super B12/pc">
+<option value="RETAIL|10507|Super C/pc">
+<option value="RETAIL|10225|Syringe 1cc">
+<option value="RETAIL|10226|Syringe 3cc">
+<option value="RETAIL|10015|THB BSB/case">
+<option value="RETAIL|10374|THB BSB/pack">
+<option value="RETAIL|10023|THB Enertone Craft/bag">
+<option value="RETAIL|10373|THB Enertone Craft/kg">
+<option value="RETAIL|10049|THB Enertone/case">
+<option value="RETAIL|10145|THB Enertone/pack">
+<option value="RETAIL|10021|THB Platinum/case">
+<option value="RETAIL|10132|THB Platinum/pack">
+<option value="RETAIL|10547|THB Stag Developer/case">
+<option value="RETAIL|10070|THB Stag Developer/pack">
+<option value="RETAIL|10006|THB Successor/case">
+<option value="RETAIL|10020|THB Successor/pack">
+<option value="RETAIL|10495|THYMOL FOWL POXVET POWDER">
+<option value="RETAIL|10767|TM CURE GOLD/bottle">
+<option value="RETAIL|10036|TM Cure Gold/pc">
+<option value="RETAIL|10064|TM In & Out/pc">
+<option value="RETAIL|10360|Tali Big">
+<option value="RETAIL|10502|Tali Big">
+<option value="RETAIL|10180|Tali Stag">
+<option value="RETAIL|10501|Tali Stag">
+<option value="RETAIL|10092|Tepox 5g">
+<option value="RETAIL|10264|Thb Stag Developer 4+/pack">
+<option value="RETAIL|10175|Thymol/pc">
+<option value="RETAIL|10153|Toei Cat Salmon 20kg/bag">
+<option value="RETAIL|10457|Toei Cat Salmon/kg">
+<option value="RETAIL|10454|Toei Cat Tuna 20kg/bag">
+<option value="RETAIL|10464|Toei Cat Tuna/kg">
+<option value="RETAIL|10482|Toei Dog/kg">
+<option value="RETAIL|10339|Tolome 5in1">
+<option value="RETAIL|10191|Tolome Probiotics">
+<option value="RETAIL|10600|Tommy Cat//1kg pack">
+<option value="RETAIL|10709|Top Breed Adult/20kg bag">
+<option value="RETAIL|10024|Top Breed Adult/kg">
+<option value="RETAIL|10710|Top Breed Puppy/20kg bag">
+<option value="RETAIL|10498|Top Breed Puppy/kg">
+<option value="RETAIL|10375|Trifast Tablet/pc">
+<option value="RETAIL|10099|Triple X shampoo/pc">
+<option value="RETAIL|10265|True Grit/tablet">
+<option value="RETAIL|10543|V22  Tablet Multivitamins/pc">
+<option value="RETAIL|10128|V22 MULTIVITAMINS (30tab)">
+<option value="RETAIL|10063|V22 TABLET MULTIVITAMINS/pc">
+<option value="RETAIL|10266|VICTERY ANTIHELMENTIC 60 Tablets/bottle">
+<option value="RETAIL|10068|VL Boost X5/pc">
+<option value="RETAIL|10651|VL Colombine Redstone/kg">
+<option value="RETAIL|10073|VL Colombine Vita 500g repack">
+<option value="RETAIL|10384|VL Grits + Redstone/kg">
+<option value="RETAIL|10137|VL Ideal Pills/bottle">
+<option value="RETAIL|10101|VL Ideal Pills/pc">
+<option value="RETAIL|10491|VL Supra Pills/pc">
+<option value="RETAIL|10285|Vermex Forte/pc">
+<option value="RETAIL|10615|Vetracin Gold cap/pc">
+<option value="RETAIL|10000|Vetracin Repack">
+<option value="RETAIL|10284|Vetracin classic/pc">
+<option value="RETAIL|10195|Vetracin gold w/probiotics5g">
+<option value="RETAIL|10100|Vetracin premium 5g/pc">
+<option value="RETAIL|10268|Victery Antihelmentic Tablets/pc">
+<option value="RETAIL|10674|Victery Calciplus/pc">
+<option value="RETAIL|10475|Victery Champion Pills">
+<option value="RETAIL|10542|Victery Champion Pills/pc">
+<option value="RETAIL|10474|Victery Digestion +/bottle">
+<option value="RETAIL|10534|Victery Digestion+/pc">
+<option value="RETAIL|10524|Victery Golden Powder">
+<option value="RETAIL|10270|Victery Pigeon Eye Drops 20mL bottle">
+<option value="RETAIL|10489|Victery Power Pills">
+<option value="RETAIL|10537|Victery Power Pills/pc">
+<option value="RETAIL|10387|Vitality Classic/kg">
+<option value="RETAIL|10405|Vitality High Energy/kg">
+<option value="RETAIL|10156|Vitality Value Meal Adult 20kg">
+<option value="RETAIL|10348|Vitality Value Meal Adult/kg">
+<option value="RETAIL|10047|Vitality Value Meal Puppy/kg">
+<option value="RETAIL|10072|Vitmin Pro 357/pc">
+<option value="RETAIL|10001|Vitmin Pro Powder/ pc">
+<option value="RETAIL|10719|Voltplex KQ/ pc">
+<option value="RETAIL|10061|WBM/kg">
+<option value="RETAIL|10060|WFM/kg">
+<option value="RETAIL|10077|Washout 10ml/pc">
+<option value="RETAIL|10429|Waterer Small">
+<option value="RETAIL|10238|Waterer large">
+<option value="RETAIL|10430|Waterer medium">
+<option value="RETAIL|10152|Wheat Germ 100g">
+<option value="RETAIL|10121|Wheat Germ 280">
+<option value="RETAIL|10190|Whiskas Ocean Fish/1kg">
+<option value="RETAIL|10634|Whiskas Pouch Adult Mackarel 80g">
+<option value="RETAIL|10659|Whiskas Pouch Adult Ocean Fish 80g">
+<option value="RETAIL|10558|Whiskas Pouch Junior">
+<option value="RETAIL|10189|Wingmaster Grain + Pellet/k Racer Mix/kg">
+<option value="RETAIL|10184|Worm-X MAXX">
+<option value="RETAIL|10130|Zeromite shampoo 10mL/pc">
+</datalist>
+
 </body>
 </html>
