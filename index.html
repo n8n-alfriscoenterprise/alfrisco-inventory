@@ -174,6 +174,8 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 /* BACKORDER MODAL */
 #bo-modal .modal-card{max-width:340px}
+.bo-label{font-size:11px;font-weight:600;color:#666;display:block;margin-bottom:4px;margin-top:8px}
+.bo-label:first-of-type{margin-top:0}
 #bo-modal label{font-size:11px;font-weight:600;color:#666;
   display:block;margin-bottom:4px;margin-top:12px}
 #bo-modal input,#bo-modal select{
@@ -279,6 +281,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .tile.t-admin{background:linear-gradient(135deg,#404040,#555)}
 .tile.t-driver{background:linear-gradient(135deg,#1F4E78,#2A6699)}
 .tile.t-backorder{background:linear-gradient(135deg,#A32D2D,#C23B3B)}
+.tile.t-prod{background:linear-gradient(135deg,#1B5E20,#2E7D32)}
 .tile.full-width{grid-column:1/-1}
 /* ── TOPBAR NAV ROW ── */
 .topbar-nav-row{display:flex;gap:3px}
@@ -361,6 +364,42 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .audit-row{padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:11px;color:#666}
 .audit-row:last-child{border-bottom:none}
 .audit-who{font-weight:600;color:#222}
+
+/* PRODUCTION SCREEN */
+.prod-card{background:white;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.prod-unverified{border:1.5px solid #FAC775}
+.prod-card-header{margin-bottom:12px}
+.prod-card-name{font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prod-card-rule{font-size:12px;color:#666;line-height:1.4}
+.prod-warn-badge{font-size:10px;background:#FAEEDA;color:#633806;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap}
+.prod-input-row{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
+.prod-input-group{flex:1}
+.prod-output-group{flex:1;text-align:center}
+.prod-label{font-size:10px;font-weight:600;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px}
+.prod-bags-input{width:60px;text-align:center;font-size:18px;font-weight:700;padding:8px 4px;border-radius:9px;border:1.5px solid #1B5E20;background:#E8F5E9;color:#1B5E20;outline:none}
+.prod-stepper{width:36px;height:36px;border-radius:8px;border:1.5px solid #1B5E20;background:white;color:#1B5E20;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.prod-output-val{font-size:28px;font-weight:700;color:#1B5E20;line-height:1}
+.prod-output-unit{font-size:11px;color:#888;margin-top:3px}
+.prod-submit-btn{width:100%;padding:12px;background:#1B5E20;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+.prod-submit-btn:disabled{background:#ccc;cursor:not-allowed}
+.prod-submit-warn{background:#C07000}
+.prod-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
+
+/* BACKORDER LINE ITEMS */
+.bo-line-row{background:white;border:1px solid #eee;border-radius:10px;padding:10px 12px;position:relative}
+.bo-line-row-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.bo-line-num{font-size:11px;font-weight:700;color:#E24B4A}
+.bo-line-remove{background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:0 2px;line-height:1}
+.bo-line-remove:hover{color:#E24B4A}
+.bo-line-sku-select{width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white;color:#222;margin-bottom:6px}
+.bo-line-sku-select:focus{border-color:#E24B4A}
+.bo-line-qty-row{display:flex;gap:6px;align-items:flex-end}
+.bo-line-qty-wrap{flex:1}
+.bo-line-unit-wrap{flex:1}
+.bo-line-input-label{font-size:10px;font-weight:600;color:#aaa;display:block;margin-bottom:3px;text-transform:uppercase}
+.bo-line-qty-input{width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-weight:600;text-align:center;outline:none;background:#fafafa}
+.bo-line-qty-input:focus{border-color:#E24B4A;background:white}
+.bo-line-unit-select{width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white}
 </style>
 </head>
 <body>
@@ -523,6 +562,20 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   </div>
 </div>
 
+
+
+<!-- PRODUCTION SCREEN -->
+<div id="prod-screen" class="screen" style="flex-direction:column">
+  <div style="background:#1B5E20;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <span style="color:white;font-size:15px;font-weight:700">🏭 Production</span>
+    <button onclick="closeProduction()" style="background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600">← Back</button>
+  </div>
+  <div style="background:#1B5E20;padding:6px 14px 10px;flex-shrink:0">
+    <div style="font-size:11px;color:rgba(255,255,255,0.7)">Retail repacking — converts bags to smaller selling units</div>
+  </div>
+  <div id="prod-success-bar" style="display:none;background:#1B5E20;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0"></div>
+  <div id="prod-list" style="flex:1;overflow-y:auto;padding:14px;background:#f0f2f5;display:flex;flex-direction:column;gap:12px"></div>
+</div>
 
 <!-- PO SCREEN -->
 <div id="po-screen" class="screen" style="flex-direction:column">
@@ -875,6 +928,9 @@ function buildHomeTiles(){
   const canPO=currentUser.canManagePO!==false;
   if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
   tiles.push({icon:'⚠️',name:'Log Backorder',desc:'Record out-of-stock dealer requests',cls:'t-backorder',fn:'openBoModal()'});
+  // Production tile — admin and staff retail only
+  const canProd = currentUser.role==='admin' || currentUser.role==='staff-retail';
+  if(canProd) tiles.push({icon:'🏭',name:'Production',desc:'Convert bags to smaller retail units',cls:'t-prod',fn:'openProduction()'});
   if(currentUser.role==='admin') tiles.push({icon:'⚙️',name:'Admin',desc:'Staff accounts & app settings',cls:'t-admin',fn:'openAdminFromHome()'});
   if(tiles.length%2!==0) tiles[tiles.length-1].full=true;
   tiles.forEach(t=>{
@@ -1471,77 +1527,151 @@ function buildBoDropdown() {
 }
 
 // ── BACKORDER FLOATING BUTTON ──
+// Track backorder line items
+let boLines = [];
+
 function openBoModal(){
   document.getElementById('bo-modal').style.display='flex';
   document.getElementById('bo-dealer').value='';
-  document.getElementById('bo-sku-select').value='';
-  document.getElementById('bo-qty').value='';
-  document.getElementById('bo-unit').value='bag';
+  if(document.getElementById('bo-phone'))
+    document.getElementById('bo-phone').value='';
   document.getElementById('bo-date').value='';
   document.getElementById('bo-notes').value='';
   document.getElementById('bo-err').textContent='';
   document.getElementById('bo-submit-btn').disabled=false;
+  document.getElementById('bo-submit-btn').textContent='Submit Backorder';
+  boLines=[];
+  renderBoLines();
+  addBoLineItem(); // Start with one empty line
   setTimeout(()=>document.getElementById('bo-dealer').focus(),150);
 }
+
+function addBoLineItem(){
+  boLines.push({skuValue:'',qty:1,unit:'bag'});
+  renderBoLines();
+}
+
+function removeBoLineItem(idx){
+  boLines.splice(idx,1);
+  renderBoLines();
+}
+
+function renderBoLines(){
+  const container = document.getElementById('bo-line-items');
+  container.innerHTML='';
+  const countEl = document.getElementById('bo-item-count');
+  if(countEl) countEl.textContent = boLines.length + (boLines.length===1?' item':' items');
+
+  boLines.forEach((line,idx)=>{
+    // Build SKU optgroups from liveSKUs
+    const distCats=[...new Set(liveSKUs.filter(s=>s.type==='DIST').map(s=>s.category))];
+    const retailCats=[...new Set(liveSKUs.filter(s=>s.type==='RETAIL').map(s=>s.category))];
+    let skuOptHtml='<option value="">-- Select item --</option>';
+    distCats.forEach(cat=>{
+      const items=liveSKUs.filter(s=>s.type==='DIST'&&s.category===cat)
+        .map(s=>`<option value="${s.code}|${s.name}" ${line.skuValue===s.code+'|'+s.name?'selected':''}>${s.name}</option>`)
+        .join('');
+      if(items) skuOptHtml+=`<optgroup label="📦 ${cat}">${items}</optgroup>`;
+    });
+    retailCats.forEach(cat=>{
+      const items=liveSKUs.filter(s=>s.type==='RETAIL'&&s.category===cat)
+        .map(s=>`<option value="${s.code}|${s.name}" ${line.skuValue===s.code+'|'+s.name?'selected':''}>${s.name}</option>`)
+        .join('');
+      if(items) skuOptHtml+=`<optgroup label="🛒 ${cat}">${items}</optgroup>`;
+    });
+
+    const row=document.createElement('div');
+    row.className='bo-line-row';
+    row.innerHTML=`
+      <div class="bo-line-row-header">
+        <span class="bo-line-num">Item ${idx+1}</span>
+        ${boLines.length>1?`<button class="bo-line-remove" onclick="removeBoLineItem(${idx})" title="Remove">×</button>`:''}
+      </div>
+      <select class="bo-line-sku-select" onchange="onBoSkuChange(${idx},this.value)">
+        ${skuOptHtml}
+      </select>
+      <div class="bo-line-qty-row">
+        <div class="bo-line-qty-wrap">
+          <span class="bo-line-input-label">Qty Requested</span>
+          <input class="bo-line-qty-input" type="number" min="1" step="1"
+            value="${line.qty||1}"
+            oninput="onBoQtyChange(${idx},this.value)">
+        </div>
+        <div class="bo-line-unit-wrap">
+          <span class="bo-line-input-label">Unit</span>
+          <select class="bo-line-unit-select" onchange="onBoUnitChange(${idx},this.value)">
+            ${['bag','sack','box','case','pc','bottle','kg'].map(u=>`<option value="${u}" ${line.unit===u?'selected':''}>${u}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function onBoSkuChange(idx,val){ boLines[idx].skuValue=val; }
+function onBoQtyChange(idx,val){ boLines[idx].qty=parseFloat(val)||1; }
+function onBoUnitChange(idx,val){ boLines[idx].unit=val; }
 function closeBoModal(){
   document.getElementById('bo-modal').style.display='none';
 }
 
 async function submitBackorder(){
-  const dealer=document.getElementById('bo-dealer').value.trim();
-  const skuRaw=document.getElementById('bo-sku-select').value.trim();
-  const qty=parseFloat(document.getElementById('bo-qty').value)||0;
-  const unit=document.getElementById('bo-unit').value;
-  const date=document.getElementById('bo-date').value;
-  const notes=document.getElementById('bo-notes').value.trim();
-  const errEl=document.getElementById('bo-err');
+  const dealer  = document.getElementById('bo-dealer').value.trim();
+  const phone   = document.getElementById('bo-phone')?document.getElementById('bo-phone').value.trim():'';
+  const date    = document.getElementById('bo-date').value;
+  const notes   = document.getElementById('bo-notes').value.trim();
+  const errEl   = document.getElementById('bo-err');
 
-  if(!dealer){errEl.textContent='Please enter a dealer name.';return;}
-  if(!skuRaw){errEl.textContent='Please select an item from the dropdown.';return;}
-  if(qty<=0){errEl.textContent='Please enter a quantity greater than 0.';return;}
+  // Validate dealer
+  if(!dealer){ errEl.textContent='Please enter a dealer name.'; return; }
 
-  // Parse SKU from datalist format "DIST|CODE|Name" or "RETAIL|CODE|Name" or raw text
-  let skuCode='', skuName='';
-  if(skuRaw.includes('|')){
-    const parts=skuRaw.split('|');
-    skuCode=parts[1]||'';skuName=parts[2]||skuRaw;
-  }else{
-    skuCode=skuRaw;skuName=skuRaw;
-  }
+  // Validate line items
+  if(!boLines.length){ errEl.textContent='Please add at least one item.'; return; }
+  const validLines = boLines.filter(l=>l.skuValue && l.qty>0);
+  if(!validLines.length){ errEl.textContent='Please select an item and enter a quantity.'; return; }
 
-  const btn=document.getElementById('bo-submit-btn');
-  btn.disabled=true;btn.textContent='Submitting...';
+  const btn = document.getElementById('bo-submit-btn');
+  btn.disabled=true;
+  btn.textContent=`Submitting ${validLines.length} item(s)...`;
   errEl.textContent='';
 
-  const now=new Date().toLocaleString('en-PH');
-  const promisedDate=date?new Date(date).toLocaleDateString('en-PH'):'';
+  const now = new Date().toLocaleString('en-PH');
+  const promisedDate = date ? new Date(date).toLocaleDateString('en-PH') : '';
+  const who = currentUser ? currentUser.username : 'Unknown';
 
-  const rows=[[
-    now,
-    currentUser?currentUser.username:'Unknown',
-    dealer,'', // Dealer phone left blank — captured if needed later
-    skuCode, skuName,
-    qty, unit,
-    promisedDate,
-    'OPEN',
-    notes
-  ]];
+  // Build one row per line item — all share dealer info
+  const rows = validLines.map(line=>{
+    const parts = line.skuValue.split('|');
+    const skuCode = parts[0]||'';
+    const skuName = parts[1]||line.skuValue;
+    return [
+      now, who, dealer, phone,
+      skuCode, skuName,
+      line.qty, line.unit,
+      promisedDate, 'OPEN', notes
+    ];
+  });
 
   try{
-    const r=await api({sheet:'Backorders',rows});
+    const r = await api({sheet:'Backorders', rows});
     if(r.status==='ok'){
       closeBoModal();
-      // Show success on whichever screen is active
-      const activeScreen=document.querySelector('.screen.active');
-      const barId=activeScreen&&activeScreen.id==='driver-screen'?'driver-success-bar':'success-bar';
-      showBanner(barId,`Backorder logged — ${dealer} wants ${qty} ${unit} of ${skuName}`);
+      const activeScreen = document.querySelector('.screen.active');
+      const barId = activeScreen&&activeScreen.id==='driver-screen'
+        ? 'driver-success-bar' : 'success-bar';
+      const itemSummary = validLines.length===1
+        ? `${validLines[0].qty} ${validLines[0].unit} of ${validLines[0].skuValue.split('|')[1]||validLines[0].skuValue}`
+        : `${validLines.length} items`;
+      showBanner(barId, `Backorder logged — ${dealer}: ${itemSummary}`);
     }else{
       errEl.textContent='Error: '+(r.msg||'Could not submit');
-      btn.disabled=false;btn.textContent='Submit Backorder';
+      btn.disabled=false;
+      btn.textContent='Submit Backorder';
     }
   }catch(e){
     errEl.textContent='Network error. Please check your connection.';
-    btn.disabled=false;btn.textContent='Submit Backorder';
+    btn.disabled=false;
+    btn.textContent='Submit Backorder';
   }
 }
 
@@ -2005,15 +2135,34 @@ function initPOCreate(){
 function onPOTypeChange(){
   const type = document.getElementById('po-type').value;
   const sup = document.getElementById('po-supplier');
-  const suppliers = type==='DIST' ? DIST_SUPPLIERS : RETAIL_SUPPLIERS;
-  sup.innerHTML = suppliers.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // Filter suppliers to only those that have SKUs assigned in the live SKU master
+  const assignedSups = [...new Set(
+    liveSKUs.filter(s=>s.type===type && s.supplier)
+            .map(s=>s.supplier)
+  )].sort();
+  const allSups = type==='DIST' ? DIST_SUPPLIERS : RETAIL_SUPPLIERS;
+  // Use assigned if available, fall back to full list
+  const supList = assignedSups.length > 0 ? assignedSups : allSups;
+  sup.innerHTML = supList.map(s=>`<option value="${s}">${s}</option>`).join('');
 }
 
 function addPOLineItem(){
-  // Build SKU options based on PO type
   const type = document.getElementById('po-type').value;
-  const skuOpts = liveSKUs.filter(s=>s.type===type)
-    .map(s=>`<option value="${s.code}|${s.name}">${s.name}</option>`).join('');
+  const supplier = document.getElementById('po-supplier').value;
+  // Filter SKUs by type AND assigned supplier (if supplier data available)
+  const filtered = liveSKUs.filter(s => {
+    if(s.type !== type) return false;
+    if(s.supplier && supplier) return s.supplier === supplier;
+    return true; // No supplier assigned — show all for this type
+  });
+  // Group by category for optgroups
+  const cats = [...new Set(filtered.map(s=>s.category))];
+  const skuOpts = cats.map(cat => {
+    const items = filtered.filter(s=>s.category===cat)
+      .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
+      .join('');
+    return `<optgroup label="${cat}">${items}</optgroup>`;
+  }).join('');
 
   const idx = poLineItems.length;
   poLineItems.push({skuCode:'',skuName:'',qty:1,unitCost:0,unit:'bag'});
@@ -2049,6 +2198,13 @@ function onPOLineSelect(idx, sel){
   const parts=sel.value.split('|');
   poLineItems[idx].skuCode=parts[0];
   poLineItems[idx].skuName=parts[1]||parts[0];
+  // Auto-fill cost from SKU Master
+  const skuData = liveSKUs.find(s=>s.code===parts[0]);
+  if(skuData && skuData.cost){
+    poLineItems[idx].unitCost = skuData.cost;
+    const costInput = document.querySelector(`#po-line-${idx} .po-line-cost`);
+    if(costInput) costInput.value = skuData.cost;
+  }
   updatePOTotals();
 }
 
@@ -2298,6 +2454,174 @@ function onUnitChange(){
   buildSkuList();
   updateTotals();
   showBanner('success-bar', 'Switched to ' + sel.value + ' — form cleared and ready for new entry');
+}
+
+
+// ════════════════════════════════════════════════════════
+// PRODUCTION CONVERSION SYSTEM
+// ════════════════════════════════════════════════════════
+let bom = [];          // Bill of Materials loaded from Sheets
+let prodHistory = [];  // Recent production runs this session
+
+async function openProduction(){
+  showScreen('prod-screen');
+  document.querySelector('.fab').style.display='flex';
+  await loadBOM();
+  buildProdList();
+}
+
+function closeProduction(){
+  showHome();
+}
+
+async function loadBOM(){
+  try{
+    const r = await api({action:'getBOM'});
+    if(r.status==='ok' && Array.isArray(r.bom)){
+      bom = r.bom.filter(b=>b.active==='YES');
+    }
+  }catch(e){
+    console.error('BOM load failed', e);
+  }
+}
+
+function buildProdList(){
+  const list = document.getElementById('prod-list');
+  list.innerHTML='';
+
+  if(!bom.length){
+    list.innerHTML='<div class="prod-empty">No conversion rules found.<br>Upload Production BOM to Google Sheets first.</div>';
+    return;
+  }
+
+  // Group by product for clean display
+  bom.forEach((item,idx)=>{
+    const unverified = item.verified==='NO';
+    const card = document.createElement('div');
+    card.className='prod-card'+(unverified?' prod-unverified':'');
+    card.innerHTML=`
+      <div class="prod-card-header">
+        <div>
+          <div class="prod-card-name">${item.sourceName}
+            ${unverified?'<span class="prod-warn-badge">⚠️ Unverified</span>':''}
+          </div>
+          <div class="prod-card-rule">
+            1 bag (${item.bagSizeKg}kg) → <strong>${item.ratio} units</strong> of ${item.outputName}
+          </div>
+        </div>
+      </div>
+      <div class="prod-input-row">
+        <div class="prod-input-group">
+          <label class="prod-label">Bags to convert</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button>
+            <input class="prod-bags-input" type="number" min="1" step="1"
+              id="bags-${idx}" value="1"
+              oninput="updateOutput(${idx})">
+            <button class="prod-stepper" onclick="stepBags(${idx},1)">+</button>
+          </div>
+        </div>
+        <div class="prod-output-group">
+          <label class="prod-label">Units produced</label>
+          <div class="prod-output-val" id="output-${idx}">${item.ratio}</div>
+          <div class="prod-output-unit">${item.outputName}</div>
+        </div>
+      </div>
+      <button class="prod-submit-btn ${unverified?'prod-submit-warn':''}"
+        onclick="submitProduction(${idx})"
+        ${unverified?'title="Unverified ratio — confirm before submitting"':''}>
+        ${unverified?'⚠️ ':''} Convert
+      </button>`;
+    list.appendChild(card);
+    updateOutput(idx);
+  });
+}
+
+function stepBags(idx, delta){
+  const input = document.getElementById('bags-'+idx);
+  const newVal = Math.max(1, (parseInt(input.value)||1) + delta);
+  input.value = newVal;
+  updateOutput(idx);
+}
+
+function updateOutput(idx){
+  const input = document.getElementById('bags-'+idx);
+  const bags = parseInt(input.value)||0;
+  const item = bom[idx];
+  const units = bags * item.ratio;
+  const outEl = document.getElementById('output-'+idx);
+  if(outEl) outEl.textContent = units.toLocaleString();
+}
+
+async function submitProduction(idx){
+  const item = bom[idx];
+  const bags = parseInt(document.getElementById('bags-'+idx).value)||0;
+
+  if(bags<=0){ alert('Enter at least 1 bag.'); return; }
+
+  const units = bags * item.ratio;
+  const unverified = item.verified==='NO';
+
+  if(unverified){
+    const ok = confirm(
+      `⚠️ This conversion is UNVERIFIED.
+
+` +
+      `Ratio: 1 bag = ${item.ratio} units
+` +
+      `Please confirm the ratio is correct before continuing.
+
+` +
+      `Convert ${bags} bag(s) of ${item.sourceName} → ${units} units of ${item.outputName}?`
+    );
+    if(!ok) return;
+  } else {
+    const ok = confirm(
+      `Convert ${bags} bag(s) of ${item.sourceName}
+` +
+      `→ ${units} units of ${item.outputName}
+
+` +
+      `This will update Stock Counts - Retail. Continue?`
+    );
+    if(!ok) return;
+  }
+
+  const btn = document.querySelector(`#prod-list .prod-card:nth-child(${idx+1}) .prod-submit-btn`);
+  if(btn){ btn.disabled=true; btn.textContent='Converting...'; }
+
+  const now = new Date().toLocaleString('en-PH');
+  try{
+    const r = await api({
+      action: 'submitProduction',
+      submittedBy: currentUser.username,
+      timestamp: now,
+      sourceSku: item.sourceSku,
+      sourceName: item.sourceName,
+      bagsConsumed: bags,
+      outputSku: item.outputSku,
+      outputName: item.outputName,
+      unitsProduced: units,
+      ratio: item.ratio,
+    });
+    if(r.status==='ok'){
+      // Reset input
+      document.getElementById('bags-'+idx).value=1;
+      updateOutput(idx);
+      // Show success
+      const bar = document.getElementById('prod-success-bar');
+      bar.textContent=`✓ Converted ${bags} bag(s) of ${item.sourceName} → ${units} units of ${item.outputName}`;
+      bar.style.display='block';
+      setTimeout(()=>bar.style.display='none',6000);
+      if(btn){ btn.disabled=false; btn.textContent='Convert'; }
+    }else{
+      alert('Error: '+(r.msg||'Could not submit'));
+      if(btn){ btn.disabled=false; btn.textContent='Convert'; }
+    }
+  }catch(e){
+    alert('Network error: '+e.message);
+    if(btn){ btn.disabled=false; btn.textContent='Convert'; }
+  }
 }
 
 // ── KEYBOARD ──
