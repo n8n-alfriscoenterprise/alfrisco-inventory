@@ -1536,14 +1536,13 @@ function buildBoDropdown() {
 
 // ── BACKORDER FLOATING BUTTON ──
 // ═══════════════════════════════════════════════════
-// BACKORDER SYSTEM — multi-line, searchable, permission-aware
+// BACKORDER SYSTEM — per-line type selection, searchable, locked on selection
 // ═══════════════════════════════════════════════════
 let boLines = [];
-let boType = 'dist'; // 'dist' or 'retail'
+// Each line: { type:'dist'|'retail', skuValue:'', skuName:'', qty:1, unit:'bag', locked:false }
 
 function openBoModal(){
   document.getElementById('bo-modal').style.display='flex';
-  // Reset fields
   document.getElementById('bo-dealer').value='';
   document.getElementById('bo-phone').value='';
   document.getElementById('bo-date').value='';
@@ -1551,16 +1550,11 @@ function openBoModal(){
   document.getElementById('bo-err').textContent='';
   const btn=document.getElementById('bo-submit-btn');
   if(btn){btn.disabled=false;btn.textContent='Submit Backorder';}
-  // Check retail permission
-  const canRetail = currentUser && currentUser.canBackorderRetail!==false;
+  // Hide global type toggle — now per-line
   const toggle=document.getElementById('bo-type-toggle');
-  if(toggle) toggle.style.display = canRetail?'block':'none';
-  // Default to distribution
-  boType='dist';
-  setBoType('dist');
-  // Start with one empty line
+  if(toggle)toggle.style.display='none';
   boLines=[];
-  addBoLineItem();
+  addBoLineItem('dist'); // First line defaults to distribution
   setTimeout(()=>document.getElementById('bo-dealer').focus(),150);
 }
 
@@ -1568,32 +1562,17 @@ function closeBoModal(){
   document.getElementById('bo-modal').style.display='none';
 }
 
-function setBoType(type){
-  boType=type;
-  // Update toggle button styles
-  const distBtn=document.getElementById('bo-type-dist');
-  const retailBtn=document.getElementById('bo-type-retail');
-  if(distBtn){
-    distBtn.style.background = type==='dist'?'#E24B4A':'white';
-    distBtn.style.color = type==='dist'?'white':'#888';
-  }
-  if(retailBtn){
-    retailBtn.style.background = type==='retail'?'#C07000':'white';
-    retailBtn.style.color = type==='retail'?'white':'#888';
-  }
-  // Rebuild all line items with new type's SKU list
-  const existingLines = boLines.map(l=>({...l, skuValue:'', skuName:''}));
-  boLines = existingLines;
+function addBoLineItem(type){
+  // Default to dist unless specified or last line's type
+  const lastType = boLines.length>0 ? boLines[boLines.length-1].type : 'dist';
+  const lineType = type || lastType;
+  boLines.push({type:lineType, skuValue:'', skuName:'', qty:1, unit:'bag', locked:false});
   renderBoLines();
-}
-
-function addBoLineItem(){
-  boLines.push({skuValue:'', skuName:'', qty:1, unit:'bag'});
-  renderBoLines();
-  // Scroll to bottom of modal body
+  // Scroll new line into view
   setTimeout(()=>{
     const container=document.getElementById('bo-line-items');
-    if(container) container.lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    if(container&&container.lastElementChild)
+      container.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
   },100);
 }
 
@@ -1602,54 +1581,106 @@ function removeBoLineItem(idx){
   renderBoLines();
 }
 
+function setLineType(idx, type){
+  // Only allow changing type if line is not yet locked (no item selected)
+  if(boLines[idx].locked) return;
+  boLines[idx].type=type;
+  boLines[idx].skuValue='';
+  boLines[idx].skuName='';
+  renderBoLines();
+}
+
 function renderBoLines(){
   const container=document.getElementById('bo-line-items');
-  if(!container) return;
+  if(!container)return;
   container.innerHTML='';
   const countEl=document.getElementById('bo-item-count');
-  if(countEl) countEl.textContent=boLines.length+(boLines.length===1?' item':' items');
+  if(countEl)countEl.textContent=boLines.length+(boLines.length===1?' item':' items');
 
-  // Build searchable SKU datalist for current type
-  const typeFilter = boType==='retail'?'RETAIL':'DIST';
-  const filteredSKUs = liveSKUs.filter(s=>s.type===typeFilter);
-  const datalistId = 'bo-sku-datalist-'+boType;
+  // Build datalists for each type (once, reused per line)
+  const distSKUs=liveSKUs.filter(s=>s.type==='DIST');
+  const retailSKUs=liveSKUs.filter(s=>s.type==='RETAIL');
+  const canBoRetail=currentUser&&currentUser.canBackorderRetail===true;
 
-  // Rebuild datalist
-  let dl = document.getElementById(datalistId);
-  if(!dl){
-    dl=document.createElement('datalist');
-    dl.id=datalistId;
-    document.body.appendChild(dl);
-  }
-  dl.innerHTML=filteredSKUs.map(s=>`<option value="${s.name}" data-code="${s.code}">`).join('');
+  // Ensure datalists exist in DOM
+  ['dist','retail'].forEach(t=>{
+    const dlId='bo-dl-'+t;
+    if(!document.getElementById(dlId)){
+      const dl=document.createElement('datalist');
+      dl.id=dlId;
+      document.body.appendChild(dl);
+    }
+    const dl=document.getElementById(dlId);
+    const skus=t==='dist'?distSKUs:retailSKUs;
+    dl.innerHTML=skus.map(s=>`<option value="${s.name}">`).join('');
+  });
 
   boLines.forEach((line,idx)=>{
+    const isLocked=line.locked&&line.skuName;
+    const typeSKUs=line.type==='retail'?retailSKUs:distSKUs;
+    const typeLabel=line.type==='dist'?'📦 Distribution':'🛒 Retail';
+    const typeColor=line.type==='dist'?'#E24B4A':'#C07000';
+
     const row=document.createElement('div');
     row.className='bo-line-row';
     row.id='bo-row-'+idx;
-    row.innerHTML=`
-      <div class="bo-line-row-header">
-        <span class="bo-line-num">${boType==='dist'?'📦':'🛒'} Item ${idx+1}</span>
-        ${boLines.length>1
-          ? `<button class="bo-line-remove" onclick="removeBoLineItem(${idx})">×</button>`
-          : ''}
-      </div>
-      <div style="font-size:10px;font-weight:600;color:#aaa;margin-bottom:4px;text-transform:uppercase">Search item name</div>
+
+    // Type selector — shown only if not locked and retail permitted
+    const typeSelector = canBoRetail && !isLocked ? `
+      <div style="display:flex;gap:4px;margin-bottom:8px">
+        <button onclick="setLineType(${idx},'dist')"
+          style="flex:1;padding:5px 4px;border-radius:7px;border:1.5px solid ${line.type==='dist'?'#E24B4A':'#e0e0e0'};
+          background:${line.type==='dist'?'#E24B4A':'white'};color:${line.type==='dist'?'white':'#888'};
+          font-size:11px;font-weight:600;cursor:pointer">
+          📦 Distribution
+        </button>
+        <button onclick="setLineType(${idx},'retail')"
+          style="flex:1;padding:5px 4px;border-radius:7px;border:1.5px solid ${line.type==='retail'?'#C07000':'#e0e0e0'};
+          background:${line.type==='retail'?'#C07000':'white'};color:${line.type==='retail'?'white':'#888'};
+          font-size:11px;font-weight:600;cursor:pointer">
+          🛒 Retail
+        </button>
+      </div>` : '';
+
+    // Locked state — show item name as badge, no editing
+    const itemSelector = isLocked ? `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;
+        background:#EDF8E6;border:1.5px solid #7DC459;border-radius:8px;padding:8px 10px">
+        <span style="font-size:11px;color:#27500A;font-weight:700;flex:1">${line.skuName}</span>
+        <span style="font-size:9px;background:${typeColor};color:white;padding:2px 7px;
+          border-radius:20px;font-weight:700;white-space:nowrap">${typeLabel}</span>
+        <button onclick="unlockBoLine(${idx})"
+          style="background:none;border:none;color:#aaa;font-size:14px;cursor:pointer;
+          padding:0;line-height:1" title="Change item">✎</button>
+      </div>` : `
       <input type="text"
         id="bo-sku-input-${idx}"
-        class="bo-line-sku-search"
-        placeholder="Type to search ${boType==='dist'?'distribution':'retail'} items..."
-        list="${datalistId}"
+        placeholder="Type to search ${line.type==='dist'?'distribution':'retail'} items..."
+        list="bo-dl-${line.type}"
         autocomplete="off"
         value="${line.skuName||''}"
-        oninput="onBoSkuInput(${idx}, this.value)"
-        style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
+        oninput="onBoSkuInput(${idx},this.value)"
+        style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;
+        font-size:13px;outline:none;margin-bottom:8px">`;
+
+    row.innerHTML=`
+      <div class="bo-line-row-header">
+        <span class="bo-line-num" style="color:${typeColor}">
+          ${isLocked?typeLabel+' — Item '+(idx+1):'Item '+(idx+1)}
+        </span>
+        ${boLines.length>1
+          ?`<button class="bo-line-remove" onclick="removeBoLineItem(${idx})">×</button>`:''}
+      </div>
+      ${typeSelector}
+      ${itemSelector}
+      ${!isLocked?`<div id="bo-confirm-${idx}" style="font-size:10px;color:#bbb;margin-top:-4px;margin-bottom:8px">
+        ${line.skuName?'<span style=\'color:#27AE60\'>✓ '+line.skuName+'</span>':'Select an item from the list'}
+      </div>`:''}
       <div class="bo-line-qty-row">
         <div class="bo-line-qty-wrap">
-          <span class="bo-line-input-label">Qty</span>
+          <span class="bo-line-input-label">Qty Requested</span>
           <input class="bo-line-qty-input" type="number" min="1" step="1"
-            value="${line.qty||1}"
-            oninput="onBoQtyChange(${idx},this.value)">
+            value="${line.qty||1}" oninput="onBoQtyChange(${idx},this.value)">
         </div>
         <div class="bo-line-unit-wrap">
           <span class="bo-line-input-label">Unit</span>
@@ -1659,41 +1690,50 @@ function renderBoLines(){
               .join('')}
           </select>
         </div>
-      </div>
-      ${line.skuName
-        ? `<div style="font-size:10px;color:#27AE60;margin-top:4px">✓ ${line.skuName}</div>`
-        : `<div style="font-size:10px;color:#bbb;margin-top:4px">No item selected yet</div>`}`;
+      </div>`;
     container.appendChild(row);
   });
 }
 
+function unlockBoLine(idx){
+  // Allow re-selecting item without changing qty/unit
+  boLines[idx].locked=false;
+  boLines[idx].skuValue='';
+  boLines[idx].skuName='';
+  renderBoLines();
+  setTimeout(()=>{
+    const input=document.getElementById('bo-sku-input-'+idx);
+    if(input)input.focus();
+  },100);
+}
+
 function onBoSkuInput(idx, val){
-  // Try to match against live SKUs
-  const typeFilter = boType==='retail'?'RETAIL':'DIST';
-  const match = liveSKUs.find(s =>
-    s.type===typeFilter &&
-    s.name.toLowerCase()===val.toLowerCase()
-  );
-  boLines[idx].skuName = match ? match.name : val;
-  boLines[idx].skuValue = match ? match.code+'|'+match.name : val;
-  // Update the confirmation line without full re-render (avoids losing focus)
-  const row=document.getElementById('bo-row-'+idx);
-  if(row){
-    const confirm=row.querySelector('div[style*="color:#27AE60"], div[style*="color:#bbb"]');
-    if(confirm){
-      if(match){
-        confirm.style.color='#27AE60';
-        confirm.textContent='✓ '+match.name;
-      } else {
-        confirm.style.color='#bbb';
-        confirm.textContent = val ? 'Type exact name or select from suggestions' : 'No item selected yet';
-      }
+  const line=boLines[idx];
+  const typeSKUs=liveSKUs.filter(s=>s.type===(line.type==='retail'?'RETAIL':'DIST'));
+  const match=typeSKUs.find(s=>s.name.toLowerCase()===val.toLowerCase());
+
+  if(match){
+    // Lock the line — item confirmed
+    boLines[idx].skuValue=match.code+'|'+match.name;
+    boLines[idx].skuName=match.name;
+    boLines[idx].locked=true;
+    renderBoLines(); // Re-render to show locked state
+  } else {
+    boLines[idx].skuName=val;
+    boLines[idx].skuValue=val;
+    boLines[idx].locked=false;
+    // Update confirm hint without full re-render
+    const confirmEl=document.getElementById('bo-confirm-'+idx);
+    if(confirmEl){
+      confirmEl.innerHTML=val
+        ?'Select an exact match from the suggestions'
+        :'Select an item from the list';
     }
   }
 }
 
-function onBoQtyChange(idx,val){ boLines[idx].qty=parseFloat(val)||1; }
-function onBoUnitChange(idx,val){ boLines[idx].unit=val; }
+function onBoQtyChange(idx,val){boLines[idx].qty=parseFloat(val)||1;}
+function onBoUnitChange(idx,val){boLines[idx].unit=val;}
 
 async function submitBackorder(){
   const dealer=document.getElementById('bo-dealer').value.trim();
@@ -1704,16 +1744,14 @@ async function submitBackorder(){
 
   if(!dealer){errEl.textContent='Please enter a dealer name.';return;}
 
-  // Filter valid lines — must have a name and qty
-  const validLines=boLines.filter(l=>l.skuName && l.skuName.trim() && l.qty>0);
+  const validLines=boLines.filter(l=>l.skuName&&l.skuName.trim()&&l.qty>0);
   if(!validLines.length){
-    errEl.textContent='Please add at least one item with a name and quantity.';
-    return;
+    errEl.textContent='Please add at least one item with a name and quantity.';return;
   }
 
   const btn=document.getElementById('bo-submit-btn');
   btn.disabled=true;
-  btn.textContent=`Submitting ${validLines.length} item(s)...`;
+  btn.textContent='Submitting '+validLines.length+' item(s)...';
   errEl.textContent='';
 
   const now=new Date().toLocaleString('en-PH');
@@ -1722,9 +1760,8 @@ async function submitBackorder(){
 
   const rows=validLines.map(line=>{
     const parts=line.skuValue?line.skuValue.split('|'):['',line.skuName];
-    const skuCode=parts[0]||'';
-    const skuName=parts[1]||line.skuName;
-    return [now,who,dealer,phone,skuCode,skuName,line.qty,line.unit,promisedDate,'OPEN',notes];
+    return[now,who,dealer,phone,parts[0]||'',parts[1]||line.skuName,
+           line.qty,line.unit,promisedDate,'OPEN',notes];
   });
 
   try{
@@ -1735,9 +1772,9 @@ async function submitBackorder(){
       const barId=activeScreen&&activeScreen.id==='driver-screen'
         ?'driver-success-bar':'success-bar';
       const summary=validLines.length===1
-        ?`${validLines[0].qty} ${validLines[0].unit} of ${validLines[0].skuName}`
-        :`${validLines.length} items`;
-      showBanner(barId,`Backorder logged — ${dealer}: ${summary}`);
+        ?validLines[0].qty+' '+validLines[0].unit+' of '+validLines[0].skuName
+        :validLines.length+' items';
+      showBanner(barId,'Backorder logged — '+dealer+': '+summary);
     }else{
       errEl.textContent='Error: '+(r.msg||'Could not submit');
       btn.disabled=false;btn.textContent='Submit Backorder';
@@ -1747,7 +1784,6 @@ async function submitBackorder(){
     btn.disabled=false;btn.textContent='Submit Backorder';
   }
 }
-
 
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
