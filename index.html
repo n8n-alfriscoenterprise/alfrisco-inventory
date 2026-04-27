@@ -33,7 +33,8 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .topbar-right{display:flex;gap:8px;align-items:center}
 .mode-btn{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.12);color:white;letter-spacing:0.5px}
 .mode-btn.return-mode{background:#FAC775;border-color:#FAC775;color:#5C3A00}
-.logout-btn{background:none;border:none;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;padding:4px}
+.logout-btn{background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.4);color:white;font-size:11px;font-weight:600;cursor:pointer;padding:5px 11px;border-radius:7px;white-space:nowrap;flex-shrink:0;margin-left:auto}
+.logout-btn:active{opacity:0.8}
 
 /* DRIVER BANNER */
 .driver-banner{background:#1F4E78;color:white;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -127,7 +128,6 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 #admin-screen{background:#f0f2f5}
 .admin-topbar{background:#1F4E78;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .admin-topbar-title{color:white;font-size:15px;font-weight:700}
-.admin-back{background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600}
 .admin-body{padding:14px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 .admin-section{background:white;border-radius:12px;overflow:hidden}
 .admin-section-hdr{padding:12px 14px;font-size:13px;font-weight:700;color:#1F4E78;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
@@ -161,9 +161,12 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .fab{position:fixed;bottom:90px;right:16px;width:52px;height:52px;
   background:#E24B4A;border-radius:50%;border:none;color:white;
   font-size:26px;font-weight:300;cursor:pointer;z-index:150;
-  box-shadow:0 4px 14px rgba(226,75,74,0.45);
+  box-shadow:0 4px 14px rgba(226,75,74,0.3);
   display:none;align-items:center;justify-content:center;
-  transition:transform 0.15s,opacity 0.15s}
+  transition:transform 0.15s,opacity 0.25s;
+  opacity:0.25}
+.fab:hover{opacity:1;box-shadow:0 4px 18px rgba(226,75,74,0.55)}
+.fab:active{opacity:1;transform:scale(0.92)}
 .fab:active{transform:scale(0.92)}
 .fab-label{position:fixed;bottom:100px;right:76px;
   background:rgba(30,30,30,0.82);color:white;
@@ -192,7 +195,6 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 #count-screen{background:#f0f2f5}
 .count-topbar{background:#7B2D8B;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .count-topbar-title{color:white;font-size:15px;font-weight:700}
-.count-back{background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600}
 .count-location-bar{padding:8px 12px;background:white;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .count-loc-label{font-size:12px;color:#666;font-weight:600;white-space:nowrap}
 .count-loc-select{flex:1;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;background:white;outline:none;color:#222}
@@ -291,7 +293,6 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 #po-screen{background:#f0f2f5}
 .po-topbar{background:#1A3A5C;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .po-topbar-title{color:white;font-size:15px;font-weight:700}
-.po-back{background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600}
 .po-subtabs{display:flex;background:#132D47;flex-shrink:0}
 .po-subtab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;text-align:center;color:rgba(255,255,255,0.55);cursor:pointer;border-bottom:2.5px solid transparent}
 .po-subtab.active{color:white;border-bottom-color:#5BA3D9}
@@ -400,6 +401,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .bo-line-qty-input{width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-weight:600;text-align:center;outline:none;background:#fafafa}
 .bo-line-qty-input:focus{border-color:#E24B4A;background:white}
 .bo-line-unit-select{width:100%;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white}
+
+/* ── BACK BUTTONS — right-aligned with border ── */
+.back-btn{background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.4);color:white;font-size:11px;font-weight:600;cursor:pointer;padding:5px 11px;border-radius:7px;white-space:nowrap;flex-shrink:0;margin-left:auto}
+.back-btn:active{background:rgba(255,255,255,0.2)}
 </style>
 </head>
 <body>
@@ -430,7 +435,6 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
         <div class="topbar-title">Alfrisco Inventory</div>
         <div class="topbar-user" id="home-topbar-user"></div>
       </div>
-      <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
     <div class="topbar-nav-row">
       <button class="tnav active">🏠 Home</button>
@@ -438,6 +442,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
       <button class="tnav" onclick="openCount()">🔢 Inventory</button>
       <button class="tnav" id="home-po-nav" style="display:none" onclick="openPO()">📋 PO</button>
       <button class="tnav" id="home-admin-nav" style="display:none" onclick="openAdminFromHome()">⚙️ Admin</button>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
   <div class="home-body">
@@ -456,9 +461,8 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
         <div class="topbar-title">Alfrisco Inventory</div>
         <div class="topbar-user" id="topbar-user"></div>
       </div>
-      <div class="topbar-right">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <button class="mode-btn" id="mode-btn" onclick="toggleMode()" style="display:none">LOAD</button>
-        <button class="logout-btn" onclick="doLogout()">Sign out</button>
       </div>
     </div>
     <div class="topbar-nav-row" id="topbar-nav-row">
@@ -467,6 +471,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
       <button class="tnav" id="tnav-inventory" onclick="openCount()">🔢 Inventory</button>
       <button class="tnav" id="tnav-po" onclick="openPO()" style="display:none">📋 PO</button>
       <button class="tnav" id="tnav-admin" onclick="openAdminModal()" style="display:none">⚙️ Admin</button>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
   <!-- MOVEMENT AREA (shown only in Stock Movement context) -->
@@ -516,13 +521,13 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 <!-- DRIVER SCREEN -->
 <div id="driver-screen" class="screen">
-  <div class="topbar">
+  <div class="topbar" style="display:flex;justify-content:space-between;align-items:center">
     <div>
       <div class="topbar-title">Alfrisco Inventory</div>
       <div class="topbar-user" id="driver-topbar-user"></div>
     </div>
-    <div class="topbar-right">
-      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    <div style="display:none">
     </div>
   </div>
   <div class="driver-banner">
@@ -568,7 +573,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 <div id="prod-screen" class="screen" style="flex-direction:column">
   <div style="background:#1B5E20;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <span style="color:white;font-size:15px;font-weight:700">🏭 Production</span>
-    <button onclick="closeProduction()" style="background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600">← Back</button>
+    <button class="back-btn" onclick="closeProduction()">← Back</button>
   </div>
   <div style="background:#1B5E20;padding:6px 14px 10px;flex-shrink:0">
     <div style="font-size:11px;color:rgba(255,255,255,0.7)">Retail repacking — converts bags to smaller selling units</div>
@@ -579,9 +584,9 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 <!-- PO SCREEN -->
 <div id="po-screen" class="screen" style="flex-direction:column">
-  <div class="po-topbar">
+  <div class="po-topbar" style="display:flex;align-items:center;justify-content:space-between">
     <span class="po-topbar-title">Purchase Orders</span>
-    <button class="po-back" onclick="closePO()">← Back</button>
+    <button class="back-btn" onclick="closePO()">← Back</button>
   </div>
   <div class="po-subtabs">
     <div class="po-subtab active" id="po-tab-list" onclick="showPOSubtab('list',this)">All POs</div>
@@ -661,9 +666,9 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 <!-- ADMIN SCREEN -->
 <div id="admin-screen" class="screen" style="flex-direction:column">
-  <div class="admin-topbar">
+  <div class="admin-topbar" style="display:flex;align-items:center;justify-content:space-between">
     <span class="admin-topbar-title">Admin Dashboard</span>
-    <button class="admin-back" onclick="closeAdmin()">← Back</button>
+    <button class="back-btn" onclick="closeAdmin()">← Back</button>
   </div>
   <div class="admin-body">
     <div class="admin-section">
@@ -2175,6 +2180,18 @@ async function submitProduction(idx){
   }catch(e){alert('Network error: '+e.message);}
 }
 
+// ── FAB TOUCH — full opacity on touch for mobile ──
+document.addEventListener('DOMContentLoaded', () => {
+  const fab = document.querySelector('.fab');
+  if(!fab) return;
+  fab.addEventListener('touchstart', () => {
+    fab.style.opacity = '1';
+  }, {passive:true});
+  fab.addEventListener('touchend', () => {
+    setTimeout(() => { if(fab.style.display !== 'none') fab.style.opacity = '0.25'; }, 2000);
+  }, {passive:true});
+});
+
 // ── KEYBOARD ──
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('admin-pass-input').addEventListener('keydown',e=>{if(e.key==='Enter')verifyAdmin();});
@@ -2483,16 +2500,16 @@ init();
       </div>
     </div>
     <div style="padding:0 14px 20px;text-align:center">
-      <button onclick="closeCountType()" style="background:none;border:1.5px solid #ccc;color:#888;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+      <button onclick="closeCountType()" style="background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.35);color:rgba(255,255,255,0.85);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;border-radius:7px">← Back</button>
     </div>
   </div>
 </div>
 
 <!-- COUNT SCREEN -->
 <div id="count-screen" class="screen" style="flex-direction:column">
-  <div class="count-topbar" id="count-topbar">
+  <div class="count-topbar" id="count-topbar" style="display:flex;align-items:center;justify-content:space-between">
     <span class="count-topbar-title" id="count-topbar-title">Stock Count</span>
-    <button class="count-back" onclick="closeCount()">← Back</button>
+    <button class="back-btn" onclick="closeCount()">← Back</button>
   </div>
 
   <div class="count-location-bar">
