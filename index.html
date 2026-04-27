@@ -434,7 +434,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   <div id="movement-area" style="display:none">
     <div class="unit-bar">
       <span class="unit-label">Unit / Location:</span>
-      <select class="unit-select" id="unit-select">
+      <select class="unit-select" id="unit-select" onchange="onUnitChange()">
         <option value="Bajaj1">Bajaj 1</option>
         <option value="Bajaj2">Bajaj 2</option>
         <option value="Retail Store">Retail Store</option>
@@ -908,6 +908,9 @@ function showMovement(){
   const ft=document.querySelector('#movement-area .tab');
   if(ft)ft.classList.add('active');
   buildTab();
+  // Initialize unit tracking
+  const sel = document.getElementById('unit-select');
+  if(sel) sel.dataset.lastUnit = sel.value;
 }
 
 function setTNav(activeId){
@@ -2257,6 +2260,44 @@ async function receiveItems(){
       await loadPOs();
     }else alert('Error: '+r.msg);
   }catch(e){alert('Network error: '+e.message);}
+}
+
+
+// ── UNIT SELECTOR CHANGE ──
+function onUnitChange(){
+  // Check if there are any unsaved quantities
+  const hasUnsaved = Object.values(quantities).some(q => q.loaded > 0 || q.returned > 0);
+  if(hasUnsaved){
+    const unitLabel = document.getElementById('unit-select').value;
+    const confirmed = confirm(
+      'You have unsaved quantities for the current unit.\n\n' +
+      'Switching to ' + unitLabel + ' will clear the current form.\n\n' +
+      'Have you already submitted the previous unit\'s data?'
+    );
+    if(!confirmed){
+      // Revert to previous unit — find what was selected before
+      // We track this via a data attribute
+      const sel = document.getElementById('unit-select');
+      sel.value = sel.dataset.lastUnit || sel.options[0].value;
+      return;
+    }
+  }
+  // Clear quantities and rebuild for new unit
+  quantities = {};
+  // Store current selection for revert if needed
+  const sel = document.getElementById('unit-select');
+  sel.dataset.lastUnit = sel.value;
+  // Also reset mode to LOAD when switching units
+  if(isReturnMode){
+    isReturnMode = false;
+    document.getElementById('mode-btn').textContent = 'LOAD';
+    document.getElementById('mode-btn').className = 'mode-btn';
+    document.getElementById('submit-btn').className = 'submit-btn';
+    document.getElementById('submit-btn').textContent = 'Submit to Google Sheets';
+  }
+  buildSkuList();
+  updateTotals();
+  showBanner('success-bar', 'Switched to ' + sel.value + ' — form cleared and ready for new entry');
 }
 
 // ── KEYBOARD ──
