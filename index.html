@@ -1772,67 +1772,7 @@ function onUnitChange(){
 }
 
 // ── TOGGLE MODE ──
-async function toggleMode(){
-  isReturnMode=!isReturnMode;
-  const b=document.getElementById('mode-btn'),s=document.getElementById('submit-btn');
-  b.textContent=isReturnMode?'RETURN':'LOAD';
-  b.className='mode-btn'+(isReturnMode?' return-mode':'');
-  s.className='submit-btn'+(isReturnMode?' return-mode':'');
-  s.textContent=isReturnMode?'Submit Return to Google Sheets':'Submit to Google Sheets';
-  if(isReturnMode){
-    const unit=document.getElementById('unit-select').value;
-    b.textContent='Loading...';b.disabled=true;
-    try{
-      const r=await api({action:'getTodayLoads',unit});
-      if(r.status==='ok'&&r.rows&&r.rows.length>0){
-        r.rows.forEach(item=>{
-          const code=item.code;
-          if(!quantities[code])quantities[code]={loaded:0,returned:0,cat:item.cat||''};
-          quantities[code].loaded=Number(item.loaded)||0;
-          quantities[code].cat=item.cat||quantities[code].cat;
-        });
-        showBanner('success-bar','Loaded '+r.rows.length+' SKU quantities from today\'s morning load');
-      }else{showBanner('success-bar','No LOAD submission found for today — enter loaded quantities manually if needed');}
-    }catch(e){showBanner('success-bar','Could not fetch today\'s load — check connection');}
-    b.textContent='RETURN';b.disabled=false;
-  }
-  buildSkuList();
-}
-
 // ── LIVE SKU MASTER ──
-let liveSKUs=[];
-async function loadSKUMaster(){
-  try{
-    const r=await api({action:'getAllSKUs'});
-    if(r.status==='ok'&&Array.isArray(r.skus)&&r.skus.length>0){
-      liveSKUs=r.skus;rebuildSKUData();buildBoDropdown();return true;
-    }
-    const r2=await api({action:'getSKUMaster'});
-    if(r2.status==='ok'&&Array.isArray(r2.skus)&&r2.skus.length>0){
-      liveSKUs=r2.skus;rebuildSKUData();buildBoDropdown();return true;
-    }
-    return false;
-  }catch(e){return false;}
-}
-
-function rebuildSKUData(){
-  DIST_CATS.length=0;
-  Object.keys(DIST_SKUS).forEach(k=>delete DIST_SKUS[k]);
-  const distCatsSeen=[];
-  liveSKUs.forEach(sku=>{
-    if(sku.type==='DIST'){
-      if(!DIST_SKUS[sku.category]){DIST_SKUS[sku.category]=[];distCatsSeen.push(sku.category);}
-      DIST_SKUS[sku.category].push({code:sku.code,name:sku.name});
-    }else if(sku.type==='RETAIL'){
-      if(!csskus[sku.category])csskus[sku.category]=[];
-      if(!csskus[sku.category].find(s=>s.code===sku.code))csskus[sku.category].push({code:sku.code,name:sku.name});
-    }
-  });
-  distCatsSeen.forEach(c=>{if(!DIST_CATS.includes(c))DIST_CATS.push(c);});
-}
-
-function buildBoDropdown(){}
-
 // ── STOCK COUNT SYSTEM ──
 let countCat='All';
 let countSaveTimer=null;
