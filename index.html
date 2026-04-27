@@ -259,6 +259,108 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .count-submit-btn.retail{background:#C07000}
 .count-success-bar.retail{background:#C07000}
 .count-cat-header.retail{border-left:3px solid #C07000}
+
+/* ── HOME DASHBOARD ── */
+#home-screen{background:#f0f2f5}
+.home-body{padding:16px;flex:1;overflow-y:auto}
+.home-greeting{font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+.home-sub{font-size:12px;color:#999;margin-bottom:18px}
+.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{border-radius:14px;padding:16px 14px 28px;cursor:pointer;position:relative;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 3px 12px rgba(0,0,0,0.12)}
+.tile:active{transform:scale(0.97)}
+.tile-icon{font-size:26px;margin-bottom:10px;display:block;line-height:1}
+.tile-name{font-size:13px;font-weight:700;color:white;margin-bottom:4px;line-height:1.2}
+.tile-desc{font-size:10px;color:rgba(255,255,255,0.78);line-height:1.4}
+.tile-arrow{position:absolute;bottom:12px;right:14px;font-size:14px;color:rgba(255,255,255,0.5)}
+.tile-badge{position:absolute;top:10px;right:10px;background:#E24B4A;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center}
+.tile.t-movement{background:linear-gradient(135deg,#0A5C46,#0E7A5E)}
+.tile.t-inventory{background:linear-gradient(135deg,#7B2D8B,#9B3DAB)}
+.tile.t-po{background:linear-gradient(135deg,#1A3A5C,#1E4D7A)}
+.tile.t-admin{background:linear-gradient(135deg,#404040,#555)}
+.tile.t-driver{background:linear-gradient(135deg,#1F4E78,#2A6699)}
+.tile.t-backorder{background:linear-gradient(135deg,#A32D2D,#C23B3B)}
+.tile.full-width{grid-column:1/-1}
+/* ── TOPBAR NAV ROW ── */
+.topbar-nav-row{display:flex;gap:3px}
+.tnav{flex:1;padding:6px 4px;border-radius:7px;font-size:10px;font-weight:500;text-align:center;color:rgba(255,255,255,0.65);cursor:pointer;border:none;background:rgba(255,255,255,0.1);transition:all 0.15s}
+.tnav.active{background:rgba(255,255,255,0.22);color:white;font-weight:700}
+/* ── PO SCREEN ── */
+#po-screen{background:#f0f2f5}
+.po-topbar{background:#1A3A5C;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.po-topbar-title{color:white;font-size:15px;font-weight:700}
+.po-back{background:none;border:none;color:rgba(255,255,255,0.75);font-size:12px;cursor:pointer;font-weight:600}
+.po-subtabs{display:flex;background:#132D47;flex-shrink:0}
+.po-subtab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;text-align:center;color:rgba(255,255,255,0.55);cursor:pointer;border-bottom:2.5px solid transparent}
+.po-subtab.active{color:white;border-bottom-color:#5BA3D9}
+.po-status-chips{display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #eee;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.po-status-chips::-webkit-scrollbar{display:none}
+.po-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1.5px solid #e0e0e0;color:#666;background:white}
+.po-chip.active{background:#1A3A5C;color:white;border-color:#1A3A5C}
+.po-list-body{flex:1;overflow-y:auto;background:#f0f2f5;padding-bottom:14px}
+.po-list-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
+.po-card{background:white;border-radius:10px;margin:10px 12px 0;padding:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.po-card:active{transform:scale(0.98)}
+.po-card-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.po-number{font-size:13px;font-weight:700;color:#1A3A5C}
+.po-status-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px}
+.s-draft{background:#E6F1FB;color:#0C447C}
+.s-pending{background:#FAEEDA;color:#633806}
+.s-approved{background:#EAF3DE;color:#27500A}
+.s-partial{background:#EAF3DE;color:#27500A;border:1px dashed #7DC459}
+.s-received{background:#EAF3DE;color:#27500A}
+.s-rejected{background:#FCEBEB;color:#A32D2D}
+.s-cancelled{background:#F1EFE8;color:#5F5E5A}
+.po-supplier{font-size:12px;color:#555;margin-bottom:3px}
+.po-meta{font-size:11px;color:#aaa}
+.po-card-row2{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #f5f5f5}
+.po-total{font-size:13px;font-weight:700;color:#1A3A5C}
+.po-create-body{flex:1;overflow-y:auto;padding:14px}
+.po-form-section{background:white;border-radius:10px;padding:14px;margin-bottom:12px}
+.po-form-title{font-size:11px;font-weight:700;color:#1A3A5C;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px}
+.po-form-label{font-size:11px;font-weight:600;color:#666;display:block;margin-bottom:4px;margin-top:10px}
+.po-form-label:first-of-type{margin-top:0}
+.po-form-input,.po-form-select{width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:white;color:#222}
+.po-form-input:focus,.po-form-select:focus{border-color:#1A3A5C}
+.po-line-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5f5f5}
+.po-line-item:last-child{border-bottom:none}
+.po-line-info{flex:1;min-width:0}
+.po-line-name{font-size:12px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-line-code{font-size:10px;color:#bbb;margin-top:1px}
+.po-line-qty{width:50px;text-align:center;font-size:12px;font-weight:600;padding:5px 3px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.po-line-qty:focus{border-color:#1A3A5C}
+.po-line-cost{width:62px;font-size:12px;padding:5px 5px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.po-line-cost:focus{border-color:#1A3A5C}
+.po-line-del{background:none;border:none;color:#E24B4A;font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
+.po-add-line-btn{width:100%;padding:9px;border:1.5px dashed #1A3A5C;background:transparent;color:#1A3A5C;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px}
+.po-totals-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:12px;color:#666}
+.po-grand-total{font-size:15px;font-weight:700;color:#1A3A5C}
+.po-action-row{display:flex;gap:8px;margin-bottom:12px}
+.po-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.po-btn-primary{background:#1A3A5C;color:white}
+.po-btn-secondary{background:#f0f2f5;color:#555;border:1px solid #e0e0e0}
+.po-btn-danger{background:#E24B4A;color:white}
+.po-btn-success{background:#27AE60;color:white}
+.po-btn-warn{background:#C07000;color:white}
+.po-btn:disabled{background:#ccc;cursor:not-allowed;color:#999}
+.po-detail-body{flex:1;overflow-y:auto;padding:14px}
+.po-detail-header{background:white;border-radius:10px;padding:14px;margin-bottom:12px}
+.po-detail-num{font-size:16px;font-weight:700;color:#1A3A5C;margin-bottom:4px}
+.po-detail-meta{font-size:12px;color:#888;line-height:1.6}
+.po-detail-section{background:white;border-radius:10px;padding:14px;margin-bottom:12px}
+.po-detail-section-title{font-size:11px;font-weight:700;color:#888;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px}
+.po-receive-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5f5f5}
+.po-receive-row:last-child{border-bottom:none}
+.po-receive-info{flex:1;min-width:0}
+.po-receive-name{font-size:12px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-receive-ordered{font-size:10px;color:#aaa;margin-top:2px}
+.po-receive-input{width:56px;text-align:center;font-size:13px;font-weight:700;padding:5px 3px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.po-receive-input:focus{border-color:#27AE60}
+.po-receive-input:disabled{background:#f5f5f5;color:#ccc}
+.po-received-badge{font-size:10px;background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;font-weight:600}
+.po-success-bar{display:none;background:#1A3A5C;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0}
+.audit-row{padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:11px;color:#666}
+.audit-row:last-child{border-bottom:none}
+.audit-who{font-weight:600;color:#222}
 </style>
 </head>
 <body>
@@ -280,33 +382,70 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   </div>
 </div>
 
-<!-- MAIN APP (Staff / Admin) -->
-<div id="app-screen" class="screen" style="position:relative">
+
+<!-- HOME DASHBOARD -->
+<div id="home-screen" class="screen" style="flex-direction:column">
   <div class="topbar">
-    <div>
-      <div class="topbar-title">Alfrisco Inventory</div>
-      <div class="topbar-user" id="topbar-user"></div>
-    </div>
-    <div class="topbar-right">
-      <button class="mode-btn" id="mode-btn" onclick="toggleMode()">LOAD</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div class="topbar-title">Alfrisco Inventory</div>
+        <div class="topbar-user" id="home-topbar-user"></div>
+      </div>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
+    <div class="topbar-nav-row">
+      <button class="tnav active">🏠 Home</button>
+      <button class="tnav" onclick="showMovement()">📦 Stock</button>
+      <button class="tnav" onclick="openCount()">🔢 Inventory</button>
+      <button class="tnav" id="home-po-nav" style="display:none" onclick="openPO()">📋 PO</button>
+      <button class="tnav" id="home-admin-nav" style="display:none" onclick="openAdminFromHome()">⚙️ Admin</button>
+    </div>
   </div>
-  <div class="unit-bar">
-    <span class="unit-label">Unit / Location:</span>
-    <select class="unit-select" id="unit-select">
-      <option value="Bajaj1">Bajaj 1</option>
-      <option value="Bajaj2">Bajaj 2</option>
-      <option value="Retail Store">Retail Store</option>
-      <option value="Distribution WH">Distribution WH</option>
-    </select>
+  <div class="home-body">
+    <div class="home-greeting" id="home-greeting">Good morning</div>
+    <div class="home-sub">What would you like to do today?</div>
+    <div class="tile-grid" id="home-tiles"></div>
   </div>
-  <div class="tab-bar">
-    <div class="tab active" onclick="setTab('dist',this)">Distribution</div>
-    <div class="tab" onclick="setTab('retail',this)">Retail</div>
-    <div class="tab" onclick="setTab('all',this)">All</div>
-    <div class="tab admin-tab" id="admin-tab" style="display:none" onclick="openAdminModal()">Admin</div>
-    <div class="tab count-tab" id="count-tab" onclick="openCount()">Count</div>
+</div>
+
+<!-- MAIN APP (Staff / Admin) -->
+<div id="app-screen" class="screen" style="position:relative">
+  <!-- UNIFIED TOPBAR with nav row -->
+  <div class="topbar" id="app-topbar">
+    <div class="topbar-row1" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div class="topbar-title">Alfrisco Inventory</div>
+        <div class="topbar-user" id="topbar-user"></div>
+      </div>
+      <div class="topbar-right">
+        <button class="mode-btn" id="mode-btn" onclick="toggleMode()" style="display:none">LOAD</button>
+        <button class="logout-btn" onclick="doLogout()">Sign out</button>
+      </div>
+    </div>
+    <div class="topbar-nav-row" id="topbar-nav-row">
+      <button class="tnav active" id="tnav-home" onclick="showHome()">🏠 Home</button>
+      <button class="tnav" id="tnav-movement" onclick="showMovement()">📦 Stock</button>
+      <button class="tnav" id="tnav-inventory" onclick="openCount()">🔢 Inventory</button>
+      <button class="tnav" id="tnav-po" onclick="openPO()" style="display:none">📋 PO</button>
+      <button class="tnav" id="tnav-admin" onclick="openAdminModal()" style="display:none">⚙️ Admin</button>
+    </div>
+  </div>
+  <!-- MOVEMENT AREA (shown only in Stock Movement context) -->
+  <div id="movement-area" style="display:none">
+    <div class="unit-bar">
+      <span class="unit-label">Unit / Location:</span>
+      <select class="unit-select" id="unit-select">
+        <option value="Bajaj1">Bajaj 1</option>
+        <option value="Bajaj2">Bajaj 2</option>
+        <option value="Retail Store">Retail Store</option>
+        <option value="Distribution WH">Distribution WH</option>
+      </select>
+    </div>
+    <div class="tab-bar">
+      <div class="tab active" onclick="setTab('dist',this)">Distribution</div>
+      <div class="tab" onclick="setTab('retail',this)">Retail</div>
+      <div class="tab" onclick="setTab('all',this)">All</div>
+    </div>
   </div>
   <div class="chips-bar" id="chips-bar"></div>
   <div class="success-bar" id="success-bar"></div>
@@ -384,6 +523,89 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   </div>
 </div>
 
+
+<!-- PO SCREEN -->
+<div id="po-screen" class="screen" style="flex-direction:column">
+  <div class="po-topbar">
+    <span class="po-topbar-title">Purchase Orders</span>
+    <button class="po-back" onclick="closePO()">← Back</button>
+  </div>
+  <div class="po-subtabs">
+    <div class="po-subtab active" id="po-tab-list" onclick="showPOSubtab('list',this)">All POs</div>
+    <div class="po-subtab" id="po-tab-create" onclick="showPOSubtab('create',this)">+ New PO</div>
+  </div>
+  <div class="po-success-bar" id="po-success-bar"></div>
+
+  <!-- PO LIST VIEW -->
+  <div id="po-view-list" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="po-status-chips" id="po-status-chips"></div>
+    <div class="po-list-body" id="po-list-body">
+      <div class="po-list-empty">Loading purchase orders...</div>
+    </div>
+  </div>
+
+  <!-- PO CREATE VIEW -->
+  <div id="po-view-create" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="po-create-body">
+      <div class="po-form-section">
+        <div class="po-form-title">PO Details</div>
+        <span class="po-form-label">Inventory Type</span>
+        <select class="po-form-select" id="po-type" onchange="onPOTypeChange()">
+          <option value="DIST">Distribution</option>
+          <option value="RETAIL">Retail</option>
+        </select>
+        <span class="po-form-label">Supplier</span>
+        <select class="po-form-select" id="po-supplier">
+          <option value="A-Legacy">A-Legacy</option>
+<option value="AAS">AAS</option>
+<option value="Alfrisco Distribution">Alfrisco Distribution</option>
+<option value="CCPI">CCPI</option>
+<option value="EMT">EMT</option>
+<option value="Edzena">Edzena</option>
+<option value="JFL">JFL</option>
+<option value="Jake">Jake</option>
+<option value="Magpayo">Magpayo</option>
+<option value="PDI">PDI</option>
+<option value="TFI">TFI</option>
+<option value="THB">THB</option>
+<option value="TOPPERSWARE">TOPPERSWARE</option>
+<option value="Zoe">Zoe</option>
+        </select>
+        <span class="po-form-label">Expected Delivery Date (optional)</span>
+        <input type="date" class="po-form-input" id="po-delivery-date">
+        <span class="po-form-label">Notes (optional)</span>
+        <input type="text" class="po-form-input" id="po-notes" placeholder="Any special instructions...">
+      </div>
+
+      <div class="po-form-section">
+        <div class="po-form-title">Line Items</div>
+        <div id="po-line-items"></div>
+        <button class="po-add-line-btn" onclick="addPOLineItem()">+ Add Item</button>
+      </div>
+
+      <div class="po-form-section" style="padding-bottom:10px">
+        <div class="po-totals-row">
+          <span>Items</span><span id="po-item-count">0</span>
+        </div>
+        <div class="po-totals-row" style="border-top:1px solid #f0f0f0;padding-top:10px;margin-top:4px">
+          <span style="font-weight:600">Estimated Total</span>
+          <span class="po-grand-total" id="po-grand-total">₱0.00</span>
+        </div>
+      </div>
+
+      <div class="po-action-row">
+        <button class="po-btn po-btn-secondary" onclick="savePODraft()">Save Draft</button>
+        <button class="po-btn po-btn-primary" onclick="submitPOForApproval()">Submit for Approval</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PO DETAIL VIEW -->
+  <div id="po-view-detail" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="po-detail-body" id="po-detail-body"></div>
+  </div>
+</div>
+
 <!-- ADMIN SCREEN -->
 <div id="admin-screen" class="screen" style="flex-direction:column">
   <div class="admin-topbar">
@@ -410,17 +632,22 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
           <option value="Bajaj1">Bajaj 1</option>
           <option value="Bajaj2">Bajaj 2</option>
         </select>
-        <div style="display:flex;gap:12px;padding:2px 0">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
-            <input type="checkbox" id="new-can-dist" checked
-              style="width:16px;height:16px;accent-color:#7B2D8B;cursor:pointer">
-            Can count Distribution
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
-            <input type="checkbox" id="new-can-retail" checked
-              style="width:16px;height:16px;accent-color:#C07000;cursor:pointer">
-            Can count Retail
-          </label>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+          <div style="font-size:11px;font-weight:600;color:#888;letter-spacing:0.3px">PERMISSIONS</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-dist" checked style="width:16px;height:16px;accent-color:#7B2D8B;cursor:pointer">
+              Count Distribution
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-retail" checked style="width:16px;height:16px;accent-color:#C07000;cursor:pointer">
+              Count Retail
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-po" checked style="width:16px;height:16px;accent-color:#1A3A5C;cursor:pointer">
+              Manage POs
+            </label>
+          </div>
         </div>
         <button class="admin-add-btn" onclick="addStaff()">Add Staff Member</button>
       </div>
@@ -602,6 +829,8 @@ async function doLogin(){
 function doLogout(){
   currentUser=null;
   document.querySelector('.fab').style.display='none';
+  if(document.getElementById('movement-area'))
+    document.getElementById('movement-area').style.display='none';
   showScreen('login-screen');
   init();
 }
@@ -613,21 +842,90 @@ function showScreen(id){
 }
 
 // ── STAFF / ADMIN APP ──
+// ── PRIMARY ENTRY AFTER LOGIN ──
 function showApp(){
+  if(currentUser.role==='driver') showDriver();
+  else showHome();
+}
+
+function showHome(){
+  showScreen('home-screen');
+  document.querySelector('.fab').style.display='flex';
+  document.getElementById('home-topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
+  const canPO=currentUser.canManagePO!==false && currentUser.role!=='driver';
+  const isAdmin=currentUser.role==='admin';
+  const hpo=document.getElementById('home-po-nav');
+  const hadm=document.getElementById('home-admin-nav');
+  if(hpo)hpo.style.display=canPO?'block':'none';
+  if(hadm)hadm.style.display=isAdmin?'block':'none';
+  const h=new Date().getHours();
+  const greet=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('home-greeting').textContent=greet+', '+currentUser.username;
+  buildHomeTiles();
+}
+
+function buildHomeTiles(){
+  const grid=document.getElementById('home-tiles');
+  if(!grid)return;
+  grid.innerHTML='';
+  const tiles=[];
+  tiles.push({icon:'📦',name:'Stock Movement',desc:'Load & return stocks for Bajaj routes',cls:'t-movement',fn:'showMovement()'});
+  const canCount=currentUser.canCountDist!==false||currentUser.canCountRetail!==false;
+  if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
+  const canPO=currentUser.canManagePO!==false;
+  if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
+  tiles.push({icon:'⚠️',name:'Log Backorder',desc:'Record out-of-stock dealer requests',cls:'t-backorder',fn:'openBoModal()'});
+  if(currentUser.role==='admin') tiles.push({icon:'⚙️',name:'Admin',desc:'Staff accounts & app settings',cls:'t-admin',fn:'openAdminFromHome()'});
+  if(tiles.length%2!==0) tiles[tiles.length-1].full=true;
+  tiles.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='tile '+t.cls+(t.full?' full-width':'');
+    div.onclick=new Function(t.fn);
+    div.innerHTML=`<span class="tile-icon">${t.icon}</span><div class="tile-name">${t.name}</div><div class="tile-desc">${t.desc}</div><span class="tile-arrow">→</span>${t.badge?'<span class="tile-badge" id="'+t.badge+'" style="display:none">!</span>':''}`;
+    grid.appendChild(div);
+  });
+  if(currentUser.role==='admin') loadPendingBadge();
+}
+
+function showMovement(){
   showScreen('app-screen');
   document.querySelector('.fab').style.display='flex';
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
-  document.getElementById('admin-tab').style.display=currentUser.role==='admin'?'flex':'none';
-  const canCountAny=(currentUser.canCountDist!==false||currentUser.canCountRetail!==false)&&currentUser.role!=='driver';
-  document.getElementById('count-tab').style.display=canCountAny?'flex':'none';
-  quantities={};currentTab='dist';currentCat='All';isReturnMode=false;
+  const canPO=currentUser.canManagePO!==false;
+  const isAdmin=currentUser.role==='admin';
+  if(document.getElementById('tnav-po')) document.getElementById('tnav-po').style.display=canPO?'block':'none';
+  if(document.getElementById('tnav-admin')) document.getElementById('tnav-admin').style.display=isAdmin?'block':'none';
+  document.getElementById('movement-area').style.display='block';
+  document.getElementById('mode-btn').style.display='flex';
+  isReturnMode=false;
   document.getElementById('mode-btn').textContent='LOAD';
   document.getElementById('mode-btn').className='mode-btn';
   document.getElementById('submit-btn').className='submit-btn';
   document.getElementById('submit-btn').textContent='Submit to Google Sheets';
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector('#app-screen .tab').classList.add('active');
+  setTNav('tnav-movement');
+  quantities={};currentTab='dist';currentCat='All';
+  document.querySelectorAll('#movement-area .tab').forEach(t=>t.classList.remove('active'));
+  const ft=document.querySelector('#movement-area .tab');
+  if(ft)ft.classList.add('active');
   buildTab();
+}
+
+function setTNav(activeId){
+  document.querySelectorAll('#app-screen .tnav').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById(activeId);
+  if(el)el.classList.add('active');
+}
+
+function openAdminFromHome(){
+  showScreen('app-screen');
+  document.querySelector('.fab').style.display='flex';
+  document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
+  document.getElementById('movement-area').style.display='none';
+  document.getElementById('mode-btn').style.display='none';
+  if(document.getElementById('tnav-po')) document.getElementById('tnav-po').style.display=currentUser.canManagePO!==false?'block':'none';
+  if(document.getElementById('tnav-admin')) document.getElementById('tnav-admin').style.display='block';
+  setTNav('tnav-admin');
+  openAdminModal();
 }
 
 function setTab(tab,el){
@@ -996,13 +1294,14 @@ function renderStaff(){
     const row=document.createElement('div');row.className='staff-row';
     const unitTag=s.role==='driver'&&s.assignedUnit?` · ${s.assignedUnit}`:'';
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
-    const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600">RETAIL</span>`;
+    const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
+    const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600">PO</span>`;
     row.innerHTML=`
       <div class="staff-info">
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${distTag}${retailTag}
+          ${distTag}${retailTag}${poTag}
         </div>
       </div>
       ${s.username!==currentUser.username?`<button class="staff-del" onclick="removeStaff(${i})">Remove</button>`:''}`;
@@ -1017,12 +1316,13 @@ async function addStaff(){
   const unit=r==='driver'?document.getElementById('new-unit').value:'All';
   const canDist=document.getElementById('new-can-dist').checked;
   const canRetail=document.getElementById('new-can-retail').checked;
+  const canPO=document.getElementById('new-can-po').checked;
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -1088,9 +1388,17 @@ let liveSKUs = [];  // Populated from SKU Master sheet on every load
 
 async function loadSKUMaster() {
   try {
-    const r = await api({action: 'getSKUMaster'});
+    const r = await api({action: 'getAllSKUs'});
     if (r.status === 'ok' && Array.isArray(r.skus) && r.skus.length > 0) {
       liveSKUs = r.skus;
+      rebuildSKUData();
+      buildBoDropdown();
+      return true;
+    }
+    // Fallback: try old single-sheet action
+    const r2 = await api({action: 'getSKUMaster'});
+    if (r2.status === 'ok' && Array.isArray(r2.skus) && r2.skus.length > 0) {
+      liveSKUs = r2.skus;
       rebuildSKUData();
       buildBoDropdown();
       return true;
@@ -1332,7 +1640,7 @@ function startCount(type) {
 
 function closeCount() {
   if (currentUser && currentUser.role === 'driver') showDriver();
-  else showApp();
+  else showHome();
 }
 
 function switchCountLocation() {
@@ -1544,6 +1852,411 @@ async function submitCount() {
 
   btn.disabled = false;
   updateCountProgress();
+}
+
+
+// ════════════════════════════════════════════════════════
+// PURCHASE ORDER SYSTEM
+// ════════════════════════════════════════════════════════
+const DIST_SUPPLIERS = ["A-Legacy", "AAS", "CCPI", "EMT", "PDI", "TFI", "THB", "TOPPERSWARE"];
+const RETAIL_SUPPLIERS = ["Alfrisco Distribution", "Edzena", "JFL", "Jake", "Magpayo", "Zoe"];
+
+let poList = [];          // All POs loaded from Sheets
+let currentPO = null;     // PO currently being viewed
+let poFilter = 'All';     // Status filter
+let poLineItems = [];     // Line items for current create session
+
+// ── OPEN / CLOSE PO ──
+async function openPO(){
+  showScreen('po-screen');
+  document.querySelector('.fab').style.display='flex';
+  setTNav('tnav-po');
+  showPOSubtab('list', document.getElementById('po-tab-list'));
+  await loadPOs();
+}
+
+function closePO(){
+  showHome();
+}
+
+function showPOSubtab(tab, el){
+  document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('po-view-list').style.display  = tab==='list'?'flex':'none';
+  document.getElementById('po-view-create').style.display= tab==='create'?'flex':'none';
+  document.getElementById('po-view-detail').style.display= tab==='detail'?'flex':'none';
+  if(tab==='create') initPOCreate();
+  if(tab==='list') loadPOs();
+}
+
+// ── PO NUMBER GENERATOR ──
+function generatePONumber(){
+  const d = new Date();
+  const date = d.getFullYear().toString() +
+    String(d.getMonth()+1).padStart(2,'0') +
+    String(d.getDate()).padStart(2,'0');
+  // Count existing POs for today
+  const todayPOs = poList.filter(p=>p.poNumber && p.poNumber.includes(date));
+  const seq = String(todayPOs.length+1).padStart(3,'0');
+  return `PO-${date}-${seq}`;
+}
+
+// ── LOAD POs FROM SHEETS ──
+async function loadPOs(){
+  try{
+    const r = await api({action:'getPOs'});
+    if(r.status==='ok'){
+      poList = r.pos||[];
+      buildPOStatusChips();
+      renderPOList();
+      // Update pending badge
+      const pending = poList.filter(p=>p.status==='PENDING').length;
+      const badge = document.getElementById('po-pending-badge');
+      if(badge){ badge.textContent=pending; badge.style.display=pending>0?'block':'none'; }
+    }
+  }catch(e){
+    document.getElementById('po-list-body').innerHTML='<div class="po-list-empty">Could not load POs. Check connection.</div>';
+  }
+}
+
+async function loadPendingBadge(){
+  try{
+    const r = await api({action:'getPOs'});
+    if(r.status==='ok'){
+      poList = r.pos||[];
+      const pending = poList.filter(p=>p.status==='PENDING').length;
+      const badge = document.getElementById('po-pending-badge');
+      if(badge){ badge.textContent=pending; badge.style.display=pending>0?'block':'none'; }
+    }
+  }catch(e){}
+}
+
+function buildPOStatusChips(){
+  const bar = document.getElementById('po-status-chips');
+  const statuses = ['All','DRAFT','PENDING','APPROVED','PARTIAL','RECEIVED','REJECTED','CANCELLED'];
+  const counts = {};
+  poList.forEach(p=>{ counts[p.status]=(counts[p.status]||0)+1; });
+  bar.innerHTML = '';
+  statuses.forEach(s=>{
+    const cnt = s==='All' ? poList.length : (counts[s]||0);
+    if(s!=='All' && cnt===0) return;
+    const c = document.createElement('div');
+    c.className='po-chip'+(s===poFilter?' active':'');
+    c.textContent = s==='All'?`All (${cnt})`:`${s} (${cnt})`;
+    c.onclick=()=>{ poFilter=s; buildPOStatusChips(); renderPOList(); };
+    bar.appendChild(c);
+  });
+}
+
+function renderPOList(){
+  const body = document.getElementById('po-list-body');
+  const canSee = currentUser.role==='admin'
+    ? poList
+    : poList.filter(p=>{
+        if(p.type==='DIST' && currentUser.role==='staff') return true;
+        if(p.type==='RETAIL' && currentUser.role==='staff-retail') return true;
+        if(p.createdBy===currentUser.username) return true;
+        return false;
+      });
+  const visible = poFilter==='All' ? canSee : canSee.filter(p=>p.status===poFilter);
+
+  if(!visible.length){
+    body.innerHTML='<div class="po-list-empty">No purchase orders found.<br>Tap "+ New PO" to create one.</div>';
+    return;
+  }
+  body.innerHTML='';
+  visible.sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  visible.forEach(po=>{
+    const card=document.createElement('div');
+    card.className='po-card';
+    card.onclick=()=>openPODetail(po.poNumber);
+    const statusCls={'DRAFT':'s-draft','PENDING':'s-pending','APPROVED':'s-approved','PARTIAL':'s-partial','RECEIVED':'s-received','REJECTED':'s-rejected','CANCELLED':'s-cancelled'}[po.status]||'s-draft';
+    card.innerHTML=`
+      <div class="po-card-row1">
+        <div>
+          <div class="po-number">${po.poNumber}</div>
+          <div class="po-supplier">${po.supplier} · ${po.type}</div>
+          <div class="po-meta">${po.createdDate} · ${po.createdBy}</div>
+        </div>
+        <span class="po-status-badge ${statusCls}">${po.status}</span>
+      </div>
+      <div class="po-card-row2">
+        <span style="font-size:11px;color:#888">${po.lineCount||0} item(s)</span>
+        <span class="po-total">₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</span>
+      </div>`;
+    body.appendChild(card);
+  });
+}
+
+// ── CREATE PO ──
+function initPOCreate(){
+  poLineItems=[];
+  document.getElementById('po-type').value='DIST';
+  document.getElementById('po-notes').value='';
+  document.getElementById('po-delivery-date').value='';
+  onPOTypeChange();
+  renderPOLineItems();
+  updatePOTotals();
+}
+
+function onPOTypeChange(){
+  const type = document.getElementById('po-type').value;
+  const sup = document.getElementById('po-supplier');
+  const suppliers = type==='DIST' ? DIST_SUPPLIERS : RETAIL_SUPPLIERS;
+  sup.innerHTML = suppliers.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function addPOLineItem(){
+  // Build SKU options based on PO type
+  const type = document.getElementById('po-type').value;
+  const skuOpts = liveSKUs.filter(s=>s.type===type)
+    .map(s=>`<option value="${s.code}|${s.name}">${s.name}</option>`).join('');
+
+  const idx = poLineItems.length;
+  poLineItems.push({skuCode:'',skuName:'',qty:1,unitCost:0,unit:'bag'});
+
+  const div=document.createElement('div');
+  div.className='po-line-item';
+  div.id=`po-line-${idx}`;
+  div.innerHTML=`
+    <div class="po-line-info">
+      <select style="width:100%;padding:6px 8px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:11px;outline:none;color:#222;background:white"
+        onchange="onPOLineSelect(${idx},this)">
+        <option value="">-- Select item --</option>
+        ${skuOpts}
+      </select>
+    </div>
+    <div class="po-line-inputs">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <span style="font-size:9px;color:#aaa;margin-bottom:2px">Qty</span>
+        <input class="po-line-qty" type="number" min="1" value="1" oninput="onPOLineQty(${idx},this.value)">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <span style="font-size:9px;color:#aaa;margin-bottom:2px">Unit cost ₱</span>
+        <input class="po-line-cost" type="number" min="0" placeholder="0.00" oninput="onPOLineCost(${idx},this.value)">
+      </div>
+    </div>
+    <button class="po-line-del" onclick="removePOLine(${idx})">×</button>`;
+  document.getElementById('po-line-items').appendChild(div);
+  updatePOTotals();
+}
+
+function onPOLineSelect(idx, sel){
+  if(!sel.value)return;
+  const parts=sel.value.split('|');
+  poLineItems[idx].skuCode=parts[0];
+  poLineItems[idx].skuName=parts[1]||parts[0];
+  updatePOTotals();
+}
+
+function onPOLineQty(idx,val){
+  poLineItems[idx].qty=parseFloat(val)||0;
+  updatePOTotals();
+}
+
+function onPOLineCost(idx,val){
+  poLineItems[idx].unitCost=parseFloat(val)||0;
+  updatePOTotals();
+}
+
+function removePOLine(idx){
+  poLineItems[idx]={removed:true};
+  const el=document.getElementById('po-line-'+idx);
+  if(el)el.remove();
+  updatePOTotals();
+}
+
+function renderPOLineItems(){
+  document.getElementById('po-line-items').innerHTML='';
+  poLineItems=[];
+}
+
+function updatePOTotals(){
+  const active=poLineItems.filter(l=>!l.removed&&l.skuCode);
+  const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);
+  document.getElementById('po-item-count').textContent=active.length;
+  document.getElementById('po-grand-total').textContent='₱'+total.toLocaleString('en-PH',{minimumFractionDigits:2});
+}
+
+async function savePODraft(){ await savePO('DRAFT'); }
+async function submitPOForApproval(){ await savePO('PENDING'); }
+
+async function savePO(status){
+  const type=document.getElementById('po-type').value;
+  const supplier=document.getElementById('po-supplier').value;
+  const notes=document.getElementById('po-notes').value.trim();
+  const delivDate=document.getElementById('po-delivery-date').value;
+  const active=poLineItems.filter(l=>!l.removed&&l.skuCode);
+
+  if(!supplier){alert('Please select a supplier.');return;}
+  if(active.length===0){alert('Please add at least one line item.');return;}
+
+  const poNumber=generatePONumber();
+  const now=new Date().toLocaleString('en-PH');
+  const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);
+
+  try{
+    const r=await api({
+      action:'createPO',
+      poNumber, type, supplier, status,
+      createdBy:currentUser.username,
+      createdDate:now,
+      deliveryDate:delivDate,
+      notes, totalValue:total,
+      lineItems:active.map(l=>([poNumber,l.skuCode,l.skuName,'',l.qty,'bag',l.unitCost,l.qty*l.unitCost,0,l.qty,'Open']))
+    });
+    if(r.status==='ok'){
+      showBanner('po-success-bar', `PO ${poNumber} ${status==='DRAFT'?'saved as draft':'submitted for approval'}`);
+      poLineItems=[];
+      await loadPOs();
+      showPOSubtab('list',document.getElementById('po-tab-list'));
+    }else{alert('Error: '+(r.msg||'Could not save PO'));}
+  }catch(e){alert('Network error: '+e.message);}
+}
+
+// ── PO DETAIL ──
+async function openPODetail(poNumber){
+  try{
+    const r=await api({action:'getPODetail',poNumber});
+    if(r.status==='ok'){
+      currentPO={...r.po, lineItems:r.lineItems};
+      renderPODetail();
+      const el=document.getElementById('po-tab-list');
+      if(el) el.classList.remove('active');
+      document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));
+      document.getElementById('po-view-list').style.display='none';
+      document.getElementById('po-view-create').style.display='none';
+      const detail=document.getElementById('po-view-detail');
+      detail.style.display='flex';detail.style.flexDirection='column';
+    }
+  }catch(e){alert('Could not load PO details.');}
+}
+
+function renderPODetail(){
+  const po=currentPO;
+  const isAdmin=currentUser.role==='admin';
+  const canReceive=(isAdmin)||(po.type==='DIST'&&currentUser.role==='staff')||(po.type==='RETAIL'&&currentUser.role==='staff-retail');
+  const canCancel=isAdmin||(po.createdBy===currentUser.username&&['DRAFT','PENDING'].includes(po.status));
+  const statusCls={'DRAFT':'s-draft','PENDING':'s-pending','APPROVED':'s-approved','PARTIAL':'s-partial','RECEIVED':'s-received','REJECTED':'s-rejected','CANCELLED':'s-cancelled'}[po.status]||'';
+
+  let actionBtns='';
+  if(isAdmin&&po.status==='PENDING'){
+    actionBtns+=`<button class="po-btn po-btn-success" onclick="approvePO()">Approve</button>`;
+    actionBtns+=`<button class="po-btn po-btn-danger" onclick="rejectPO()">Reject</button>`;
+  }
+  if(canReceive&&['APPROVED','PARTIAL'].includes(po.status)){
+    actionBtns+=`<button class="po-btn po-btn-primary" onclick="receiveItems()">Receive Items</button>`;
+  }
+  if(canCancel&&!['RECEIVED','CANCELLED','REJECTED'].includes(po.status)){
+    actionBtns+=`<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>`;
+  }
+
+  const lineItemsHTML=(po.lineItems||[]).map((li,i)=>{
+    const outstanding=Number(li.qtyOutstanding)||Number(li.qtyOrdered)-Number(li.qtyReceived||0);
+    const received=Number(li.qtyReceived||0);
+    const isFull=outstanding<=0;
+    return `<div class="po-receive-row">
+      <div class="po-receive-info">
+        <div class="po-receive-name">${li.itemName||li.skuCode}</div>
+        <div class="po-receive-ordered">Ordered: ${li.qtyOrdered} · Received: ${received} · Outstanding: ${outstanding}</div>
+      </div>
+      ${isFull
+        ? '<span class="po-received-badge">Received ✓</span>'
+        : `<input class="po-receive-input" type="number" min="0" max="${outstanding}" placeholder="0" id="recv-${i}" ${['APPROVED','PARTIAL'].includes(po.status)&&canReceive?'':'disabled'}>`
+      }
+    </div>`;
+  }).join('');
+
+  document.getElementById('po-detail-body').innerHTML=`
+    <div class="po-detail-header">
+      <div class="po-detail-num">${po.poNumber}</div>
+      <div><span class="po-status-badge ${statusCls}">${po.status}</span></div>
+      <div class="po-detail-meta" style="margin-top:8px">
+        Supplier: <strong>${po.supplier}</strong><br>
+        Type: ${po.type} · Created: ${po.createdDate}<br>
+        Created by: ${po.createdBy}
+        ${po.approvedBy?'<br>Approved by: '+po.approvedBy:''}<br>
+        Total: <strong>₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>
+        ${po.notes?'<br>Notes: '+po.notes:''}
+      </div>
+    </div>
+    ${actionBtns?`<div class="po-action-row">${actionBtns}</div>`:''}
+    <div class="po-detail-section">
+      <div class="po-detail-section-title">Line Items</div>
+      ${lineItemsHTML||'<div style="color:#aaa;font-size:12px">No line items found</div>'}
+    </div>
+    <div class="po-action-row" style="margin-top:4px">
+      <button class="po-btn po-btn-secondary" onclick="backToPOList()">← Back to list</button>
+    </div>`;
+}
+
+function backToPOList(){
+  currentPO=null;
+  document.getElementById('po-view-detail').style.display='none';
+  showPOSubtab('list',document.getElementById('po-tab-list'));
+}
+
+async function approvePO(){
+  if(!confirm(`Approve ${currentPO.poNumber}?`))return;
+  try{
+    const r=await api({action:'approvePO',poNumber:currentPO.poNumber,approvedBy:currentUser.username});
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO approved successfully');
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
+
+async function rejectPO(){
+  const reason=prompt('Reason for rejection (optional):');
+  if(reason===null)return;
+  try{
+    const r=await api({action:'rejectPO',poNumber:currentPO.poNumber,rejectedBy:currentUser.username,reason});
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO rejected');
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
+
+async function cancelPO(){
+  if(!confirm(`Cancel ${currentPO.poNumber}? This cannot be undone.`))return;
+  try{
+    const r=await api({action:'cancelPO',poNumber:currentPO.poNumber,cancelledBy:currentUser.username});
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO cancelled');
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
+
+async function receiveItems(){
+  const lines=currentPO.lineItems||[];
+  const receipts=[];
+  lines.forEach((li,i)=>{
+    const input=document.getElementById('recv-'+i);
+    if(!input)return;
+    const qty=parseFloat(input.value)||0;
+    if(qty>0) receipts.push({skuCode:li.skuCode,itemName:li.itemName,qtyReceived:qty,lineIndex:i});
+  });
+  if(!receipts.length){alert('Enter quantities to receive for at least one item.');return;}
+  try{
+    const r=await api({
+      action:'receivePO',
+      poNumber:currentPO.poNumber,
+      receivedBy:currentUser.username,
+      poType:currentPO.type,
+      receipts
+    });
+    if(r.status==='ok'){
+      showBanner('po-success-bar',`${receipts.length} item(s) received — stock counts updated`);
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error: '+e.message);}
 }
 
 // ── KEYBOARD ──
