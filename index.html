@@ -700,6 +700,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
               <input type="checkbox" id="new-can-po" checked style="width:16px;height:16px;accent-color:#1A3A5C;cursor:pointer">
               Manage POs
             </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-bo-retail" style="width:16px;height:16px;accent-color:#E24B4A;cursor:pointer">
+              Backorder Retail items
+            </label>
           </div>
         </div>
         <button class="admin-add-btn" onclick="addStaff()">Add Staff Member</button>
@@ -1356,13 +1360,14 @@ function renderStaff(){
     const unitTag=s.role==='driver'&&s.assignedUnit?` · ${s.assignedUnit}`:'';
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
-    const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600">PO</span>`;
+    const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
+    const boRetailTag=s.canBackorderRetail?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600">BO-Retail</span>`:'';
     row.innerHTML=`
       <div class="staff-info">
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${distTag}${retailTag}${poTag}
+          ${distTag}${retailTag}${poTag}${boRetailTag}
         </div>
       </div>
       ${s.username!==currentUser.username?`<button class="staff-del" onclick="removeStaff(${i})">Remove</button>`:''}`;
@@ -1378,12 +1383,13 @@ async function addStaff(){
   const canDist=document.getElementById('new-can-dist').checked;
   const canRetail=document.getElementById('new-can-retail').checked;
   const canPO=document.getElementById('new-can-po').checked;
+  const canBoRetail=document.getElementById('new-can-bo-retail')?document.getElementById('new-can-bo-retail').checked:false;
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canBackorderRetail:canBoRetail});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canBackorderRetail:canBoRetail});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -1529,28 +1535,66 @@ function buildBoDropdown() {
 }
 
 // ── BACKORDER FLOATING BUTTON ──
-// Track backorder line items
+// ═══════════════════════════════════════════════════
+// BACKORDER SYSTEM — multi-line, searchable, permission-aware
+// ═══════════════════════════════════════════════════
 let boLines = [];
+let boType = 'dist'; // 'dist' or 'retail'
 
 function openBoModal(){
   document.getElementById('bo-modal').style.display='flex';
+  // Reset fields
   document.getElementById('bo-dealer').value='';
-  if(document.getElementById('bo-phone'))
-    document.getElementById('bo-phone').value='';
+  document.getElementById('bo-phone').value='';
   document.getElementById('bo-date').value='';
   document.getElementById('bo-notes').value='';
   document.getElementById('bo-err').textContent='';
-  document.getElementById('bo-submit-btn').disabled=false;
-  document.getElementById('bo-submit-btn').textContent='Submit Backorder';
+  const btn=document.getElementById('bo-submit-btn');
+  if(btn){btn.disabled=false;btn.textContent='Submit Backorder';}
+  // Check retail permission
+  const canRetail = currentUser && currentUser.canBackorderRetail!==false;
+  const toggle=document.getElementById('bo-type-toggle');
+  if(toggle) toggle.style.display = canRetail?'block':'none';
+  // Default to distribution
+  boType='dist';
+  setBoType('dist');
+  // Start with one empty line
   boLines=[];
-  renderBoLines();
-  addBoLineItem(); // Start with one empty line
+  addBoLineItem();
   setTimeout(()=>document.getElementById('bo-dealer').focus(),150);
 }
 
-function addBoLineItem(){
-  boLines.push({skuValue:'',qty:1,unit:'bag'});
+function closeBoModal(){
+  document.getElementById('bo-modal').style.display='none';
+}
+
+function setBoType(type){
+  boType=type;
+  // Update toggle button styles
+  const distBtn=document.getElementById('bo-type-dist');
+  const retailBtn=document.getElementById('bo-type-retail');
+  if(distBtn){
+    distBtn.style.background = type==='dist'?'#E24B4A':'white';
+    distBtn.style.color = type==='dist'?'white':'#888';
+  }
+  if(retailBtn){
+    retailBtn.style.background = type==='retail'?'#C07000':'white';
+    retailBtn.style.color = type==='retail'?'white':'#888';
+  }
+  // Rebuild all line items with new type's SKU list
+  const existingLines = boLines.map(l=>({...l, skuValue:'', skuName:''}));
+  boLines = existingLines;
   renderBoLines();
+}
+
+function addBoLineItem(){
+  boLines.push({skuValue:'', skuName:'', qty:1, unit:'bag'});
+  renderBoLines();
+  // Scroll to bottom of modal body
+  setTimeout(()=>{
+    const container=document.getElementById('bo-line-items');
+    if(container) container.lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
 }
 
 function removeBoLineItem(idx){
@@ -1559,42 +1603,50 @@ function removeBoLineItem(idx){
 }
 
 function renderBoLines(){
-  const container = document.getElementById('bo-line-items');
+  const container=document.getElementById('bo-line-items');
+  if(!container) return;
   container.innerHTML='';
-  const countEl = document.getElementById('bo-item-count');
-  if(countEl) countEl.textContent = boLines.length + (boLines.length===1?' item':' items');
+  const countEl=document.getElementById('bo-item-count');
+  if(countEl) countEl.textContent=boLines.length+(boLines.length===1?' item':' items');
+
+  // Build searchable SKU datalist for current type
+  const typeFilter = boType==='retail'?'RETAIL':'DIST';
+  const filteredSKUs = liveSKUs.filter(s=>s.type===typeFilter);
+  const datalistId = 'bo-sku-datalist-'+boType;
+
+  // Rebuild datalist
+  let dl = document.getElementById(datalistId);
+  if(!dl){
+    dl=document.createElement('datalist');
+    dl.id=datalistId;
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML=filteredSKUs.map(s=>`<option value="${s.name}" data-code="${s.code}">`).join('');
 
   boLines.forEach((line,idx)=>{
-    // Build SKU optgroups from liveSKUs
-    const distCats=[...new Set(liveSKUs.filter(s=>s.type==='DIST').map(s=>s.category))];
-    const retailCats=[...new Set(liveSKUs.filter(s=>s.type==='RETAIL').map(s=>s.category))];
-    let skuOptHtml='<option value="">-- Select item --</option>';
-    distCats.forEach(cat=>{
-      const items=liveSKUs.filter(s=>s.type==='DIST'&&s.category===cat)
-        .map(s=>`<option value="${s.code}|${s.name}" ${line.skuValue===s.code+'|'+s.name?'selected':''}>${s.name}</option>`)
-        .join('');
-      if(items) skuOptHtml+=`<optgroup label="📦 ${cat}">${items}</optgroup>`;
-    });
-    retailCats.forEach(cat=>{
-      const items=liveSKUs.filter(s=>s.type==='RETAIL'&&s.category===cat)
-        .map(s=>`<option value="${s.code}|${s.name}" ${line.skuValue===s.code+'|'+s.name?'selected':''}>${s.name}</option>`)
-        .join('');
-      if(items) skuOptHtml+=`<optgroup label="🛒 ${cat}">${items}</optgroup>`;
-    });
-
     const row=document.createElement('div');
     row.className='bo-line-row';
+    row.id='bo-row-'+idx;
     row.innerHTML=`
       <div class="bo-line-row-header">
-        <span class="bo-line-num">Item ${idx+1}</span>
-        ${boLines.length>1?`<button class="bo-line-remove" onclick="removeBoLineItem(${idx})" title="Remove">×</button>`:''}
+        <span class="bo-line-num">${boType==='dist'?'📦':'🛒'} Item ${idx+1}</span>
+        ${boLines.length>1
+          ? `<button class="bo-line-remove" onclick="removeBoLineItem(${idx})">×</button>`
+          : ''}
       </div>
-      <select class="bo-line-sku-select" onchange="onBoSkuChange(${idx},this.value)">
-        ${skuOptHtml}
-      </select>
+      <div style="font-size:10px;font-weight:600;color:#aaa;margin-bottom:4px;text-transform:uppercase">Search item name</div>
+      <input type="text"
+        id="bo-sku-input-${idx}"
+        class="bo-line-sku-search"
+        placeholder="Type to search ${boType==='dist'?'distribution':'retail'} items..."
+        list="${datalistId}"
+        autocomplete="off"
+        value="${line.skuName||''}"
+        oninput="onBoSkuInput(${idx}, this.value)"
+        style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
       <div class="bo-line-qty-row">
         <div class="bo-line-qty-wrap">
-          <span class="bo-line-input-label">Qty Requested</span>
+          <span class="bo-line-input-label">Qty</span>
           <input class="bo-line-qty-input" type="number" min="1" step="1"
             value="${line.qty||1}"
             oninput="onBoQtyChange(${idx},this.value)">
@@ -1602,1035 +1654,530 @@ function renderBoLines(){
         <div class="bo-line-unit-wrap">
           <span class="bo-line-input-label">Unit</span>
           <select class="bo-line-unit-select" onchange="onBoUnitChange(${idx},this.value)">
-            ${['bag','sack','box','case','pc','bottle','kg'].map(u=>`<option value="${u}" ${line.unit===u?'selected':''}>${u}</option>`).join('')}
+            ${['bag','sack','box','case','pc','bottle','kg']
+              .map(u=>`<option value="${u}"${line.unit===u?' selected':''}>${u}</option>`)
+              .join('')}
           </select>
         </div>
-      </div>`;
+      </div>
+      ${line.skuName
+        ? `<div style="font-size:10px;color:#27AE60;margin-top:4px">✓ ${line.skuName}</div>`
+        : `<div style="font-size:10px;color:#bbb;margin-top:4px">No item selected yet</div>`}`;
     container.appendChild(row);
   });
 }
 
-function onBoSkuChange(idx,val){ boLines[idx].skuValue=val; }
-function onBoQtyChange(idx,val){ boLines[idx].qty=parseFloat(val)||1; }
-function onBoUnitChange(idx,val){ boLines[idx].unit=val; }
-function closeBoModal(){
-  document.getElementById('bo-modal').style.display='none';
+function onBoSkuInput(idx, val){
+  // Try to match against live SKUs
+  const typeFilter = boType==='retail'?'RETAIL':'DIST';
+  const match = liveSKUs.find(s =>
+    s.type===typeFilter &&
+    s.name.toLowerCase()===val.toLowerCase()
+  );
+  boLines[idx].skuName = match ? match.name : val;
+  boLines[idx].skuValue = match ? match.code+'|'+match.name : val;
+  // Update the confirmation line without full re-render (avoids losing focus)
+  const row=document.getElementById('bo-row-'+idx);
+  if(row){
+    const confirm=row.querySelector('div[style*="color:#27AE60"], div[style*="color:#bbb"]');
+    if(confirm){
+      if(match){
+        confirm.style.color='#27AE60';
+        confirm.textContent='✓ '+match.name;
+      } else {
+        confirm.style.color='#bbb';
+        confirm.textContent = val ? 'Type exact name or select from suggestions' : 'No item selected yet';
+      }
+    }
+  }
 }
 
+function onBoQtyChange(idx,val){ boLines[idx].qty=parseFloat(val)||1; }
+function onBoUnitChange(idx,val){ boLines[idx].unit=val; }
+
 async function submitBackorder(){
-  const dealer  = document.getElementById('bo-dealer').value.trim();
-  const phone   = document.getElementById('bo-phone')?document.getElementById('bo-phone').value.trim():'';
-  const date    = document.getElementById('bo-date').value;
-  const notes   = document.getElementById('bo-notes').value.trim();
-  const errEl   = document.getElementById('bo-err');
+  const dealer=document.getElementById('bo-dealer').value.trim();
+  const phone=document.getElementById('bo-phone').value.trim();
+  const date=document.getElementById('bo-date').value;
+  const notes=document.getElementById('bo-notes').value.trim();
+  const errEl=document.getElementById('bo-err');
 
-  // Validate dealer
-  if(!dealer){ errEl.textContent='Please enter a dealer name.'; return; }
+  if(!dealer){errEl.textContent='Please enter a dealer name.';return;}
 
-  // Validate line items
-  if(!boLines.length){ errEl.textContent='Please add at least one item.'; return; }
-  const validLines = boLines.filter(l=>l.skuValue && l.qty>0);
-  if(!validLines.length){ errEl.textContent='Please select an item and enter a quantity.'; return; }
+  // Filter valid lines — must have a name and qty
+  const validLines=boLines.filter(l=>l.skuName && l.skuName.trim() && l.qty>0);
+  if(!validLines.length){
+    errEl.textContent='Please add at least one item with a name and quantity.';
+    return;
+  }
 
-  const btn = document.getElementById('bo-submit-btn');
+  const btn=document.getElementById('bo-submit-btn');
   btn.disabled=true;
   btn.textContent=`Submitting ${validLines.length} item(s)...`;
   errEl.textContent='';
 
-  const now = new Date().toLocaleString('en-PH');
-  const promisedDate = date ? new Date(date).toLocaleDateString('en-PH') : '';
-  const who = currentUser ? currentUser.username : 'Unknown';
+  const now=new Date().toLocaleString('en-PH');
+  const promisedDate=date?new Date(date).toLocaleDateString('en-PH'):'';
+  const who=currentUser?currentUser.username:'Unknown';
 
-  // Build one row per line item — all share dealer info
-  const rows = validLines.map(line=>{
-    const parts = line.skuValue.split('|');
-    const skuCode = parts[0]||'';
-    const skuName = parts[1]||line.skuValue;
-    return [
-      now, who, dealer, phone,
-      skuCode, skuName,
-      line.qty, line.unit,
-      promisedDate, 'OPEN', notes
-    ];
+  const rows=validLines.map(line=>{
+    const parts=line.skuValue?line.skuValue.split('|'):['',line.skuName];
+    const skuCode=parts[0]||'';
+    const skuName=parts[1]||line.skuName;
+    return [now,who,dealer,phone,skuCode,skuName,line.qty,line.unit,promisedDate,'OPEN',notes];
   });
 
   try{
-    const r = await api({sheet:'Backorders', rows});
+    const r=await api({sheet:'Backorders',rows});
     if(r.status==='ok'){
       closeBoModal();
-      const activeScreen = document.querySelector('.screen.active');
-      const barId = activeScreen&&activeScreen.id==='driver-screen'
-        ? 'driver-success-bar' : 'success-bar';
-      const itemSummary = validLines.length===1
-        ? `${validLines[0].qty} ${validLines[0].unit} of ${validLines[0].skuValue.split('|')[1]||validLines[0].skuValue}`
-        : `${validLines.length} items`;
-      showBanner(barId, `Backorder logged — ${dealer}: ${itemSummary}`);
+      const activeScreen=document.querySelector('.screen.active');
+      const barId=activeScreen&&activeScreen.id==='driver-screen'
+        ?'driver-success-bar':'success-bar';
+      const summary=validLines.length===1
+        ?`${validLines[0].qty} ${validLines[0].unit} of ${validLines[0].skuName}`
+        :`${validLines.length} items`;
+      showBanner(barId,`Backorder logged — ${dealer}: ${summary}`);
     }else{
       errEl.textContent='Error: '+(r.msg||'Could not submit');
-      btn.disabled=false;
-      btn.textContent='Submit Backorder';
+      btn.disabled=false;btn.textContent='Submit Backorder';
     }
   }catch(e){
-    errEl.textContent='Network error. Please check your connection.';
-    btn.disabled=false;
-    btn.textContent='Submit Backorder';
+    errEl.textContent='Network error. Check your connection.';
+    btn.disabled=false;btn.textContent='Submit Backorder';
   }
-}
-
-
-// ── STOCK COUNT SCREEN ──
-let countCat = 'All';
-let countSaveTimer = null;
-
-// Each location has its own session key in localStorage
-function countSessionKey(loc) {
-  return 'alf_count_' + (loc || getCurrentCountLoc()).replace(/\s+/g,'_');
-}
-function getCurrentCountLoc() {
-  const el = document.getElementById('count-loc-select');
-  return el ? el.value : 'Distribution WH';
-}
-function getCountSession(loc) {
-  return LS.get(countSessionKey(loc)) || {};
-}
-function saveCountSession(loc, session) {
-  LS.set(countSessionKey(loc), session);
-  const el = document.getElementById('count-save-status');
-  if (el) {
-    const now = new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
-    el.textContent = 'Auto-saved at ' + now;
-  }
-}
-
-// Current count type: 'dist' or 'retail'
-let currentCountType = 'dist';
-
-function openCount() {
-  // Check permissions
-  const canDist = currentUser && currentUser.canCountDist !== false;
-  const canRetail = currentUser && currentUser.canCountRetail !== false;
-  if (!canDist && !canRetail) { alert('You do not have permission to perform inventory counts.'); return; }
-  if (canDist && canRetail) {
-    // Show selector
-    updateCountTypeCards();
-    showScreen('count-type-screen');
-  } else {
-    // Go straight to the one they have access to
-    startCount(canDist ? 'dist' : 'retail');
-  }
-  document.querySelector('.fab').style.display = 'flex';
-}
-
-function updateCountTypeCards() {
-  const allSkus = getAllCountSKUs();
-  const distCount = allSkus.filter(s=>s.type==='DIST').length;
-  const retailCount = allSkus.filter(s=>s.type==='RETAIL').length;
-  const canDist = currentUser && currentUser.canCountDist !== false;
-  const canRetail = currentUser && currentUser.canCountRetail !== false;
-  const distCard = document.getElementById('count-card-dist');
-  const retailCard = document.getElementById('count-card-retail');
-  if (distCard) {
-    distCard.className = 'count-type-card dist' + (canDist?'':' disabled');
-    distCard.onclick = canDist ? ()=>startCount('dist') : null;
-    const dc = document.getElementById('count-card-dist-count');
-    if(dc) dc.textContent = distCount + ' SKUs';
-  }
-  if (retailCard) {
-    retailCard.className = 'count-type-card retail' + (canRetail?'':' disabled');
-    retailCard.onclick = canRetail ? ()=>startCount('retail') : null;
-    const rc = document.getElementById('count-card-retail-count');
-    if(rc) rc.textContent = retailCount + ' SKUs';
-  }
-}
-
-function closeCountType() {
-  if (currentUser && currentUser.role === 'driver') showDriver();
-  else showApp();
-}
-
-function startCount(type) {
-  currentCountType = type;
-  const isRetail = type === 'retail';
-  const color = isRetail ? '#C07000' : '#7B2D8B';
-  // Apply theme
-  const topbar = document.getElementById('count-topbar');
-  const title = document.getElementById('count-topbar-title');
-  const fill = document.getElementById('count-progress-fill');
-  const pct = document.getElementById('count-progress-pct');
-  const submitBtn = document.getElementById('count-submit-btn');
-  const successBar = document.getElementById('count-success-bar');
-  if(topbar) topbar.style.background = color;
-  if(title) title.textContent = isRetail ? '🛒 Retail Stock Count' : '📦 Distribution Stock Count';
-  if(fill) fill.style.background = color;
-  if(pct) pct.style.color = color;
-  if(submitBtn) submitBtn.style.background = color;
-  if(successBar) successBar.style.background = color;
-  showScreen('count-screen');
-  document.querySelector('.fab').style.display = 'flex';
-  countCat = 'All';
-  buildCountChips();
-  buildCountList();
-  updateCountProgress();
-}
-
-function closeCount() {
-  if (currentUser && currentUser.role === 'driver') showDriver();
-  else showHome();
-}
-
-function switchCountLocation() {
-  countCat = 'All';
-  buildCountChips();
-  buildCountList();
-  updateCountProgress();
-}
-
-function getAllCountSKUs() {
-  // Filter by currentCountType: 'dist' = DIST only, 'retail' = RETAIL only
-  const typeFilter = currentCountType === 'retail' ? 'RETAIL' : 'DIST';
-  const all = [];
-  if (liveSKUs && liveSKUs.length > 0) {
-    liveSKUs.filter(s=>s.type===typeFilter).forEach(s => all.push({
-      code: s.code, name: s.name,
-      category: s.category, type: s.type,
-      unit: 'bag'
-    }));
-  } else {
-    if (typeFilter === 'DIST') {
-      DIST_CATS.forEach(cat => {
-        (DIST_SKUS[cat]||[]).forEach(s => all.push({
-          code: s.code, name: s.name, category: cat, type: 'DIST', unit: 'bag'
-        }));
-      });
-    } else {
-      Object.keys(csskus).forEach(cat => {
-        (csskus[cat]||[]).forEach(s => all.push({
-          code: s.code, name: s.name, category: cat, type: 'RETAIL', unit: 'bag'
-        }));
-      });
-    }
-  }
-  return all;
-}
-
-function buildCountChips() {
-  const bar = document.getElementById('count-chips-bar');
-  bar.innerHTML = '';
-  const skus = getAllCountSKUs();
-  const cats = ['All', ...new Set(skus.map(s => s.category).filter(Boolean))];
-  cats.forEach(cat => {
-    const c = document.createElement('div');
-    c.className = 'count-chip' + (cat === countCat ? ' active' : '');
-    c.textContent = cat;
-    c.onclick = () => { countCat = cat; buildCountChips(); buildCountList(); };
-    bar.appendChild(c);
-  });
-}
-
-function buildCountList() {
-  const list = document.getElementById('count-sku-list');
-  list.innerHTML = '';
-  const loc = getCurrentCountLoc();
-  const session = getCountSession(loc);
-  const allSkus = getAllCountSKUs();
-  const visible = countCat === 'All' ? allSkus : allSkus.filter(s => s.category === countCat);
-
-  // Group by category
-  const cats = countCat === 'All'
-    ? [...new Set(allSkus.map(s => s.category))]
-    : [countCat];
-
-  cats.forEach(cat => {
-    const catSkus = visible.filter(s => s.category === cat);
-    if (!catSkus.length) return;
-
-    if (countCat === 'All') {
-      const hdr = document.createElement('div');
-      hdr.className = 'count-cat-header';
-      // Count how many in this category have been counted
-      const counted = catSkus.filter(s => session[s.code] !== undefined && session[s.code] !== '').length;
-      hdr.textContent = cat + ' (' + counted + '/' + catSkus.length + ')';
-      list.appendChild(hdr);
-    }
-
-    catSkus.forEach(sku => {
-      const val = session[sku.code];
-      const hasCounted = val !== undefined && val !== '';
-      const row = document.createElement('div');
-      row.className = 'count-sku-row' + (hasCounted ? ' counted' : '');
-      row.id = 'count-row-' + sku.code.replace(/[^a-z0-9]/gi,'_');
-      row.innerHTML = `
-        <div class="count-sku-status ${hasCounted ? 'done' : 'pending'}"></div>
-        <div class="count-sku-info">
-          <div class="count-sku-name">${sku.name}</div>
-          <div class="count-sku-code">${sku.code} · ${sku.type}</div>
-        </div>
-        <div class="count-qty-wrap">
-          <div class="count-qty-lbl">On Hand</div>
-          <input class="count-qty-input ${hasCounted ? 'has-value' : ''}"
-            type="number" min="0" step="1"
-            value="${hasCounted ? val : ''}"
-            placeholder="—"
-            oninput="onCountInput('${sku.code}', this.value, '${sku.category}', '${sku.type}')">
-          <div class="count-unit">${sku.unit || 'units'}</div>
-        </div>`;
-      list.appendChild(row);
-    });
-  });
-}
-
-function onCountInput(code, val, category, type) {
-  const loc = getCurrentCountLoc();
-  const session = getCountSession(loc);
-
-  if (val === '' || val === null) {
-    delete session[code];
-  } else {
-    session[code] = parseFloat(val) || 0;
-  }
-
-  // Update row visual immediately
-  const rowEl = document.getElementById('count-row-' + code.replace(/[^a-z0-9]/gi,'_'));
-  const hasCounted = session[code] !== undefined;
-  if (rowEl) {
-    rowEl.className = 'count-sku-row' + (hasCounted ? ' counted' : '');
-    const dot = rowEl.querySelector('.count-sku-status');
-    if (dot) dot.className = 'count-sku-status ' + (hasCounted ? 'done' : 'pending');
-    const input = rowEl.querySelector('.count-qty-input');
-    if (input) input.className = 'count-qty-input' + (hasCounted ? ' has-value' : '');
-  }
-
-  // Debounced save — 800ms after last keystroke
-  clearTimeout(countSaveTimer);
-  countSaveTimer = setTimeout(() => {
-    saveCountSession(loc, session);
-    updateCountProgress();
-  }, 800);
-}
-
-function updateCountProgress() {
-  const loc = getCurrentCountLoc();
-  const session = getCountSession(loc);
-  const total = getAllCountSKUs().length;
-  const counted = Object.keys(session).length;
-  const pct = total > 0 ? Math.round(counted / total * 100) : 0;
-
-  const labelEl = document.getElementById('count-progress-label');
-  const pctEl = document.getElementById('count-progress-pct');
-  const fillEl = document.getElementById('count-progress-fill');
-  const btnEl = document.getElementById('count-submit-btn');
-  const noteEl = document.getElementById('count-submit-note');
-
-  if (labelEl) labelEl.textContent = counted + ' of ' + total + ' SKUs counted';
-  if (pctEl) pctEl.textContent = pct + '%';
-  if (fillEl) fillEl.style.width = pct + '%';
-
-  if (btnEl) {
-    if (counted === 0) {
-      btnEl.disabled = true;
-      btnEl.textContent = 'Submit Count to Google Sheets';
-      if (noteEl) noteEl.textContent = 'Count at least one SKU before submitting';
-    } else if (counted < total) {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Submit Partial Count (' + counted + ' SKUs)';
-      if (noteEl) noteEl.textContent = 'Partial counts are accepted — remaining SKUs will show as unverified';
-    } else {
-      btnEl.disabled = false;
-      btnEl.textContent = 'Submit Full Count — ' + total + ' SKUs ✓';
-      if (noteEl) noteEl.textContent = 'All SKUs counted — ready to submit';
-    }
-  }
-}
-
-async function submitCount() {
-  const loc = getCurrentCountLoc();
-  const session = getCountSession(loc);
-  const counted = Object.keys(session).length;
-
-  if (counted === 0) { alert('Please count at least one SKU before submitting.'); return; }
-
-  const allSkus = getAllCountSKUs();
-  const skuMap = {};
-  allSkus.forEach(s => skuMap[s.code] = s);
-
-  if (!confirm(counted + ' SKU counts will be submitted for ' + loc + '.\nThis will clear the current session. Continue?')) return;
-
-  const btn = document.getElementById('count-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
-
-  const now = new Date().toLocaleString('en-PH');
-  const rows = Object.entries(session).map(([code, qty]) => {
-    const sku = skuMap[code] || {};
-    return [now, currentUser.username, loc, code, sku.name||code, qty, sku.unit||'units', sku.type||'', sku.category||''];
-  });
-
-  try {
-    const sheetName = currentCountType === 'retail' ? 'Stock Counts - Retail' : 'Stock Counts - Distribution';
-    const r = await api({sheet: sheetName, rows});
-    if (r.status === 'ok') {
-      // Wipe session
-      LS.set(countSessionKey(loc), {});
-      // Show success
-      const bar = document.getElementById('count-success-bar');
-      bar.textContent = counted + ' counts submitted for ' + loc + ' by ' + currentUser.username + ' — session cleared';
-      bar.style.display = 'block';
-      setTimeout(() => { bar.style.display = 'none'; }, 6000);
-      buildCountList();
-      updateCountProgress();
-    } else {
-      alert('Error: ' + (r.msg || 'Could not submit'));
-    }
-  } catch(e) {
-    alert('Network error: ' + e.message);
-  }
-
-  btn.disabled = false;
-  updateCountProgress();
-}
-
-
-// ════════════════════════════════════════════════════════
-// PURCHASE ORDER SYSTEM
-// ════════════════════════════════════════════════════════
-const DIST_SUPPLIERS = ["A-Legacy", "AAS", "CCPI", "EMT", "PDI", "TFI", "THB", "TOPPERSWARE"];
-const RETAIL_SUPPLIERS = ["Alfrisco Distribution", "Edzena", "JFL", "Jake", "Magpayo", "Zoe"];
-
-let poList = [];          // All POs loaded from Sheets
-let currentPO = null;     // PO currently being viewed
-let poFilter = 'All';     // Status filter
-let poLineItems = [];     // Line items for current create session
-
-// ── OPEN / CLOSE PO ──
-async function openPO(){
-  showScreen('po-screen');
-  document.querySelector('.fab').style.display='flex';
-  setTNav('tnav-po');
-  showPOSubtab('list', document.getElementById('po-tab-list'));
-  await loadPOs();
-}
-
-function closePO(){
-  showHome();
-}
-
-function showPOSubtab(tab, el){
-  document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('po-view-list').style.display  = tab==='list'?'flex':'none';
-  document.getElementById('po-view-create').style.display= tab==='create'?'flex':'none';
-  document.getElementById('po-view-detail').style.display= tab==='detail'?'flex':'none';
-  if(tab==='create') initPOCreate();
-  if(tab==='list') loadPOs();
-}
-
-// ── PO NUMBER GENERATOR ──
-function generatePONumber(){
-  const d = new Date();
-  const date = d.getFullYear().toString() +
-    String(d.getMonth()+1).padStart(2,'0') +
-    String(d.getDate()).padStart(2,'0');
-  // Count existing POs for today
-  const todayPOs = poList.filter(p=>p.poNumber && p.poNumber.includes(date));
-  const seq = String(todayPOs.length+1).padStart(3,'0');
-  return `PO-${date}-${seq}`;
-}
-
-// ── LOAD POs FROM SHEETS ──
-async function loadPOs(){
-  try{
-    const r = await api({action:'getPOs'});
-    if(r.status==='ok'){
-      poList = r.pos||[];
-      buildPOStatusChips();
-      renderPOList();
-      // Update pending badge
-      const pending = poList.filter(p=>p.status==='PENDING').length;
-      const badge = document.getElementById('po-pending-badge');
-      if(badge){ badge.textContent=pending; badge.style.display=pending>0?'block':'none'; }
-    }
-  }catch(e){
-    document.getElementById('po-list-body').innerHTML='<div class="po-list-empty">Could not load POs. Check connection.</div>';
-  }
-}
-
-async function loadPendingBadge(){
-  try{
-    const r = await api({action:'getPOs'});
-    if(r.status==='ok'){
-      poList = r.pos||[];
-      const pending = poList.filter(p=>p.status==='PENDING').length;
-      const badge = document.getElementById('po-pending-badge');
-      if(badge){ badge.textContent=pending; badge.style.display=pending>0?'block':'none'; }
-    }
-  }catch(e){}
-}
-
-function buildPOStatusChips(){
-  const bar = document.getElementById('po-status-chips');
-  const statuses = ['All','DRAFT','PENDING','APPROVED','PARTIAL','RECEIVED','REJECTED','CANCELLED'];
-  const counts = {};
-  poList.forEach(p=>{ counts[p.status]=(counts[p.status]||0)+1; });
-  bar.innerHTML = '';
-  statuses.forEach(s=>{
-    const cnt = s==='All' ? poList.length : (counts[s]||0);
-    if(s!=='All' && cnt===0) return;
-    const c = document.createElement('div');
-    c.className='po-chip'+(s===poFilter?' active':'');
-    c.textContent = s==='All'?`All (${cnt})`:`${s} (${cnt})`;
-    c.onclick=()=>{ poFilter=s; buildPOStatusChips(); renderPOList(); };
-    bar.appendChild(c);
-  });
-}
-
-function renderPOList(){
-  const body = document.getElementById('po-list-body');
-  const canSee = currentUser.role==='admin'
-    ? poList
-    : poList.filter(p=>{
-        if(p.type==='DIST' && currentUser.role==='staff') return true;
-        if(p.type==='RETAIL' && currentUser.role==='staff-retail') return true;
-        if(p.createdBy===currentUser.username) return true;
-        return false;
-      });
-  const visible = poFilter==='All' ? canSee : canSee.filter(p=>p.status===poFilter);
-
-  if(!visible.length){
-    body.innerHTML='<div class="po-list-empty">No purchase orders found.<br>Tap "+ New PO" to create one.</div>';
-    return;
-  }
-  body.innerHTML='';
-  visible.sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
-  visible.forEach(po=>{
-    const card=document.createElement('div');
-    card.className='po-card';
-    card.onclick=()=>openPODetail(po.poNumber);
-    const statusCls={'DRAFT':'s-draft','PENDING':'s-pending','APPROVED':'s-approved','PARTIAL':'s-partial','RECEIVED':'s-received','REJECTED':'s-rejected','CANCELLED':'s-cancelled'}[po.status]||'s-draft';
-    card.innerHTML=`
-      <div class="po-card-row1">
-        <div>
-          <div class="po-number">${po.poNumber}</div>
-          <div class="po-supplier">${po.supplier} · ${po.type}</div>
-          <div class="po-meta">${po.createdDate} · ${po.createdBy}</div>
-        </div>
-        <span class="po-status-badge ${statusCls}">${po.status}</span>
-      </div>
-      <div class="po-card-row2">
-        <span style="font-size:11px;color:#888">${po.lineCount||0} item(s)</span>
-        <span class="po-total">₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</span>
-      </div>`;
-    body.appendChild(card);
-  });
-}
-
-// ── CREATE PO ──
-function initPOCreate(){
-  poLineItems=[];
-  document.getElementById('po-type').value='DIST';
-  document.getElementById('po-notes').value='';
-  document.getElementById('po-delivery-date').value='';
-  onPOTypeChange();
-  renderPOLineItems();
-  updatePOTotals();
-}
-
-function onPOTypeChange(){
-  const type = document.getElementById('po-type').value;
-  const sup = document.getElementById('po-supplier');
-  // Filter suppliers to only those that have SKUs assigned in the live SKU master
-  const assignedSups = [...new Set(
-    liveSKUs.filter(s=>s.type===type && s.supplier)
-            .map(s=>s.supplier)
-  )].sort();
-  const allSups = type==='DIST' ? DIST_SUPPLIERS : RETAIL_SUPPLIERS;
-  // Use assigned if available, fall back to full list
-  const supList = assignedSups.length > 0 ? assignedSups : allSups;
-  sup.innerHTML = supList.map(s=>`<option value="${s}">${s}</option>`).join('');
-}
-
-function addPOLineItem(){
-  const type = document.getElementById('po-type').value;
-  const supplier = document.getElementById('po-supplier').value;
-  // Filter SKUs by type AND assigned supplier (if supplier data available)
-  const filtered = liveSKUs.filter(s => {
-    if(s.type !== type) return false;
-    if(s.supplier && supplier) return s.supplier === supplier;
-    return true; // No supplier assigned — show all for this type
-  });
-  // Group by category for optgroups
-  const cats = [...new Set(filtered.map(s=>s.category))];
-  const skuOpts = cats.map(cat => {
-    const items = filtered.filter(s=>s.category===cat)
-      .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
-      .join('');
-    return `<optgroup label="${cat}">${items}</optgroup>`;
-  }).join('');
-
-  const idx = poLineItems.length;
-  poLineItems.push({skuCode:'',skuName:'',qty:1,unitCost:0,unit:'bag'});
-
-  const div=document.createElement('div');
-  div.className='po-line-item';
-  div.id=`po-line-${idx}`;
-  div.innerHTML=`
-    <div class="po-line-info">
-      <select style="width:100%;padding:6px 8px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:11px;outline:none;color:#222;background:white"
-        onchange="onPOLineSelect(${idx},this)">
-        <option value="">-- Select item --</option>
-        ${skuOpts}
-      </select>
-    </div>
-    <div class="po-line-inputs">
-      <div style="display:flex;flex-direction:column;align-items:center">
-        <span style="font-size:9px;color:#aaa;margin-bottom:2px">Qty</span>
-        <input class="po-line-qty" type="number" min="1" value="1" oninput="onPOLineQty(${idx},this.value)">
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center">
-        <span style="font-size:9px;color:#aaa;margin-bottom:2px">Unit cost ₱</span>
-        <input class="po-line-cost" type="number" min="0" placeholder="0.00" oninput="onPOLineCost(${idx},this.value)">
-      </div>
-    </div>
-    <button class="po-line-del" onclick="removePOLine(${idx})">×</button>`;
-  document.getElementById('po-line-items').appendChild(div);
-  updatePOTotals();
-}
-
-function onPOLineSelect(idx, sel){
-  if(!sel.value)return;
-  const parts=sel.value.split('|');
-  poLineItems[idx].skuCode=parts[0];
-  poLineItems[idx].skuName=parts[1]||parts[0];
-  // Auto-fill cost from SKU Master
-  const skuData = liveSKUs.find(s=>s.code===parts[0]);
-  if(skuData && skuData.cost){
-    poLineItems[idx].unitCost = skuData.cost;
-    const costInput = document.querySelector(`#po-line-${idx} .po-line-cost`);
-    if(costInput) costInput.value = skuData.cost;
-  }
-  updatePOTotals();
-}
-
-function onPOLineQty(idx,val){
-  poLineItems[idx].qty=parseFloat(val)||0;
-  updatePOTotals();
-}
-
-function onPOLineCost(idx,val){
-  poLineItems[idx].unitCost=parseFloat(val)||0;
-  updatePOTotals();
-}
-
-function removePOLine(idx){
-  poLineItems[idx]={removed:true};
-  const el=document.getElementById('po-line-'+idx);
-  if(el)el.remove();
-  updatePOTotals();
-}
-
-function renderPOLineItems(){
-  document.getElementById('po-line-items').innerHTML='';
-  poLineItems=[];
-}
-
-function updatePOTotals(){
-  const active=poLineItems.filter(l=>!l.removed&&l.skuCode);
-  const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);
-  document.getElementById('po-item-count').textContent=active.length;
-  document.getElementById('po-grand-total').textContent='₱'+total.toLocaleString('en-PH',{minimumFractionDigits:2});
-}
-
-async function savePODraft(){ await savePO('DRAFT'); }
-async function submitPOForApproval(){ await savePO('PENDING'); }
-
-async function savePO(status){
-  const type=document.getElementById('po-type').value;
-  const supplier=document.getElementById('po-supplier').value;
-  const notes=document.getElementById('po-notes').value.trim();
-  const delivDate=document.getElementById('po-delivery-date').value;
-  const active=poLineItems.filter(l=>!l.removed&&l.skuCode);
-
-  if(!supplier){alert('Please select a supplier.');return;}
-  if(active.length===0){alert('Please add at least one line item.');return;}
-
-  const poNumber=generatePONumber();
-  const now=new Date().toLocaleString('en-PH');
-  const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);
-
-  try{
-    const r=await api({
-      action:'createPO',
-      poNumber, type, supplier, status,
-      createdBy:currentUser.username,
-      createdDate:now,
-      deliveryDate:delivDate,
-      notes, totalValue:total,
-      lineItems:active.map(l=>([poNumber,l.skuCode,l.skuName,'',l.qty,'bag',l.unitCost,l.qty*l.unitCost,0,l.qty,'Open']))
-    });
-    if(r.status==='ok'){
-      showBanner('po-success-bar', `PO ${poNumber} ${status==='DRAFT'?'saved as draft':'submitted for approval'}`);
-      poLineItems=[];
-      await loadPOs();
-      showPOSubtab('list',document.getElementById('po-tab-list'));
-    }else{alert('Error: '+(r.msg||'Could not save PO'));}
-  }catch(e){alert('Network error: '+e.message);}
-}
-
-// ── PO DETAIL ──
-async function openPODetail(poNumber){
-  try{
-    const r=await api({action:'getPODetail',poNumber});
-    if(r.status==='ok'){
-      currentPO={...r.po, lineItems:r.lineItems};
-      renderPODetail();
-      const el=document.getElementById('po-tab-list');
-      if(el) el.classList.remove('active');
-      document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));
-      document.getElementById('po-view-list').style.display='none';
-      document.getElementById('po-view-create').style.display='none';
-      const detail=document.getElementById('po-view-detail');
-      detail.style.display='flex';detail.style.flexDirection='column';
-    }
-  }catch(e){alert('Could not load PO details.');}
-}
-
-function renderPODetail(){
-  const po=currentPO;
-  const isAdmin=currentUser.role==='admin';
-  const canReceive=(isAdmin)||(po.type==='DIST'&&currentUser.role==='staff')||(po.type==='RETAIL'&&currentUser.role==='staff-retail');
-  const canCancel=isAdmin||(po.createdBy===currentUser.username&&['DRAFT','PENDING'].includes(po.status));
-  const statusCls={'DRAFT':'s-draft','PENDING':'s-pending','APPROVED':'s-approved','PARTIAL':'s-partial','RECEIVED':'s-received','REJECTED':'s-rejected','CANCELLED':'s-cancelled'}[po.status]||'';
-
-  let actionBtns='';
-  if(isAdmin&&po.status==='PENDING'){
-    actionBtns+=`<button class="po-btn po-btn-success" onclick="approvePO()">Approve</button>`;
-    actionBtns+=`<button class="po-btn po-btn-danger" onclick="rejectPO()">Reject</button>`;
-  }
-  if(canReceive&&['APPROVED','PARTIAL'].includes(po.status)){
-    actionBtns+=`<button class="po-btn po-btn-primary" onclick="receiveItems()">Receive Items</button>`;
-  }
-  if(canCancel&&!['RECEIVED','CANCELLED','REJECTED'].includes(po.status)){
-    actionBtns+=`<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>`;
-  }
-
-  const lineItemsHTML=(po.lineItems||[]).map((li,i)=>{
-    const outstanding=Number(li.qtyOutstanding)||Number(li.qtyOrdered)-Number(li.qtyReceived||0);
-    const received=Number(li.qtyReceived||0);
-    const isFull=outstanding<=0;
-    return `<div class="po-receive-row">
-      <div class="po-receive-info">
-        <div class="po-receive-name">${li.itemName||li.skuCode}</div>
-        <div class="po-receive-ordered">Ordered: ${li.qtyOrdered} · Received: ${received} · Outstanding: ${outstanding}</div>
-      </div>
-      ${isFull
-        ? '<span class="po-received-badge">Received ✓</span>'
-        : `<input class="po-receive-input" type="number" min="0" max="${outstanding}" placeholder="0" id="recv-${i}" ${['APPROVED','PARTIAL'].includes(po.status)&&canReceive?'':'disabled'}>`
-      }
-    </div>`;
-  }).join('');
-
-  document.getElementById('po-detail-body').innerHTML=`
-    <div class="po-detail-header">
-      <div class="po-detail-num">${po.poNumber}</div>
-      <div><span class="po-status-badge ${statusCls}">${po.status}</span></div>
-      <div class="po-detail-meta" style="margin-top:8px">
-        Supplier: <strong>${po.supplier}</strong><br>
-        Type: ${po.type} · Created: ${po.createdDate}<br>
-        Created by: ${po.createdBy}
-        ${po.approvedBy?'<br>Approved by: '+po.approvedBy:''}<br>
-        Total: <strong>₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>
-        ${po.notes?'<br>Notes: '+po.notes:''}
-      </div>
-    </div>
-    ${actionBtns?`<div class="po-action-row">${actionBtns}</div>`:''}
-    <div class="po-detail-section">
-      <div class="po-detail-section-title">Line Items</div>
-      ${lineItemsHTML||'<div style="color:#aaa;font-size:12px">No line items found</div>'}
-    </div>
-    <div class="po-action-row" style="margin-top:4px">
-      <button class="po-btn po-btn-secondary" onclick="backToPOList()">← Back to list</button>
-    </div>`;
-}
-
-function backToPOList(){
-  currentPO=null;
-  document.getElementById('po-view-detail').style.display='none';
-  showPOSubtab('list',document.getElementById('po-tab-list'));
-}
-
-async function approvePO(){
-  if(!confirm(`Approve ${currentPO.poNumber}?`))return;
-  try{
-    const r=await api({action:'approvePO',poNumber:currentPO.poNumber,approvedBy:currentUser.username});
-    if(r.status==='ok'){
-      showBanner('po-success-bar','PO approved successfully');
-      await openPODetail(currentPO.poNumber);
-      await loadPOs();
-    }else alert('Error: '+r.msg);
-  }catch(e){alert('Network error');}
-}
-
-async function rejectPO(){
-  const reason=prompt('Reason for rejection (optional):');
-  if(reason===null)return;
-  try{
-    const r=await api({action:'rejectPO',poNumber:currentPO.poNumber,rejectedBy:currentUser.username,reason});
-    if(r.status==='ok'){
-      showBanner('po-success-bar','PO rejected');
-      await openPODetail(currentPO.poNumber);
-      await loadPOs();
-    }else alert('Error: '+r.msg);
-  }catch(e){alert('Network error');}
-}
-
-async function cancelPO(){
-  if(!confirm(`Cancel ${currentPO.poNumber}? This cannot be undone.`))return;
-  try{
-    const r=await api({action:'cancelPO',poNumber:currentPO.poNumber,cancelledBy:currentUser.username});
-    if(r.status==='ok'){
-      showBanner('po-success-bar','PO cancelled');
-      await openPODetail(currentPO.poNumber);
-      await loadPOs();
-    }else alert('Error: '+r.msg);
-  }catch(e){alert('Network error');}
-}
-
-async function receiveItems(){
-  const lines=currentPO.lineItems||[];
-  const receipts=[];
-  lines.forEach((li,i)=>{
-    const input=document.getElementById('recv-'+i);
-    if(!input)return;
-    const qty=parseFloat(input.value)||0;
-    if(qty>0) receipts.push({skuCode:li.skuCode,itemName:li.itemName,qtyReceived:qty,lineIndex:i});
-  });
-  if(!receipts.length){alert('Enter quantities to receive for at least one item.');return;}
-  try{
-    const r=await api({
-      action:'receivePO',
-      poNumber:currentPO.poNumber,
-      receivedBy:currentUser.username,
-      poType:currentPO.type,
-      receipts
-    });
-    if(r.status==='ok'){
-      showBanner('po-success-bar',`${receipts.length} item(s) received — stock counts updated`);
-      await openPODetail(currentPO.poNumber);
-      await loadPOs();
-    }else alert('Error: '+r.msg);
-  }catch(e){alert('Network error: '+e.message);}
 }
 
 
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
-  // Check if there are any unsaved quantities
-  const hasUnsaved = Object.values(quantities).some(q => q.loaded > 0 || q.returned > 0);
+  const hasUnsaved=Object.values(quantities).some(q=>q.loaded>0||q.returned>0);
   if(hasUnsaved){
-    const unitLabel = document.getElementById('unit-select').value;
-    const confirmed = confirm(
-      'You have unsaved quantities for the current unit.\n\n' +
-      'Switching to ' + unitLabel + ' will clear the current form.\n\n' +
-      'Have you already submitted the previous unit\'s data?'
-    );
-    if(!confirmed){
-      // Revert to previous unit — find what was selected before
-      // We track this via a data attribute
-      const sel = document.getElementById('unit-select');
-      sel.value = sel.dataset.lastUnit || sel.options[0].value;
-      return;
-    }
+    const unitLabel=document.getElementById('unit-select').value;
+    const confirmed=confirm('You have unsaved quantities for the current unit.\n\nSwitching to '+unitLabel+' will clear the current form.\n\nHave you already submitted the previous unit\'s data?');
+    if(!confirmed){const sel=document.getElementById('unit-select');sel.value=sel.dataset.lastUnit||sel.options[0].value;return;}
   }
-  // Clear quantities and rebuild for new unit
-  quantities = {};
-  // Store current selection for revert if needed
-  const sel = document.getElementById('unit-select');
-  sel.dataset.lastUnit = sel.value;
-  // Also reset mode to LOAD when switching units
+  quantities={};
+  const sel=document.getElementById('unit-select');
+  sel.dataset.lastUnit=sel.value;
   if(isReturnMode){
-    isReturnMode = false;
-    document.getElementById('mode-btn').textContent = 'LOAD';
-    document.getElementById('mode-btn').className = 'mode-btn';
-    document.getElementById('submit-btn').className = 'submit-btn';
-    document.getElementById('submit-btn').textContent = 'Submit to Google Sheets';
+    isReturnMode=false;
+    document.getElementById('mode-btn').textContent='LOAD';
+    document.getElementById('mode-btn').className='mode-btn';
+    document.getElementById('submit-btn').className='submit-btn';
+    document.getElementById('submit-btn').textContent='Submit to Google Sheets';
+  }
+  buildSkuList();updateTotals();
+  showBanner('success-bar','Switched to '+sel.value+' — form cleared and ready for new entry');
+}
+
+// ── TOGGLE MODE ──
+async function toggleMode(){
+  isReturnMode=!isReturnMode;
+  const b=document.getElementById('mode-btn'),s=document.getElementById('submit-btn');
+  b.textContent=isReturnMode?'RETURN':'LOAD';
+  b.className='mode-btn'+(isReturnMode?' return-mode':'');
+  s.className='submit-btn'+(isReturnMode?' return-mode':'');
+  s.textContent=isReturnMode?'Submit Return to Google Sheets':'Submit to Google Sheets';
+  if(isReturnMode){
+    const unit=document.getElementById('unit-select').value;
+    b.textContent='Loading...';b.disabled=true;
+    try{
+      const r=await api({action:'getTodayLoads',unit});
+      if(r.status==='ok'&&r.rows&&r.rows.length>0){
+        r.rows.forEach(item=>{
+          const code=item.code;
+          if(!quantities[code])quantities[code]={loaded:0,returned:0,cat:item.cat||''};
+          quantities[code].loaded=Number(item.loaded)||0;
+          quantities[code].cat=item.cat||quantities[code].cat;
+        });
+        showBanner('success-bar','Loaded '+r.rows.length+' SKU quantities from today\'s morning load');
+      }else{showBanner('success-bar','No LOAD submission found for today — enter loaded quantities manually if needed');}
+    }catch(e){showBanner('success-bar','Could not fetch today\'s load — check connection');}
+    b.textContent='RETURN';b.disabled=false;
   }
   buildSkuList();
-  updateTotals();
-  showBanner('success-bar', 'Switched to ' + sel.value + ' — form cleared and ready for new entry');
 }
 
-
-// ════════════════════════════════════════════════════════
-// PRODUCTION CONVERSION SYSTEM
-// ════════════════════════════════════════════════════════
-let bom = [];          // Bill of Materials loaded from Sheets
-let prodHistory = [];  // Recent production runs this session
-
-async function openProduction(){
-  showScreen('prod-screen');
-  document.querySelector('.fab').style.display='flex';
-  // Show loading state
-  const list = document.getElementById('prod-list');
-  list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
-  await loadBOM();
-  buildProdList();
-}
-
-function closeProduction(){
-  showHome();
-}
-
-async function loadBOM(){
+// ── LIVE SKU MASTER ──
+let liveSKUs=[];
+async function loadSKUMaster(){
   try{
-    const r = await api({action:'getBOM'});
-    if(r.status==='ok' && Array.isArray(r.bom)){
-      bom = r.bom.filter(b => String(b.active).toUpperCase() === 'YES');
-    } else {
-      console.warn('getBOM returned:', r);
-      bom = [];
+    const r=await api({action:'getAllSKUs'});
+    if(r.status==='ok'&&Array.isArray(r.skus)&&r.skus.length>0){
+      liveSKUs=r.skus;rebuildSKUData();buildBoDropdown();return true;
     }
-  }catch(e){
-    console.error('BOM load failed:', e);
-    bom = [];
-  }
+    const r2=await api({action:'getSKUMaster'});
+    if(r2.status==='ok'&&Array.isArray(r2.skus)&&r2.skus.length>0){
+      liveSKUs=r2.skus;rebuildSKUData();buildBoDropdown();return true;
+    }
+    return false;
+  }catch(e){return false;}
 }
 
-function buildProdList(){
-  const list = document.getElementById('prod-list');
-  list.innerHTML='';
+function rebuildSKUData(){
+  DIST_CATS.length=0;
+  Object.keys(DIST_SKUS).forEach(k=>delete DIST_SKUS[k]);
+  const distCatsSeen=[];
+  liveSKUs.forEach(sku=>{
+    if(sku.type==='DIST'){
+      if(!DIST_SKUS[sku.category]){DIST_SKUS[sku.category]=[];distCatsSeen.push(sku.category);}
+      DIST_SKUS[sku.category].push({code:sku.code,name:sku.name});
+    }else if(sku.type==='RETAIL'){
+      if(!csskus[sku.category])csskus[sku.category]=[];
+      if(!csskus[sku.category].find(s=>s.code===sku.code))csskus[sku.category].push({code:sku.code,name:sku.name});
+    }
+  });
+  distCatsSeen.forEach(c=>{if(!DIST_CATS.includes(c))DIST_CATS.push(c);});
+}
 
-  if(!bom.length){
-    list.innerHTML='<div class="prod-empty">No conversion rules found.<br>Upload Production BOM to Google Sheets first.</div>';
-    return;
+function buildBoDropdown(){}
+
+// ── STOCK COUNT SYSTEM ──
+let countCat='All';
+let countSaveTimer=null;
+let currentCountType='dist';
+
+function countSessionKey(loc){return 'alf_count_'+(loc||getCurrentCountLoc()).replace(/\s+/g,'_');}
+function getCurrentCountLoc(){const el=document.getElementById('count-loc-select');return el?el.value:'Distribution WH';}
+function getCountSession(loc){return LS.get(countSessionKey(loc))||{};}
+function saveCountSession(loc,session){
+  LS.set(countSessionKey(loc),session);
+  const el=document.getElementById('count-save-status');
+  if(el){const now=new Date().toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});el.textContent='Auto-saved at '+now;}
+}
+
+function openCount(){
+  const canDist=currentUser&&currentUser.canCountDist!==false;
+  const canRetail=currentUser&&currentUser.canCountRetail!==false;
+  if(!canDist&&!canRetail){alert('You do not have permission to perform inventory counts.');return;}
+  if(canDist&&canRetail){updateCountTypeCards();showScreen('count-type-screen');}
+  else{startCount(canDist?'dist':'retail');}
+  document.querySelector('.fab').style.display='flex';
+}
+
+function updateCountTypeCards(){
+  const allSkus=getAllCountSKUs();
+  const distCount=liveSKUs.filter(s=>s.type==='DIST').length||allSkus.filter(s=>s.type==='DIST').length;
+  const retailCount=liveSKUs.filter(s=>s.type==='RETAIL').length||allSkus.filter(s=>s.type==='RETAIL').length;
+  const canDist=currentUser&&currentUser.canCountDist!==false;
+  const canRetail=currentUser&&currentUser.canCountRetail!==false;
+  const distCard=document.getElementById('count-card-dist');
+  const retailCard=document.getElementById('count-card-retail');
+  if(distCard){distCard.className='count-type-card dist'+(canDist?'':' disabled');distCard.onclick=canDist?()=>startCount('dist'):null;const dc=document.getElementById('count-card-dist-count');if(dc)dc.textContent=distCount+' SKUs';}
+  if(retailCard){retailCard.className='count-type-card retail'+(canRetail?'':' disabled');retailCard.onclick=canRetail?()=>startCount('retail'):null;const rc=document.getElementById('count-card-retail-count');if(rc)rc.textContent=retailCount+' SKUs';}
+}
+
+function closeCountType(){if(currentUser&&currentUser.role==='driver')showDriver();else showHome();}
+
+function startCount(type){
+  currentCountType=type;
+  const isRetail=type==='retail';
+  const color=isRetail?'#C07000':'#7B2D8B';
+  const topbar=document.getElementById('count-topbar');
+  const title=document.getElementById('count-topbar-title');
+  const fill=document.getElementById('count-progress-fill');
+  const pct=document.getElementById('count-progress-pct');
+  const submitBtn=document.getElementById('count-submit-btn');
+  const successBar=document.getElementById('count-success-bar');
+  if(topbar)topbar.style.background=color;
+  if(title)title.textContent=isRetail?'🛒 Retail Stock Count':'📦 Distribution Stock Count';
+  if(fill)fill.style.background=color;
+  if(pct)pct.style.color=color;
+  if(submitBtn)submitBtn.style.background=color;
+  if(successBar)successBar.style.background=color;
+  showScreen('count-screen');
+  document.querySelector('.fab').style.display='flex';
+  countCat='All';
+  buildCountChips();buildCountList();updateCountProgress();
+}
+
+function closeCount(){if(currentUser&&currentUser.role==='driver')showDriver();else showHome();}
+
+function switchCountLocation(){countCat='All';buildCountChips();buildCountList();updateCountProgress();}
+
+function getAllCountSKUs(){
+  const typeFilter=currentCountType==='retail'?'RETAIL':'DIST';
+  const all=[];
+  if(liveSKUs&&liveSKUs.length>0){
+    liveSKUs.filter(s=>s.type===typeFilter).forEach(s=>all.push({code:s.code,name:s.name,category:s.category,type:s.type,unit:'bag'}));
+  }else{
+    if(typeFilter==='DIST'){DIST_CATS.forEach(cat=>{(DIST_SKUS[cat]||[]).forEach(s=>all.push({code:s.code,name:s.name,category:cat,type:'DIST',unit:'bag'}));});}
+    else{Object.keys(csskus).forEach(cat=>{(csskus[cat]||[]).forEach(s=>all.push({code:s.code,name:s.name,category:cat,type:'RETAIL',unit:'bag'}));});}
   }
+  return all;
+}
 
-  // Group by product for clean display
-  bom.forEach((item,idx)=>{
-    const unverified = item.verified==='NO';
-    const card = document.createElement('div');
-    card.className='prod-card'+(unverified?' prod-unverified':'');
-    card.innerHTML=`
-      <div class="prod-card-header">
-        <div>
-          <div class="prod-card-name">${item.sourceName}
-            ${unverified?'<span class="prod-warn-badge">⚠️ Unverified</span>':''}
-          </div>
-          <div class="prod-card-rule">
-            1 bag (${item.bagSizeKg}kg) → <strong>${item.ratio} units</strong> of ${item.outputName}
-          </div>
-        </div>
-      </div>
-      <div class="prod-input-row">
-        <div class="prod-input-group">
-          <label class="prod-label">Bags to convert</label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button>
-            <input class="prod-bags-input" type="number" min="1" step="1"
-              id="bags-${idx}" value="1"
-              oninput="updateOutput(${idx})">
-            <button class="prod-stepper" onclick="stepBags(${idx},1)">+</button>
-          </div>
-        </div>
-        <div class="prod-output-group">
-          <label class="prod-label">Units produced</label>
-          <div class="prod-output-val" id="output-${idx}">${item.ratio}</div>
-          <div class="prod-output-unit">${item.outputName}</div>
-        </div>
-      </div>
-      <button class="prod-submit-btn ${unverified?'prod-submit-warn':''}"
-        onclick="submitProduction(${idx})"
-        ${unverified?'title="Unverified ratio — confirm before submitting"':''}>
-        ${unverified?'⚠️ ':''} Convert
-      </button>`;
-    list.appendChild(card);
-    updateOutput(idx);
+function buildCountChips(){
+  const bar=document.getElementById('count-chips-bar');bar.innerHTML='';
+  const skus=getAllCountSKUs();
+  const cats=['All',...new Set(skus.map(s=>s.category).filter(Boolean))];
+  cats.forEach(cat=>{const c=document.createElement('div');c.className='count-chip'+(cat===countCat?' active':'');c.textContent=cat;c.onclick=()=>{countCat=cat;buildCountChips();buildCountList();};bar.appendChild(c);});
+}
+
+function buildCountList(){
+  const list=document.getElementById('count-sku-list');list.innerHTML='';
+  const loc=getCurrentCountLoc();const session=getCountSession(loc);
+  const allSkus=getAllCountSKUs();
+  const visible=countCat==='All'?allSkus:allSkus.filter(s=>s.category===countCat);
+  const cats=countCat==='All'?[...new Set(allSkus.map(s=>s.category))]:[countCat];
+  cats.forEach(cat=>{
+    const catSkus=visible.filter(s=>s.category===cat);
+    if(!catSkus.length)return;
+    if(countCat==='All'){const hdr=document.createElement('div');hdr.className='count-cat-header';const counted=catSkus.filter(s=>session[s.code]!==undefined&&session[s.code]!=='').length;hdr.textContent=cat+' ('+counted+'/'+catSkus.length+')';list.appendChild(hdr);}
+    catSkus.forEach(sku=>{
+      const val=session[sku.code];const hasCounted=val!==undefined&&val!=='';
+      const row=document.createElement('div');row.className='count-sku-row'+(hasCounted?' counted':'');row.id='count-row-'+sku.code.replace(/[^a-z0-9]/gi,'_');
+      row.innerHTML=`<div class="count-sku-status ${hasCounted?'done':'pending'}"></div><div class="count-sku-info"><div class="count-sku-name">${sku.name}</div><div class="count-sku-code">${sku.code} · ${sku.type}</div></div><div class="count-qty-wrap"><div class="count-qty-lbl">On Hand</div><input class="count-qty-input ${hasCounted?'has-value':''}" type="number" min="0" step="1" value="${hasCounted?val:''}" placeholder="—" oninput="onCountInput('${sku.code}',this.value,'${sku.category}','${sku.type}')"><div class="count-unit">${sku.unit||'units'}</div></div>`;
+      list.appendChild(row);
+    });
   });
 }
 
-function stepBags(idx, delta){
-  const input = document.getElementById('bags-'+idx);
-  const newVal = Math.max(1, (parseInt(input.value)||1) + delta);
-  input.value = newVal;
-  updateOutput(idx);
+function onCountInput(code,val,category,type){
+  const loc=getCurrentCountLoc();const session=getCountSession(loc);
+  if(val===''||val===null){delete session[code];}else{session[code]=parseFloat(val)||0;}
+  const rowEl=document.getElementById('count-row-'+code.replace(/[^a-z0-9]/gi,'_'));
+  const hasCounted=session[code]!==undefined;
+  if(rowEl){rowEl.className='count-sku-row'+(hasCounted?' counted':'');const dot=rowEl.querySelector('.count-sku-status');if(dot)dot.className='count-sku-status '+(hasCounted?'done':'pending');const input=rowEl.querySelector('.count-qty-input');if(input)input.className='count-qty-input'+(hasCounted?' has-value':'');}
+  clearTimeout(countSaveTimer);
+  countSaveTimer=setTimeout(()=>{saveCountSession(loc,session);updateCountProgress();},800);
 }
 
-function updateOutput(idx){
-  const input = document.getElementById('bags-'+idx);
-  const bags = parseInt(input.value)||0;
-  const item = bom[idx];
-  const units = bags * item.ratio;
-  const outEl = document.getElementById('output-'+idx);
-  if(outEl) outEl.textContent = units.toLocaleString();
+function updateCountProgress(){
+  const loc=getCurrentCountLoc();const session=getCountSession(loc);
+  const total=getAllCountSKUs().length;const counted=Object.keys(session).length;
+  const pct=total>0?Math.round(counted/total*100):0;
+  const labelEl=document.getElementById('count-progress-label');const pctEl=document.getElementById('count-progress-pct');const fillEl=document.getElementById('count-progress-fill');const btnEl=document.getElementById('count-submit-btn');const noteEl=document.getElementById('count-submit-note');
+  if(labelEl)labelEl.textContent=counted+' of '+total+' SKUs counted';
+  if(pctEl)pctEl.textContent=pct+'%';
+  if(fillEl)fillEl.style.width=pct+'%';
+  if(btnEl){
+    if(counted===0){btnEl.disabled=true;btnEl.textContent='Submit Count to Google Sheets';if(noteEl)noteEl.textContent='Count at least one SKU before submitting';}
+    else if(counted<total){btnEl.disabled=false;btnEl.textContent='Submit Partial Count ('+counted+' SKUs)';if(noteEl)noteEl.textContent='Partial counts accepted — remaining SKUs unverified';}
+    else{btnEl.disabled=false;btnEl.textContent='Submit Full Count — '+total+' SKUs ✓';if(noteEl)noteEl.textContent='All SKUs counted — ready to submit';}
+  }
 }
+
+async function submitCount(){
+  const loc=getCurrentCountLoc();const session=getCountSession(loc);const counted=Object.keys(session).length;
+  if(counted===0){alert('Please count at least one SKU before submitting.');return;}
+  const allSkus=getAllCountSKUs();const skuMap={};allSkus.forEach(s=>skuMap[s.code]=s);
+  if(!confirm(counted+' SKU counts will be submitted for '+loc+'.\nThis will clear the current session. Continue?'))return;
+  const btn=document.getElementById('count-submit-btn');btn.disabled=true;btn.textContent='Submitting...';
+  const now=new Date().toLocaleString('en-PH');
+  const rows=Object.entries(session).map(([code,qty])=>{const sku=skuMap[code]||{};return[now,currentUser.username,loc,code,sku.name||code,qty,sku.unit||'units',sku.type||'',sku.category||''];});
+  try{
+    const sheetName=currentCountType==='retail'?'Stock Counts - Retail':'Stock Counts - Distribution';
+    const r=await api({sheet:sheetName,rows});
+    if(r.status==='ok'){
+      LS.set(countSessionKey(loc),{});
+      const bar=document.getElementById('count-success-bar');bar.textContent=counted+' counts submitted for '+loc+' by '+currentUser.username+' — session cleared';bar.style.display='block';setTimeout(()=>{bar.style.display='none';},6000);
+      buildCountList();updateCountProgress();
+    }else{alert('Error: '+(r.msg||'Could not submit'));}
+  }catch(e){alert('Network error: '+e.message);}
+  btn.disabled=false;updateCountProgress();
+}
+
+// ── PURCHASE ORDER SYSTEM ──
+const DIST_SUPPLIERS=['A-Legacy','AAS','CCPI','EMT','PDI','TFI','THB','TOPPERSWARE'];
+const RETAIL_SUPPLIERS=['Alfrisco Distribution','Edzena','JFL','Jake','Magpayo','Zoe'];
+let poList=[],currentPO=null,poFilter='All',poLineItems=[];
+
+function generatePONumber(){
+  const d=new Date();const date=d.getFullYear().toString()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  const todayPOs=poList.filter(p=>p.poNumber&&p.poNumber.includes(date));
+  return 'PO-'+date+'-'+String(todayPOs.length+1).padStart(3,'0');
+}
+
+async function openPO(){
+  showScreen('po-screen');document.querySelector('.fab').style.display='flex';
+  showPOSubtab('list',document.getElementById('po-tab-list'));
+  await loadPOs();
+}
+
+function closePO(){showHome();}
+
+function showPOSubtab(tab,el){
+  document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('po-view-list').style.display=tab==='list'?'flex':'none';
+  document.getElementById('po-view-create').style.display=tab==='create'?'flex':'none';
+  document.getElementById('po-view-detail').style.display=tab==='detail'?'flex':'none';
+  if(tab==='create')initPOCreate();
+  if(tab==='list')loadPOs();
+}
+
+async function loadPOs(){
+  try{
+    const r=await api({action:'getPOs'});
+    if(r.status==='ok'){poList=r.pos||[];buildPOStatusChips();renderPOList();
+      const pending=poList.filter(p=>p.status==='PENDING').length;
+      const badge=document.getElementById('po-pending-badge');
+      if(badge){badge.textContent=pending;badge.style.display=pending>0?'block':'none';}
+    }
+  }catch(e){document.getElementById('po-list-body').innerHTML='<div class="po-list-empty">Could not load POs.</div>';}
+}
+
+async function loadPendingBadge(){
+  try{const r=await api({action:'getPOs'});if(r.status==='ok'){poList=r.pos||[];const pending=poList.filter(p=>p.status==='PENDING').length;const badge=document.getElementById('po-pending-badge');if(badge){badge.textContent=pending;badge.style.display=pending>0?'block':'none';}}}catch(e){}
+}
+
+function buildPOStatusChips(){
+  const bar=document.getElementById('po-status-chips');
+  const statuses=['All','DRAFT','PENDING','APPROVED','PARTIAL','RECEIVED','REJECTED','CANCELLED'];
+  const counts={};poList.forEach(p=>{counts[p.status]=(counts[p.status]||0)+1;});
+  bar.innerHTML='';
+  statuses.forEach(s=>{
+    const cnt=s==='All'?poList.length:(counts[s]||0);
+    if(s!=='All'&&cnt===0)return;
+    const c=document.createElement('div');c.className='po-chip'+(s===poFilter?' active':'');
+    c.textContent=s==='All'?'All ('+cnt+')':s+' ('+cnt+')';
+    c.onclick=()=>{poFilter=s;buildPOStatusChips();renderPOList();};
+    bar.appendChild(c);
+  });
+}
+
+function renderPOList(){
+  const body=document.getElementById('po-list-body');
+  const canSee=currentUser.role==='admin'?poList:poList.filter(p=>{if(p.type==='DIST'&&currentUser.role==='staff')return true;if(p.type==='RETAIL'&&currentUser.role==='staff-retail')return true;if(p.createdBy===currentUser.username)return true;return false;});
+  const visible=poFilter==='All'?canSee:canSee.filter(p=>p.status===poFilter);
+  if(!visible.length){body.innerHTML='<div class="po-list-empty">No purchase orders found.<br>Tap "+ New PO" to create one.</div>';return;}
+  body.innerHTML='';
+  visible.sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  visible.forEach(po=>{
+    const card=document.createElement('div');card.className='po-card';card.onclick=()=>openPODetail(po.poNumber);
+    const statusCls={DRAFT:'s-draft',PENDING:'s-pending',APPROVED:'s-approved',PARTIAL:'s-partial',RECEIVED:'s-received',REJECTED:'s-rejected',CANCELLED:'s-cancelled'}[po.status]||'s-draft';
+    card.innerHTML=`<div class="po-card-row1"><div><div class="po-number">${po.poNumber}</div><div class="po-supplier">${po.supplier} · ${po.type}</div><div class="po-meta">${po.createdDate} · ${po.createdBy}</div></div><span class="po-status-badge ${statusCls}">${po.status}</span></div><div class="po-card-row2"><span style="font-size:11px;color:#888">${po.lineCount||0} item(s)</span><span class="po-total">₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></div>`;
+    body.appendChild(card);
+  });
+}
+
+function initPOCreate(){
+  poLineItems=[];
+  document.getElementById('po-type').value='DIST';
+  document.getElementById('po-notes').value='';
+  document.getElementById('po-delivery-date').value='';
+  onPOTypeChange();renderPOLineItems();updatePOTotals();
+}
+
+function onPOTypeChange(){
+  const type=document.getElementById('po-type').value;
+  const sup=document.getElementById('po-supplier');
+  const assignedSups=[...new Set(liveSKUs.filter(s=>s.type===type&&s.supplier).map(s=>s.supplier))].sort();
+  const allSups=type==='DIST'?DIST_SUPPLIERS:RETAIL_SUPPLIERS;
+  const supList=assignedSups.length>0?assignedSups:allSups;
+  sup.innerHTML=supList.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function addPOLineItem(){
+  const type=document.getElementById('po-type').value;
+  const supplier=document.getElementById('po-supplier').value;
+  const filtered=liveSKUs.filter(s=>{if(s.type!==type)return false;if(s.supplier&&supplier)return s.supplier===supplier;return true;});
+  const cats=[...new Set(filtered.map(s=>s.category))];
+  const skuOpts=cats.map(cat=>{const items=filtered.filter(s=>s.category===cat).map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`).join('');return`<optgroup label="${cat}">${items}</optgroup>`;}).join('');
+  const idx=poLineItems.length;poLineItems.push({skuCode:'',skuName:'',qty:1,unitCost:0,unit:'bag'});
+  const div=document.createElement('div');div.className='po-line-item';div.id='po-line-'+idx;
+  div.innerHTML=`<div class="po-line-info"><select style="width:100%;padding:6px 8px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:11px;outline:none;color:#222;background:white" onchange="onPOLineSelect(${idx},this)"><option value="">-- Select item --</option>${skuOpts}</select></div><div class="po-line-inputs"><div style="display:flex;flex-direction:column;align-items:center"><span style="font-size:9px;color:#aaa;margin-bottom:2px">Qty</span><input class="po-line-qty" type="number" min="1" value="1" oninput="onPOLineQty(${idx},this.value)"></div><div style="display:flex;flex-direction:column;align-items:center"><span style="font-size:9px;color:#aaa;margin-bottom:2px">Unit cost ₱</span><input class="po-line-cost" type="number" min="0" placeholder="0.00" oninput="onPOLineCost(${idx},this.value)"></div></div><button class="po-line-del" onclick="removePOLine(${idx})">×</button>`;
+  document.getElementById('po-line-items').appendChild(div);updatePOTotals();
+}
+
+function onPOLineSelect(idx,sel){if(!sel.value)return;const parts=sel.value.split('|');poLineItems[idx].skuCode=parts[0];poLineItems[idx].skuName=parts[1]||parts[0];const skuData=liveSKUs.find(s=>s.code===parts[0]);if(skuData&&skuData.cost){poLineItems[idx].unitCost=skuData.cost;const costInput=document.querySelector('#po-line-'+idx+' .po-line-cost');if(costInput)costInput.value=skuData.cost;}updatePOTotals();}
+function onPOLineQty(idx,val){poLineItems[idx].qty=parseFloat(val)||0;updatePOTotals();}
+function onPOLineCost(idx,val){poLineItems[idx].unitCost=parseFloat(val)||0;updatePOTotals();}
+function removePOLine(idx){poLineItems[idx]={removed:true};const el=document.getElementById('po-line-'+idx);if(el)el.remove();updatePOTotals();}
+function renderPOLineItems(){document.getElementById('po-line-items').innerHTML='';poLineItems=[];}
+function updatePOTotals(){const active=poLineItems.filter(l=>!l.removed&&l.skuCode);const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);document.getElementById('po-item-count').textContent=active.length;document.getElementById('po-grand-total').textContent='₱'+total.toLocaleString('en-PH',{minimumFractionDigits:2});}
+async function savePODraft(){await savePO('DRAFT');}
+async function submitPOForApproval(){await savePO('PENDING');}
+async function savePO(status){
+  const type=document.getElementById('po-type').value;const supplier=document.getElementById('po-supplier').value;const notes=document.getElementById('po-notes').value.trim();const delivDate=document.getElementById('po-delivery-date').value;
+  const active=poLineItems.filter(l=>!l.removed&&l.skuCode);
+  if(!supplier){alert('Please select a supplier.');return;}if(active.length===0){alert('Please add at least one line item.');return;}
+  const poNumber=generatePONumber();const now=new Date().toLocaleString('en-PH');const total=active.reduce((s,l)=>s+(l.qty*l.unitCost),0);
+  try{
+    const r=await api({action:'createPO',poNumber,type,supplier,status,createdBy:currentUser.username,createdDate:now,deliveryDate:delivDate,notes,totalValue:total,lineItems:active.map(l=>[poNumber,l.skuCode,l.skuName,'',l.qty,'bag',l.unitCost,l.qty*l.unitCost,0,l.qty,'Open'])});
+    if(r.status==='ok'){showBanner('po-success-bar','PO '+poNumber+' '+(status==='DRAFT'?'saved as draft':'submitted for approval'));poLineItems=[];await loadPOs();showPOSubtab('list',document.getElementById('po-tab-list'));}
+    else{alert('Error: '+(r.msg||'Could not save PO'));}
+  }catch(e){alert('Network error: '+e.message);}
+}
+
+async function openPODetail(poNumber){
+  try{const r=await api({action:'getPODetail',poNumber});if(r.status==='ok'){currentPO={...r.po,lineItems:r.lineItems};renderPODetail();document.querySelectorAll('.po-subtab').forEach(t=>t.classList.remove('active'));document.getElementById('po-view-list').style.display='none';document.getElementById('po-view-create').style.display='none';const detail=document.getElementById('po-view-detail');detail.style.display='flex';detail.style.flexDirection='column';}}catch(e){alert('Could not load PO details.');}
+}
+
+function renderPODetail(){
+  const po=currentPO;const isAdmin=currentUser.role==='admin';
+  const canReceive=isAdmin||(po.type==='DIST'&&currentUser.role==='staff')||(po.type==='RETAIL'&&currentUser.role==='staff-retail');
+  const canCancel=isAdmin||(po.createdBy===currentUser.username&&['DRAFT','PENDING'].includes(po.status));
+  const statusCls={DRAFT:'s-draft',PENDING:'s-pending',APPROVED:'s-approved',PARTIAL:'s-partial',RECEIVED:'s-received',REJECTED:'s-rejected',CANCELLED:'s-cancelled'}[po.status]||'';
+  let actionBtns='';
+  if(isAdmin&&po.status==='PENDING'){actionBtns+=`<button class="po-btn po-btn-success" onclick="approvePO()">Approve</button>`;actionBtns+=`<button class="po-btn po-btn-danger" onclick="rejectPO()">Reject</button>`;}
+  if(canReceive&&['APPROVED','PARTIAL'].includes(po.status)){actionBtns+=`<button class="po-btn po-btn-primary" onclick="receiveItems()">Receive Items</button>`;}
+  if(canCancel&&!['RECEIVED','CANCELLED','REJECTED'].includes(po.status)){actionBtns+=`<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>`;}
+  const lineItemsHTML=(po.lineItems||[]).map((li,i)=>{const outstanding=Number(li.qtyOutstanding)||Number(li.qtyOrdered)-Number(li.qtyReceived||0);const received=Number(li.qtyReceived||0);const isFull=outstanding<=0;return`<div class="po-receive-row"><div class="po-receive-info"><div class="po-receive-name">${li.itemName||li.skuCode}</div><div class="po-receive-ordered">Ordered: ${li.qtyOrdered} · Received: ${received} · Outstanding: ${outstanding}</div></div>${isFull?'<span class="po-received-badge">Received ✓</span>':`<input class="po-receive-input" type="number" min="0" max="${outstanding}" placeholder="0" id="recv-${i}" ${['APPROVED','PARTIAL'].includes(po.status)&&canReceive?'':'disabled'}>`}</div>`;}).join('');
+  document.getElementById('po-detail-body').innerHTML=`<div class="po-detail-header"><div class="po-detail-num">${po.poNumber}</div><div><span class="po-status-badge ${statusCls}">${po.status}</span></div><div class="po-detail-meta" style="margin-top:8px">Supplier: <strong>${po.supplier}</strong><br>Type: ${po.type} · Created: ${po.createdDate}<br>Created by: ${po.createdBy}${po.approvedBy?'<br>Approved by: '+po.approvedBy:''}<br>Total: <strong>₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>${po.notes?'<br>Notes: '+po.notes:''}</div></div>${actionBtns?`<div class="po-action-row">${actionBtns}</div>`:''}<div class="po-detail-section"><div class="po-detail-section-title">Line Items</div>${lineItemsHTML||'<div style="color:#aaa;font-size:12px">No line items found</div>'}</div><div class="po-action-row" style="margin-top:4px"><button class="po-btn po-btn-secondary" onclick="backToPOList()">← Back to list</button></div>`;
+}
+
+function backToPOList(){currentPO=null;document.getElementById('po-view-detail').style.display='none';showPOSubtab('list',document.getElementById('po-tab-list'));}
+async function approvePO(){if(!confirm('Approve '+currentPO.poNumber+'?'))return;try{const r=await api({action:'approvePO',poNumber:currentPO.poNumber,approvedBy:currentUser.username});if(r.status==='ok'){showBanner('po-success-bar','PO approved');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
+async function rejectPO(){const reason=prompt('Reason for rejection (optional):');if(reason===null)return;try{const r=await api({action:'rejectPO',poNumber:currentPO.poNumber,rejectedBy:currentUser.username,reason});if(r.status==='ok'){showBanner('po-success-bar','PO rejected');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
+async function cancelPO(){if(!confirm('Cancel '+currentPO.poNumber+'? This cannot be undone.'))return;try{const r=await api({action:'cancelPO',poNumber:currentPO.poNumber,cancelledBy:currentUser.username});if(r.status==='ok'){showBanner('po-success-bar','PO cancelled');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
+async function receiveItems(){
+  const lines=currentPO.lineItems||[];const receipts=[];
+  lines.forEach((li,i)=>{const input=document.getElementById('recv-'+i);if(!input)return;const qty=parseFloat(input.value)||0;if(qty>0)receipts.push({skuCode:li.skuCode,itemName:li.itemName,qtyReceived:qty,lineIndex:i});});
+  if(!receipts.length){alert('Enter quantities to receive for at least one item.');return;}
+  try{const r=await api({action:'receivePO',poNumber:currentPO.poNumber,receivedBy:currentUser.username,poType:currentPO.type,receipts});if(r.status==='ok'){showBanner('po-success-bar',receipts.length+' item(s) received — stock counts updated');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error: '+e.message);}
+}
+
+// ── PRODUCTION CONVERSION SYSTEM ──
+let bom=[],prodHistory=[];
+
+async function openProduction(){
+  showScreen('prod-screen');document.querySelector('.fab').style.display='flex';
+  const list=document.getElementById('prod-list');
+  list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
+  await loadBOM();buildProdList();
+}
+
+function closeProduction(){showHome();}
+
+async function loadBOM(){
+  try{
+    const r=await api({action:'getBOM'});
+    if(r.status==='ok'&&Array.isArray(r.bom)){bom=r.bom.filter(b=>String(b.active).toUpperCase()==='YES');}
+    else{console.warn('getBOM returned:',r);bom=[];}
+  }catch(e){console.error('BOM load failed:',e);bom=[];}
+}
+
+function buildProdList(){
+  const list=document.getElementById('prod-list');list.innerHTML='';
+  if(!bom.length){list.innerHTML='<div class="prod-empty">No conversion rules found.<br>Upload Production BOM to Google Sheets first.</div>';return;}
+  bom.forEach((item,idx)=>{
+    const unverified=item.verified==='NO';
+    const card=document.createElement('div');card.className='prod-card'+(unverified?' prod-unverified':'');
+    card.innerHTML=`<div class="prod-card-header"><div><div class="prod-card-name">${item.sourceName}${unverified?'<span class="prod-warn-badge">⚠️ Unverified</span>':''}</div><div class="prod-card-rule">1 bag (${item.bagSizeKg}kg) → <strong>${item.ratio} units</strong> of ${item.outputName}</div></div></div><div class="prod-input-row"><div class="prod-input-group"><label class="prod-label">Bags to convert</label><div style="display:flex;align-items:center;gap:8px"><button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button><input class="prod-bags-input" type="number" min="1" step="1" id="bags-${idx}" value="1" oninput="updateOutput(${idx})"><button class="prod-stepper" onclick="stepBags(${idx},1)">+</button></div></div><div class="prod-output-group"><label class="prod-label">Units produced</label><div class="prod-output-val" id="output-${idx}">${item.ratio}</div><div class="prod-output-unit">${item.outputName}</div></div></div><button class="prod-submit-btn ${unverified?'prod-submit-warn':''}" onclick="submitProduction(${idx})">${unverified?'⚠️ ':''} Convert</button>`;
+    list.appendChild(card);updateOutput(idx);
+  });
+}
+
+function stepBags(idx,delta){const input=document.getElementById('bags-'+idx);const newVal=Math.max(1,(parseInt(input.value)||1)+delta);input.value=newVal;updateOutput(idx);}
+function updateOutput(idx){const input=document.getElementById('bags-'+idx);const bags=parseInt(input.value)||0;const item=bom[idx];const units=bags*item.ratio;const outEl=document.getElementById('output-'+idx);if(outEl)outEl.textContent=units.toLocaleString();}
 
 async function submitProduction(idx){
-  const item = bom[idx];
-  const bags = parseInt(document.getElementById('bags-'+idx).value)||0;
-
-  if(bags<=0){ alert('Enter at least 1 bag.'); return; }
-
-  const units = bags * item.ratio;
-  const unverified = item.verified==='NO';
-
-  if(unverified){
-    const ok = confirm(
-      `⚠️ This conversion is UNVERIFIED.
-
-` +
-      `Ratio: 1 bag = ${item.ratio} units
-` +
-      `Please confirm the ratio is correct before continuing.
-
-` +
-      `Convert ${bags} bag(s) of ${item.sourceName} → ${units} units of ${item.outputName}?`
-    );
-    if(!ok) return;
-  } else {
-    const ok = confirm(
-      `Convert ${bags} bag(s) of ${item.sourceName}
-` +
-      `→ ${units} units of ${item.outputName}
-
-` +
-      `This will update Stock Counts - Retail. Continue?`
-    );
-    if(!ok) return;
-  }
-
-  const btn = document.querySelector(`#prod-list .prod-card:nth-child(${idx+1}) .prod-submit-btn`);
-  if(btn){ btn.disabled=true; btn.textContent='Converting...'; }
-
-  const now = new Date().toLocaleString('en-PH');
+  const item=bom[idx];const bags=parseInt(document.getElementById('bags-'+idx).value)||0;
+  if(bags<=0){alert('Enter at least 1 bag.');return;}
+  const units=bags*item.ratio;const unverified=item.verified==='NO';
+  const msg=unverified?'⚠️ This conversion is UNVERIFIED.\n\nRatio: 1 bag = '+item.ratio+' units\nPlease confirm the ratio is correct.\n\nConvert '+bags+' bag(s) of '+item.sourceName+' → '+units+' units of '+item.outputName+'?':'Convert '+bags+' bag(s) of '+item.sourceName+'\n→ '+units+' units of '+item.outputName+'\n\nThis will update Stock Counts - Retail. Continue?';
+  if(!confirm(msg))return;
+  const now=new Date().toLocaleString('en-PH');
   try{
-    const r = await api({
-      action: 'submitProduction',
-      submittedBy: currentUser.username,
-      timestamp: now,
-      sourceSku: item.sourceSku,
-      sourceName: item.sourceName,
-      bagsConsumed: bags,
-      outputSku: item.outputSku,
-      outputName: item.outputName,
-      unitsProduced: units,
-      ratio: item.ratio,
-    });
+    const r=await api({action:'submitProduction',submittedBy:currentUser.username,timestamp:now,sourceSku:item.sourceSku,sourceName:item.sourceName,bagsConsumed:bags,outputSku:item.outputSku,outputName:item.outputName,unitsProduced:units,ratio:item.ratio});
     if(r.status==='ok'){
-      // Reset input
-      document.getElementById('bags-'+idx).value=1;
-      updateOutput(idx);
-      // Show success
-      const bar = document.getElementById('prod-success-bar');
-      bar.textContent=`✓ Converted ${bags} bag(s) of ${item.sourceName} → ${units} units of ${item.outputName}`;
-      bar.style.display='block';
-      setTimeout(()=>bar.style.display='none',6000);
-      if(btn){ btn.disabled=false; btn.textContent='Convert'; }
-    }else{
-      alert('Error: '+(r.msg||'Could not submit'));
-      if(btn){ btn.disabled=false; btn.textContent='Convert'; }
-    }
-  }catch(e){
-    alert('Network error: '+e.message);
-    if(btn){ btn.disabled=false; btn.textContent='Convert'; }
-  }
+      document.getElementById('bags-'+idx).value=1;updateOutput(idx);
+      const bar=document.getElementById('prod-success-bar');bar.textContent='✓ Converted '+bags+' bag(s) of '+item.sourceName+' → '+units+' units of '+item.outputName;bar.style.display='block';setTimeout(()=>bar.style.display='none',6000);
+    }else{alert('Error: '+(r.msg||'Could not submit'));}
+  }catch(e){alert('Network error: '+e.message);}
 }
 
 // ── KEYBOARD ──
@@ -2648,35 +2195,84 @@ init();
 
 <!-- BACKORDER MODAL -->
 <div class="modal-overlay" id="bo-modal" style="display:none">
-  <div class="modal-card" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-title" style="color:#E24B4A">Log Backorder</div>
-    <div class="modal-sub">Dealer is requesting an out-of-stock item</div>
-    <label>Dealer Name</label>
-    <input type="text" id="bo-dealer" placeholder="Search dealer..." list="dealer-list" autocomplete="off">
-    <label>SKU / Item</label>
-    <select id="bo-sku-select" style="width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:white;color:#222;margin-bottom:0">
-      <option value="">-- Select item --</option>
-    </select>
-    <label>Quantity Requested</label>
-    <input type="number" id="bo-qty" placeholder="0" min="1" step="1">
-    <label>Purchase Unit</label>
-    <select id="bo-unit">
-      <option value="bag">bag</option>
-      <option value="sack">sack</option>
-      <option value="box">box</option>
-      <option value="case">case</option>
-      <option value="pc">pc</option>
-      <option value="bottle">bottle</option>
-      <option value="kg">kg</option>
-    </select>
-    <label>Promised Date (optional)</label>
-    <input type="date" id="bo-date">
-    <label>Notes (optional)</label>
-    <input type="text" id="bo-notes" placeholder="Any special instructions...">
-    <div class="modal-err" id="bo-err"></div>
-    <button class="bo-submit" id="bo-submit-btn" onclick="submitBackorder()">Submit Backorder</button>
-    <div class="modal-btns" style="margin-top:8px">
-      <button class="modal-cancel" style="width:100%" onclick="closeBoModal()">Cancel</button>
+  <div class="modal-card" style="max-width:400px;max-height:94vh;overflow-y:auto;padding:0;border-radius:16px">
+
+    <!-- Header -->
+    <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;border-radius:16px 16px 0 0">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#E24B4A">Log Backorder</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">One dealer — multiple items in one submission</div>
+      </div>
+      <button onclick="closeBoModal()" style="background:none;border:none;font-size:22px;color:#ccc;cursor:pointer;line-height:1;padding:0 2px">×</button>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:14px">
+
+      <!-- Dealer Info -->
+      <div style="background:#f8f8f8;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:10px">Dealer Info</div>
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Dealer Name *</div>
+        <input type="text" id="bo-dealer"
+          placeholder="Type to search dealer..."
+          list="dealer-list" autocomplete="off"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Dealer Phone (optional)</div>
+        <input type="text" id="bo-phone" placeholder="09XX XXX XXXX"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Promised Date (optional)</div>
+        <input type="date" id="bo-date"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none">
+      </div>
+
+      <!-- Item Type Toggle (shown only if canBackorderRetail) -->
+      <div id="bo-type-toggle" style="display:none;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px">Item Type</div>
+        <div style="display:flex;border:1.5px solid #e0e0e0;border-radius:9px;overflow:hidden">
+          <button id="bo-type-dist" onclick="setBoType('dist')"
+            style="flex:1;padding:8px 4px;border:none;background:#E24B4A;color:white;font-size:12px;font-weight:700;cursor:pointer">
+            📦 Distribution
+          </button>
+          <button id="bo-type-retail" onclick="setBoType('retail')"
+            style="flex:1;padding:8px 4px;border:none;background:white;color:#888;font-size:12px;font-weight:600;cursor:pointer">
+            🛒 Retail
+          </button>
+        </div>
+      </div>
+
+      <!-- Line Items -->
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.8px;text-transform:uppercase">Items Requested</div>
+          <span id="bo-item-count" style="font-size:11px;color:#E24B4A;font-weight:700">0 items</span>
+        </div>
+        <div id="bo-line-items" style="display:flex;flex-direction:column;gap:10px"></div>
+        <!-- ADD ITEM BUTTON -->
+        <button onclick="addBoLineItem()"
+          style="width:100%;margin-top:10px;padding:10px;border:2px dashed #E24B4A;background:transparent;color:#E24B4A;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          + Add Item
+        </button>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Notes (optional)</div>
+        <input type="text" id="bo-notes" placeholder="Urgent? Substitute offered? Special terms?"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none">
+      </div>
+
+      <div class="modal-err" id="bo-err" style="margin-bottom:8px"></div>
+      <button id="bo-submit-btn" onclick="submitBackorder()"
+        style="width:100%;padding:13px;background:#E24B4A;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+        Submit Backorder
+      </button>
+      <button onclick="closeBoModal()"
+        style="width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
+        Cancel
+      </button>
     </div>
   </div>
 </div>
