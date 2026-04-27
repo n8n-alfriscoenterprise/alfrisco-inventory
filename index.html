@@ -929,7 +929,9 @@ function buildHomeTiles(){
   if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
   tiles.push({icon:'⚠️',name:'Log Backorder',desc:'Record out-of-stock dealer requests',cls:'t-backorder',fn:'openBoModal()'});
   // Production tile — admin and staff retail only
-  const canProd = currentUser.role==='admin' || currentUser.role==='staff-retail';
+  const canProd = currentUser.role==='admin' ||
+    currentUser.role==='staff-retail' ||
+    currentUser.role==='staff';
   if(canProd) tiles.push({icon:'🏭',name:'Production',desc:'Convert bags to smaller retail units',cls:'t-prod',fn:'openProduction()'});
   if(currentUser.role==='admin') tiles.push({icon:'⚙️',name:'Admin',desc:'Staff accounts & app settings',cls:'t-admin',fn:'openAdminFromHome()'});
   if(tiles.length%2!==0) tiles[tiles.length-1].full=true;
@@ -2466,6 +2468,9 @@ let prodHistory = [];  // Recent production runs this session
 async function openProduction(){
   showScreen('prod-screen');
   document.querySelector('.fab').style.display='flex';
+  // Show loading state
+  const list = document.getElementById('prod-list');
+  list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
   await loadBOM();
   buildProdList();
 }
@@ -2478,10 +2483,14 @@ async function loadBOM(){
   try{
     const r = await api({action:'getBOM'});
     if(r.status==='ok' && Array.isArray(r.bom)){
-      bom = r.bom.filter(b=>b.active==='YES');
+      bom = r.bom.filter(b => String(b.active).toUpperCase() === 'YES');
+    } else {
+      console.warn('getBOM returned:', r);
+      bom = [];
     }
   }catch(e){
-    console.error('BOM load failed', e);
+    console.error('BOM load failed:', e);
+    bom = [];
   }
 }
 
