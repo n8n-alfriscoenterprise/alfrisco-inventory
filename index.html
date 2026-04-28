@@ -283,6 +283,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .tile.t-admin{background:linear-gradient(135deg,#404040,#555)}
 .tile.t-driver{background:linear-gradient(135deg,#1F4E78,#2A6699)}
 .tile.t-backorder{background:linear-gradient(135deg,#A32D2D,#C23B3B)}
+.tile.t-retail-bo{background:linear-gradient(135deg,#7A4500,#C07000)}
 .tile.t-prod{background:linear-gradient(135deg,#1B5E20,#2E7D32)}
 .tile.full-width{grid-column:1/-1}
 /* ── TOPBAR NAV ROW ── */
@@ -940,7 +941,9 @@ function buildHomeTiles(){
   if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
   const canPO=currentUser.canManagePO!==false;
   if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
-  tiles.push({icon:'⚠️',name:'Log Backorder',desc:'Record out-of-stock dealer requests',cls:'t-backorder',fn:'openBoModal()'});
+  tiles.push({icon:'⚠️',name:'Dealer Backorder',desc:'Record out-of-stock distribution dealer requests',cls:'t-backorder',fn:'openBoModal()'});
+  if(currentUser.canBackorderRetail===true||currentUser.role==='admin')
+    tiles.push({icon:'🛒',name:'Retail Backorder',desc:'Record retail customer out-of-stock requests',cls:'t-retail-bo',fn:'openRboModal()'});
   // Production tile — admin and staff retail only
   const canProd = currentUser.role==='admin' ||
     currentUser.role==='staff-retail' ||
@@ -1578,9 +1581,8 @@ function closeBoModal(){
 }
 
 function addBoLineItem(){
-  // New line inherits type of last line (or defaults to dist)
-  const lastType=boLines.length>0?boLines[boLines.length-1].type:'dist';
-  boLines.push({type:lastType,skuValue:'',skuName:'',qty:1,unit:'bag'});
+  // Distribution backorder — always dist
+  boLines.push({type:'dist',skuValue:'',skuName:'',qty:1,unit:'bag'});
   renderBoLines();
   setTimeout(()=>{
     const container=document.getElementById('bo-line-items');
@@ -1614,21 +1616,13 @@ function renderBoLines(){
   const countEl=document.getElementById('bo-item-count');
   if(countEl)countEl.textContent=boLines.length+(boLines.length===1?' item':' items');
 
-  // Admin always gets both.
-  // All other roles: governed strictly by their account permissions.
-  const isAdmin = currentUser && currentUser.role === 'admin';
-  const canBoDist = isAdmin || (currentUser && currentUser.canBackorderDist !== false);
-  const canBoRetail = isAdmin || (currentUser && currentUser.canBackorderRetail === true);
-  const canBoth = canBoDist && canBoRetail;
+  // Distribution backorder — always DIST only, no toggle needed
 
-  // Build/refresh datalists for DIST and RETAIL
-  ['dist','retail'].forEach(t=>{
-    const dlId='bo-dl-'+t;
-    let dl=document.getElementById(dlId);
-    if(!dl){dl=document.createElement('datalist');dl.id=dlId;document.body.appendChild(dl);}
-    const skus=liveSKUs.filter(s=>s.type===(t==='dist'?'DIST':'RETAIL'));
-    dl.innerHTML=skus.map(s=>`<option value="${s.name}">`).join('');
-  });
+  // Distribution backorder — build DIST datalist only
+  const dlId='bo-dl-dist';
+  let dl=document.getElementById(dlId);
+  if(!dl){dl=document.createElement('datalist');dl.id=dlId;document.body.appendChild(dl);}
+  dl.innerHTML=liveSKUs.filter(s=>s.type==='DIST').map(s=>`<option value="${s.name}">`).join('');
 
   boLines.forEach((line,idx)=>{
     const isDist=line.type==='dist';
@@ -1642,47 +1636,21 @@ function renderBoLines(){
 
     // Type toggle — always visible, always switchable
     // Show for all users if canBoRetail, otherwise show only DIST (no toggle)
-    // Build toggle based on what the user can access
-    let typeToggleHtml = '';
-    if(canBoth){
-      // Both permitted — show full toggle
-      typeToggleHtml = `
-        <div style="display:flex;gap:4px;margin-bottom:8px">
-          <button onclick="setLineType(${idx},'dist')"
-            style="flex:1;padding:5px 4px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;
-            ${isDist?'background:#E24B4A;color:white;border:1.5px solid #E24B4A':inactiveStyle}">
-            📦 Distribution
-          </button>
-          <button onclick="setLineType(${idx},'retail')"
-            style="flex:1;padding:5px 4px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;
-            ${!isDist?'background:#C07000;color:white;border:1.5px solid #C07000':inactiveStyle}">
-            🛒 Retail
-          </button>
-        </div>`;
-    } else if(canBoDist && !canBoRetail){
-      // Distribution only — show label, no toggle
-      typeToggleHtml = `<div style="font-size:10px;font-weight:600;margin-bottom:6px">
-        <span style="background:#E24B4A;color:white;padding:2px 10px;border-radius:20px;font-size:10px">
-          📦 Distribution
-        </span></div>`;
-    } else if(!canBoDist && canBoRetail){
-      // Retail only — show label, no toggle
-      typeToggleHtml = `<div style="font-size:10px;font-weight:600;margin-bottom:6px">
-        <span style="background:#C07000;color:white;padding:2px 10px;border-radius:20px;font-size:10px">
-          🛒 Retail
-        </span></div>`;
-    }
-
-    // SKU search input — always text + datalist (searchable)
+    // Distribution label — always shown, no toggle
+    const typeToggleHtml = `<div style="font-size:10px;font-weight:600;margin-bottom:6px">
+      <span style="background:#E24B4A;color:white;padding:2px 10px;border-radius:20px;font-size:10px">
+        📦 Distribution
+      </span></div>`;
+// SKU search input — always text + datalist (searchable)
     const skuInputHtml=`
       <div style="font-size:10px;font-weight:600;color:#aaa;
         margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">
-        Search ${isDist?'Distribution':'Retail'} item
+        Search distribution item
       </div>
       <input type="text"
         id="bo-sku-input-${idx}"
-        placeholder="Type to filter ${isDist?'distribution':'retail'} products..."
-        list="bo-dl-${line.type}"
+        placeholder="Type to filter distribution products..."
+        list="bo-dl-dist"
         autocomplete="off"
         value="${line.skuName||''}"
         oninput="onBoSkuInput(${idx},this.value)"
@@ -1808,6 +1776,186 @@ async function submitBackorder(){
     btn.disabled=false;btn.textContent='Submit Backorder';
   }
 }
+
+
+// ════════════════════════════════════════════════════════
+// RETAIL CUSTOMER BACKORDER SYSTEM
+// Separate from distribution — free-text customer, retail SKUs only
+// ════════════════════════════════════════════════════════
+let rboLines = [];
+
+function openRboModal(){
+  document.getElementById('rbo-modal').style.display='flex';
+  document.getElementById('rbo-name').value='';
+  document.getElementById('rbo-contact').value='';
+  document.getElementById('rbo-date').value='';
+  document.getElementById('rbo-notes').value='';
+  document.getElementById('rbo-err').textContent='';
+  const btn=document.getElementById('rbo-submit-btn');
+  if(btn){btn.disabled=false;btn.textContent='Submit Retail Backorder';}
+  rboLines=[];
+  addRboLineItem();
+  setTimeout(()=>document.getElementById('rbo-name').focus(),150);
+}
+
+function closeRboModal(){
+  document.getElementById('rbo-modal').style.display='none';
+}
+
+function addRboLineItem(){
+  rboLines.push({skuValue:'',skuName:'',qty:1,unit:'pc'});
+  renderRboLines();
+  setTimeout(()=>{
+    const container=document.getElementById('rbo-line-items');
+    if(container&&container.lastElementChild)
+      container.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },150);
+}
+
+function removeRboLineItem(idx){
+  rboLines.splice(idx,1);
+  renderRboLines();
+}
+
+function renderRboLines(){
+  const container=document.getElementById('rbo-line-items');
+  if(!container)return;
+  container.innerHTML='';
+  const countEl=document.getElementById('rbo-item-count');
+  if(countEl)countEl.textContent=rboLines.length+(rboLines.length===1?' item':' items');
+
+  // Build retail-only datalist
+  const dlId='rbo-dl-retail';
+  let dl=document.getElementById(dlId);
+  if(!dl){dl=document.createElement('datalist');dl.id=dlId;document.body.appendChild(dl);}
+  const retailSKUs=liveSKUs.filter(s=>s.type==='RETAIL');
+  dl.innerHTML=retailSKUs.map(s=>`<option value="${s.name}">`).join('');
+
+  rboLines.forEach((line,idx)=>{
+    const row=document.createElement('div');
+    row.className='bo-line-row';
+    row.id='rbo-row-'+idx;
+    row.innerHTML=`
+      <div class="bo-line-row-header">
+        <span class="bo-line-num" style="color:#C07000">🛒 Item ${idx+1}</span>
+        ${rboLines.length>1
+          ?`<button class="bo-line-remove" onclick="removeRboLineItem(${idx})">×</button>`:''}
+      </div>
+      <div style="font-size:10px;font-weight:600;color:#aaa;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">
+        Search retail item
+      </div>
+      <input type="text"
+        id="rbo-sku-input-${idx}"
+        placeholder="Type to filter retail products..."
+        list="${dlId}"
+        autocomplete="off"
+        value="${line.skuName||''}"
+        oninput="onRboSkuInput(${idx},this.value)"
+        style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;
+        font-size:13px;outline:none;margin-bottom:${line.skuName?'4px':'8px'}">
+      ${line.skuName
+        ?`<div style="font-size:10px;color:#27AE60;margin-bottom:8px">✓ ${line.skuName}</div>`:''}
+      <div class="bo-line-qty-row">
+        <div class="bo-line-qty-wrap">
+          <span class="bo-line-input-label">Qty</span>
+          <input class="bo-line-qty-input" type="number" min="1" step="1"
+            value="${line.qty||1}" oninput="onRboQtyChange(${idx},this.value)">
+        </div>
+        <div class="bo-line-unit-wrap">
+          <span class="bo-line-input-label">Unit</span>
+          <select class="bo-line-unit-select" onchange="onRboUnitChange(${idx},this.value)">
+            ${['pc','bag','sack','box','case','bottle','kg']
+              .map(u=>`<option value="${u}"${line.unit===u?' selected':''}>${u}</option>`)
+              .join('')}
+          </select>
+        </div>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function onRboSkuInput(idx,val){
+  const retailSKUs=liveSKUs.filter(s=>s.type==='RETAIL');
+  const match=retailSKUs.find(s=>s.name.toLowerCase()===val.toLowerCase());
+  rboLines[idx].skuName=val;
+  rboLines[idx].skuValue=match?match.code+'|'+match.name:val;
+  // Update confirm hint without re-render
+  const row=document.getElementById('rbo-row-'+idx);
+  if(row){
+    let confirmEl=row.querySelector('[data-rbo-confirm]');
+    if(!confirmEl){
+      confirmEl=document.createElement('div');
+      confirmEl.setAttribute('data-rbo-confirm','1');
+      const input=document.getElementById('rbo-sku-input-'+idx);
+      if(input)input.insertAdjacentElement('afterend',confirmEl);
+    }
+    confirmEl.style.fontSize='10px';
+    confirmEl.style.marginBottom='8px';
+    if(match){confirmEl.style.color='#27AE60';confirmEl.textContent='✓ '+match.name;}
+    else{confirmEl.style.color='#bbb';confirmEl.textContent=val?'Type exact name or pick from suggestions':'';}
+  }
+}
+
+function onRboQtyChange(idx,val){rboLines[idx].qty=parseFloat(val)||1;}
+function onRboUnitChange(idx,val){rboLines[idx].unit=val;}
+
+async function submitRetailBackorder(){
+  const name=document.getElementById('rbo-name').value.trim();
+  const contact=document.getElementById('rbo-contact').value.trim();
+  const date=document.getElementById('rbo-date').value;
+  const notes=document.getElementById('rbo-notes').value.trim();
+  const errEl=document.getElementById('rbo-err');
+
+  if(!name){errEl.textContent='Please enter the customer name.';return;}
+  if(!contact){errEl.textContent='Contact number is required.';return;}
+
+  // Sync any partially typed SKU names
+  rboLines.forEach((line,idx)=>{
+    const input=document.getElementById('rbo-sku-input-'+idx);
+    if(input&&input.value.trim())rboLines[idx].skuName=input.value.trim();
+  });
+
+  const validLines=rboLines.filter(l=>l.skuName&&l.skuName.trim()&&l.qty>0);
+  if(!validLines.length){
+    errEl.textContent='Please add at least one item with a name and quantity.';return;
+  }
+
+  const btn=document.getElementById('rbo-submit-btn');
+  btn.disabled=true;
+  btn.textContent='Submitting '+validLines.length+' item(s)...';
+  errEl.textContent='';
+
+  const now=new Date().toLocaleString('en-PH');
+  const promisedDate=date?new Date(date).toLocaleDateString('en-PH'):'';
+  const who=currentUser?currentUser.username:'Unknown';
+
+  const rows=validLines.map(line=>{
+    const parts=line.skuValue?line.skuValue.split('|'):['',line.skuName];
+    return[now,who,name,contact,parts[0]||'',parts[1]||line.skuName,
+           line.qty,line.unit,promisedDate,'OPEN',notes];
+  });
+
+  try{
+    const r=await api({sheet:'Backorders - Retail',rows});
+    if(r.status==='ok'){
+      closeRboModal();
+      const activeScreen=document.querySelector('.screen.active');
+      const barId=activeScreen&&activeScreen.id==='driver-screen'
+        ?'driver-success-bar':'success-bar';
+      const summary=validLines.length===1
+        ?validLines[0].qty+' '+validLines[0].unit+' of '+validLines[0].skuName
+        :validLines.length+' items';
+      showBanner(barId,'Retail backorder logged — '+name+' ('+contact+'): '+summary);
+    }else{
+      errEl.textContent='Error: '+(r.msg||'Could not submit');
+      btn.disabled=false;btn.textContent='Submit Retail Backorder';
+    }
+  }catch(e){
+    errEl.textContent='Network error. Check your connection.';
+    btn.disabled=false;btn.textContent='Submit Retail Backorder';
+  }
+}
+
 
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
@@ -2240,20 +2388,7 @@ init();
           style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none">
       </div>
 
-      <!-- Item Type Toggle (shown only if canBackorderRetail) -->
-      <div id="bo-type-toggle" style="display:none;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px">Item Type</div>
-        <div style="display:flex;border:1.5px solid #e0e0e0;border-radius:9px;overflow:hidden">
-          <button id="bo-type-dist" onclick="setBoType('dist')"
-            style="flex:1;padding:8px 4px;border:none;background:#E24B4A;color:white;font-size:12px;font-weight:700;cursor:pointer">
-            📦 Distribution
-          </button>
-          <button id="bo-type-retail" onclick="setBoType('retail')"
-            style="flex:1;padding:8px 4px;border:none;background:white;color:#888;font-size:12px;font-weight:600;cursor:pointer">
-            🛒 Retail
-          </button>
-        </div>
-      </div>
+
 
       <!-- Line Items -->
       <div style="margin-bottom:10px">
@@ -2282,6 +2417,77 @@ init();
         Submit Backorder
       </button>
       <button onclick="closeBoModal()"
+        style="width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- RETAIL CUSTOMER BACKORDER MODAL -->
+<div class="modal-overlay" id="rbo-modal" style="display:none">
+  <div class="modal-card" style="max-width:400px;max-height:94vh;overflow-y:auto;padding:0;border-radius:16px">
+
+    <!-- Header -->
+    <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;border-radius:16px 16px 0 0">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#C07000">🛒 Retail Customer Backorder</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">Retail items — one customer, multiple items</div>
+      </div>
+      <button onclick="closeRboModal()" style="background:none;border:none;font-size:22px;color:#ccc;cursor:pointer;line-height:1;padding:0 2px">×</button>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:14px">
+
+      <!-- Customer Info -->
+      <div style="background:#FFF8EC;border-radius:10px;padding:12px;margin-bottom:12px;border:1px solid #FAE0A0">
+        <div style="font-size:10px;font-weight:700;color:#C07000;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:10px">Customer Info</div>
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Customer Name *</div>
+        <input type="text" id="rbo-name"
+          placeholder="Enter customer name..."
+          autocomplete="off"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Contact Number *</div>
+        <input type="tel" id="rbo-contact"
+          placeholder="09XX XXX XXXX"
+          autocomplete="off"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px">
+
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Promised Date (optional)</div>
+        <input type="date" id="rbo-date"
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none">
+      </div>
+
+      <!-- Line Items -->
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.8px;text-transform:uppercase">Items Requested</div>
+          <span id="rbo-item-count" style="font-size:11px;color:#C07000;font-weight:700">0 items</span>
+        </div>
+        <div id="rbo-line-items" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button onclick="addRboLineItem()"
+          style="width:100%;margin-top:10px;padding:10px;border:2px dashed #C07000;background:transparent;color:#C07000;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">
+          + Add Item
+        </button>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Notes (optional)</div>
+        <input type="text" id="rbo-notes" placeholder="Special instructions, substitute offered..."
+          style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none">
+      </div>
+
+      <div class="modal-err" id="rbo-err" style="margin-bottom:8px"></div>
+      <button id="rbo-submit-btn" onclick="submitRetailBackorder()"
+        style="width:100%;padding:13px;background:#C07000;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+        Submit Retail Backorder
+      </button>
+      <button onclick="closeRboModal()"
         style="width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
         Cancel
       </button>
