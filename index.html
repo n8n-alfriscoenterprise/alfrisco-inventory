@@ -733,6 +733,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
               Manage POs
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-production" style="width:16px;height:16px;accent-color:#1B5E20;cursor:pointer">
+              🏭 Run Production
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-bo-dist" checked style="width:16px;height:16px;accent-color:#E24B4A;cursor:pointer">
               ⚠️ Dealer Backorder
             </label>
@@ -974,10 +978,10 @@ function buildHomeTiles(){
   if(currentUser.canBackorderRetail===true||currentUser.role==='admin')
     tiles.push({icon:'🛒',name:'Retail Backorder',desc:'Record retail customer out-of-stock requests',cls:'t-retail-bo',fn:'openRboModal()'});
   // Production tile — admin and staff retail only
-  const canProd = currentUser.role==='admin' ||
-    currentUser.role==='staff-retail' ||
-    currentUser.role==='staff';
-  if(canProd) tiles.push({icon:'🏭',name:'Production',desc:'Convert bags to smaller retail units',cls:'t-prod',fn:'openProduction()'});
+  const canProdTile = currentUser.role==='admin' ||
+    currentUser.canProduction===true ||
+    currentUser.role==='staff-retail';
+  if(canProdTile) tiles.push({icon:'🏭',name:'Production',desc:'Convert bags to smaller retail units',cls:'t-prod',fn:'openProduction()'});
   if(currentUser.role==='admin') tiles.push({icon:'⚙️',name:'Admin',desc:'Staff accounts & app settings',cls:'t-admin',fn:'openAdminFromHome()'});
   if(tiles.length%2!==0) tiles[tiles.length-1].full=true;
   tiles.forEach(t=>{
@@ -1402,6 +1406,7 @@ function renderStaff(){
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
     const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
+    const prodTag=s.canProduction?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🏭Prod</span>`:'';
     const boDistTag=s.canBackorderDist!==false?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">⚠️BO-Dist</span>`:'';
     const boRetailTag=s.canBackorderRetail?`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600">🛒BO-Retail</span>`:'';
     row.innerHTML=`
@@ -1409,7 +1414,7 @@ function renderStaff(){
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${distTag}${retailTag}${poTag}${boDistTag}${boRetailTag}
+          ${distTag}${retailTag}${poTag}${prodTag}${boDistTag}${boRetailTag}
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -1428,14 +1433,15 @@ async function addStaff(){
   const canDist=document.getElementById('new-can-dist').checked;
   const canRetail=document.getElementById('new-can-retail').checked;
   const canPO=document.getElementById('new-can-po').checked;
+  const canProd=document.getElementById('new-can-production')?document.getElementById('new-can-production').checked:false;
   const canBoDist=document.getElementById('new-can-bo-dist')?document.getElementById('new-can-bo-dist').checked:true;
   const canBoRetail=document.getElementById('new-can-bo-retail')?document.getElementById('new-can-bo-retail').checked:false;
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -2314,6 +2320,9 @@ async function receiveItems(){
 let bom=[],prodHistory=[];
 
 async function openProduction(){
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  const canProd=isAdmin||currentUser.canProduction===true||currentUser.role==='staff-retail';
+  if(!canProd){alert('You do not have permission to run production conversions.');return;}
   showScreen('prod-screen');updateFabVisibility();
   const list=document.getElementById('prod-list');
   list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
@@ -2419,6 +2428,8 @@ function openEditStaff(idx){
     ['edit-can-count-dist',  isAdmin || s.canCountDist !== false],
     ['edit-can-count-retail',isAdmin || s.canCountRetail !== false],
     ['edit-can-po',          isAdmin || s.canManagePO !== false],
+    ['edit-can-production',  isAdmin || s.canProduction === true ||
+                             s.role === 'staff-retail'],
     ['edit-can-bo-dist',     isAdmin || s.canBackorderDist !== false],
     ['edit-can-bo-retail',   isAdmin || s.canBackorderRetail === true],
   ];
@@ -2446,7 +2457,7 @@ function onEditRoleChange(){
   // If admin selected — auto-check all permissions and disable toggles
   const isAdmin = role === 'admin';
   ['edit-can-count-dist','edit-can-count-retail','edit-can-po',
-   'edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
+   'edit-can-production','edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
     const el = document.getElementById(id);
     if(el){ if(isAdmin) el.checked = true; el.disabled = isAdmin; }
   });
@@ -2460,6 +2471,7 @@ async function saveStaffEdit(){
   const canCountDist    = document.getElementById('edit-can-count-dist').checked;
   const canCountRetail  = document.getElementById('edit-can-count-retail').checked;
   const canManagePO     = document.getElementById('edit-can-po').checked;
+  const canProduction   = document.getElementById('edit-can-production').checked;
   const canBoDist       = document.getElementById('edit-can-bo-dist').checked;
   const canBoRetail     = document.getElementById('edit-can-bo-retail').checked;
   const errEl = document.getElementById('edit-staff-err');
@@ -2479,7 +2491,7 @@ async function saveStaffEdit(){
       username: s.username,
       role, assignedUnit: unit,
       canCountDist, canCountRetail,
-      canManagePO,
+      canManagePO, canProduction,
       canBackorderDist: canBoDist,
       canBackorderRetail: canBoRetail
     });
@@ -2488,6 +2500,7 @@ async function saveStaffEdit(){
       staff[editingStaffIndex] = {
         ...s, role, assignedUnit: unit,
         canCountDist, canCountRetail, canManagePO,
+        canProduction,
         canBackorderDist: canBoDist,
         canBackorderRetail: canBoRetail
       };
@@ -2996,6 +3009,23 @@ init();
             </div>
             <label class="edit-toggle">
               <input type="checkbox" id="edit-can-po">
+              <span class="edit-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Production Permissions -->
+      <div class="edit-section">
+        <div class="edit-section-title">Production</div>
+        <div class="edit-perm-grid">
+          <div class="edit-perm-row">
+            <div>
+              <div class="edit-perm-label">🏭 Run Production</div>
+              <div class="edit-perm-sub">Can convert bulk bags into retail selling units</div>
+            </div>
+            <label class="edit-toggle">
+              <input type="checkbox" id="edit-can-production">
               <span class="edit-toggle-slider"></span>
             </label>
           </div>
