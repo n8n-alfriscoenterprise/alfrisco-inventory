@@ -708,11 +708,11 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-bo-dist" checked style="width:16px;height:16px;accent-color:#E24B4A;cursor:pointer">
-              Backorder Distribution
+              ⚠️ Dealer Backorder
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-bo-retail" style="width:16px;height:16px;accent-color:#C07000;cursor:pointer">
-              Backorder Retail
+              🛒 Retail Backorder
             </label>
           </div>
         </div>
@@ -895,7 +895,10 @@ async function doLogin(){
 
 function doLogout(){
   currentUser=null;
-  document.querySelector('.fab').style.display='none';
+  const _fd=document.getElementById('fab-dist');
+  const _fr=document.getElementById('fab-retail');
+  if(_fd)_fd.style.display='none';
+  if(_fr)_fr.style.display='none';
   if(document.getElementById('movement-area'))
     document.getElementById('movement-area').style.display='none';
   showScreen('login-screen');
@@ -917,7 +920,7 @@ function showApp(){
 
 function showHome(){
   showScreen('home-screen');
-  document.querySelector('.fab').style.display='flex';
+  updateFabVisibility();
   document.getElementById('home-topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
   const canPO=currentUser.canManagePO!==false && currentUser.role!=='driver';
   const isAdmin=currentUser.role==='admin';
@@ -963,7 +966,7 @@ function buildHomeTiles(){
 
 function showMovement(){
   showScreen('app-screen');
-  document.querySelector('.fab').style.display='flex';
+  updateFabVisibility();
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
   const canPO=currentUser.canManagePO!==false;
   const isAdmin=currentUser.role==='admin';
@@ -1187,7 +1190,7 @@ function showBanner(id,msg){
 // ── DRIVER SCREEN ──
 async function showDriver(){
   showScreen('driver-screen');
-  document.querySelector('.fab').style.display='flex';
+  updateFabVisibility();
   const unit=currentUser.assignedUnit||'Bajaj1';
   document.getElementById('driver-topbar-user').textContent=`${currentUser.username} · driver`;
   document.getElementById('driver-unit-badge').textContent=unit;
@@ -1373,8 +1376,8 @@ function renderStaff(){
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
     const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
-    const boDistTag=s.canBackorderDist!==false?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">BO-Dist</span>`:'';
-    const boRetailTag=s.canBackorderRetail?`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600">BO-Retail</span>`:'';
+    const boDistTag=s.canBackorderDist!==false?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">⚠️BO-Dist</span>`:'';
+    const boRetailTag=s.canBackorderRetail?`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600">🛒BO-Retail</span>`:'';
     row.innerHTML=`
       <div class="staff-info">
         <div class="staff-name">${s.username}</div>
@@ -2001,7 +2004,7 @@ function openCount(){
   if(!canDist&&!canRetail){alert('You do not have permission to perform inventory counts.');return;}
   if(canDist&&canRetail){updateCountTypeCards();showScreen('count-type-screen');}
   else{startCount(canDist?'dist':'retail');}
-  document.querySelector('.fab').style.display='flex';
+  updateFabVisibility();
 }
 
 function updateCountTypeCards(){
@@ -2035,7 +2038,7 @@ function startCount(type){
   if(submitBtn)submitBtn.style.background=color;
   if(successBar)successBar.style.background=color;
   showScreen('count-screen');
-  document.querySelector('.fab').style.display='flex';
+  updateFabVisibility();
   countCat='All';
   buildCountChips();buildCountList();updateCountProgress();
 }
@@ -2139,7 +2142,7 @@ function generatePONumber(){
 }
 
 async function openPO(){
-  showScreen('po-screen');document.querySelector('.fab').style.display='flex';
+  showScreen('po-screen');updateFabVisibility();
   showPOSubtab('list',document.getElementById('po-tab-list'));
   await loadPOs();
 }
@@ -2282,7 +2285,7 @@ async function receiveItems(){
 let bom=[],prodHistory=[];
 
 async function openProduction(){
-  showScreen('prod-screen');document.querySelector('.fab').style.display='flex';
+  showScreen('prod-screen');updateFabVisibility();
   const list=document.getElementById('prod-list');
   list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
   await loadBOM();buildProdList();
@@ -2328,16 +2331,40 @@ async function submitProduction(idx){
   }catch(e){alert('Network error: '+e.message);}
 }
 
+// ── FAB VISIBILITY CONTROL ──
+function updateFabVisibility(){
+  const fabDist = document.getElementById('fab-dist');
+  const fabRetail = document.getElementById('fab-retail');
+  if(!fabDist) return;
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const canDist = isAdmin || (currentUser && currentUser.canBackorderDist !== false);
+  const canRetail = isAdmin || (currentUser && currentUser.canBackorderRetail === true);
+  if(canDist){
+    fabDist.style.display = 'flex';
+    fabDist.style.bottom = canRetail ? '90px' : '90px';
+  } else {
+    fabDist.style.display = 'none';
+  }
+  if(canRetail){
+    fabRetail.style.display = 'flex';
+    fabRetail.style.bottom = canDist ? '152px' : '90px';
+  } else {
+    fabRetail.style.display = 'none';
+  }
+}
+
 // ── FAB TOUCH — full opacity on touch for mobile ──
 document.addEventListener('DOMContentLoaded', () => {
-  const fab = document.querySelector('.fab');
-  if(!fab) return;
-  fab.addEventListener('touchstart', () => {
-    fab.style.opacity = '1';
-  }, {passive:true});
-  fab.addEventListener('touchend', () => {
-    setTimeout(() => { if(fab.style.display !== 'none') fab.style.opacity = '0.25'; }, 2000);
-  }, {passive:true});
+  ['fab-dist','fab-retail'].forEach(id => {
+    const fab = document.getElementById(id);
+    if(!fab) return;
+    fab.addEventListener('touchstart', () => {
+      fab.style.opacity = '1';
+    }, {passive:true});
+    fab.addEventListener('touchend', () => {
+      setTimeout(() => { if(fab.style.display !== 'none') fab.style.opacity = '0.25'; }, 2000);
+    }, {passive:true});
+  });
 });
 
 // ── KEYBOARD ──
@@ -2349,9 +2376,9 @@ document.getElementById('deliver-qty').addEventListener('keydown',e=>{if(e.key==
 init();
 </script>
 
-<!-- FLOATING BACKORDER BUTTON -->
-<button class="fab" onclick="openBoModal()" title="Log Backorder">+</button>
-<div class="fab-label">Log Backorder</div>
+<!-- FLOATING BACKORDER BUTTONS -->
+<button class="fab" id="fab-dist" onclick="openBoModal()" title="Dealer Backorder" style="bottom:90px">⚠️</button>
+<button class="fab" id="fab-retail" onclick="openRboModal()" title="Retail Customer Backorder" style="bottom:152px;background:#C07000;box-shadow:0 4px 14px rgba(192,112,0,0.45);display:none">🛒</button>
 
 <!-- BACKORDER MODAL -->
 <div class="modal-overlay" id="bo-modal" style="display:none">
