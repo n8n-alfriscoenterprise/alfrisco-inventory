@@ -505,6 +505,42 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .trf-chips::-webkit-scrollbar{display:none}
 /* canTransfer tag */
 .tile.t-transfer{background:linear-gradient(135deg,#283593,#3949AB)}
+
+/* ══ PRODUCT LIST ══════════════════════════════════ */
+#pl-screen{background:#f0f2f5}
+.pl-topbar{background:#2E7D32;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pl-topbar-title{color:white;font-size:15px;font-weight:700}
+.pl-search-bar{padding:10px 12px;background:white;border-bottom:1px solid #e8e8e8;flex-shrink:0}
+.pl-search-input{width:100%;padding:9px 14px 9px 38px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:#fafafa;color:#222;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
+.pl-search-input:focus{border-color:#2E7D32}
+.pl-subtabs{display:flex;background:#1B5E20;flex-shrink:0}
+.pl-subtab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;text-align:center;color:rgba(255,255,255,0.55);cursor:pointer;border-bottom:2.5px solid transparent}
+.pl-subtab.active{color:white;border-bottom-color:#A5D6A7}
+.pl-chips{display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #eee;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.pl-chips::-webkit-scrollbar{display:none}
+.pl-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1.5px solid #e0e0e0;color:#666;background:white;flex-shrink:0}
+.pl-chip.active{background:#2E7D32;color:white;border-color:#2E7D32}
+.pl-summary{padding:6px 14px;background:#E8F5E9;border-bottom:1px solid #C8E6C9;font-size:11px;color:#2E7D32;font-weight:600;flex-shrink:0;display:flex;justify-content:space-between}
+.pl-body{flex:1;overflow-y:auto}
+.pl-cat-header{padding:7px 14px 4px;font-size:10px;font-weight:700;letter-spacing:1px;color:#999;background:#f0f2f5;text-transform:uppercase;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:1}
+.pl-row{display:flex;align-items:center;padding:10px 12px;background:white;border-bottom:1px solid #f0f0f0;gap:8px}
+.pl-row:active{background:#f9f9f9}
+.pl-info{flex:1;min-width:0}
+.pl-name{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-code{font-size:10px;color:#bbb;margin-top:2px}
+.pl-price{text-align:right;flex-shrink:0}
+.pl-price-val{font-size:13px;font-weight:700;color:#2E7D32}
+.pl-price-label{font-size:9px;color:#bbb;margin-top:1px;text-align:right}
+.pl-stock{text-align:center;flex-shrink:0;min-width:54px}
+.pl-stock-val{font-size:13px;font-weight:700}
+.pl-stock-label{font-size:9px;color:#bbb;margin-top:1px}
+.pl-stock-ok{color:#1a1a1a}
+.pl-stock-low{color:#C07000}
+.pl-stock-out{color:#E24B4A}
+.pl-stock-na{color:#ccc}
+.pl-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
+.pl-updated{padding:6px 14px 10px;text-align:right;font-size:10px;color:#bbb;background:white;border-top:1px solid #f0f0f0;flex-shrink:0}
+.tile.t-product{background:linear-gradient(135deg,#1B5E20,#2E7D32)}
 </style>
 </head>
 <body>
@@ -865,6 +901,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
               Manage POs
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-pl" checked style="width:16px;height:16px;accent-color:#2E7D32;cursor:pointer">
+              📋 View Product List
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-transfer" style="width:16px;height:16px;accent-color:#3949AB;cursor:pointer">
               🔄 Transfers
             </label>
@@ -1105,6 +1145,9 @@ function buildHomeTiles(){
   if(!grid)return;
   grid.innerHTML='';
   const tiles=[];
+  // 0. Product List — always visible if canViewProductList
+  const canPL = currentUser.role==='admin' || currentUser.canViewProductList===true;
+  if(canPL) tiles.push({icon:'📋',name:'Product List',desc:'Item prices & current stock levels',cls:'t-product',fn:'openPL()'});
   // 1. Stock Movement — always visible
   tiles.push({icon:'📦',name:'Stock Movement',desc:'Load & return stocks for Bajaj routes',cls:'t-movement',fn:'showMovement()'});
   // 2. Transfer
@@ -1549,6 +1592,7 @@ function renderStaff(){
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
     const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
+    const plTag=s.canViewProductList!==false?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">📋PL</span>`:'';
     const trfTag=s.canTransfer?`<span style="font-size:9px;background:#E8EAF6;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🔄Trf</span>`:'';
     const prodTag=s.canProduction?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🏭Prod</span>`:'';
     const boDistTag=s.canBackorderDist!==false?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">⚠️BO-Dist</span>`:'';
@@ -1558,7 +1602,7 @@ function renderStaff(){
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${distTag}${retailTag}${poTag}${trfTag}${prodTag}${boDistTag}${boRetailTag}
+          ${plTag}${distTag}${retailTag}${poTag}${trfTag}${prodTag}${boDistTag}${boRetailTag}
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -1577,6 +1621,7 @@ async function addStaff(){
   const canDist=document.getElementById('new-can-dist').checked;
   const canRetail=document.getElementById('new-can-retail').checked;
   const canPO=document.getElementById('new-can-po').checked;
+  const canPL=document.getElementById('new-can-pl')?document.getElementById('new-can-pl').checked:true;
   const canTrf=document.getElementById('new-can-transfer')?document.getElementById('new-can-transfer').checked:false;
   const canProd=document.getElementById('new-can-production')?document.getElementById('new-can-production').checked:false;
   const canBoDist=document.getElementById('new-can-bo-dist')?document.getElementById('new-can-bo-dist').checked:true;
@@ -1584,9 +1629,9 @@ async function addStaff(){
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -2707,6 +2752,179 @@ function renderAllTransfers(){
   });
 }
 
+
+// ════════════════════════════════════════════════════════
+// PRODUCT LIST — read-only catalog with price + stock
+// ════════════════════════════════════════════════════════
+let plData = {dist:[], retail:[]};  // {sku, name, category, price, stock, unit, lastUpdated}
+let plTab = 'dist';
+let plCat = 'All';
+let plSearch = '';
+let plLoaded = false;
+
+async function openPL(){
+  showScreen('pl-screen');
+  updateFabVisibility();
+  document.getElementById('pl-search').value = '';
+  plSearch = '';
+  plTab = 'dist';
+  plCat = 'All';
+  document.querySelectorAll('.pl-subtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('pl-tab-dist').classList.add('active');
+  document.getElementById('pl-body').innerHTML = '<div class="pl-empty">Loading product list...</div>';
+  document.getElementById('pl-summary-count').textContent = 'Loading...';
+  await loadPLData();
+  buildPLChips();
+  renderPL();
+}
+
+function closePL(){ showHome(); }
+
+async function loadPLData(){
+  try{
+    const r = await api({action:'getProductList'});
+    if(r.status==='ok'){
+      plData.dist   = r.dist   || [];
+      plData.retail = r.retail || [];
+      plLoaded = true;
+    }
+  }catch(e){
+    console.error('loadPLData failed', e);
+  }
+}
+
+function setPLTab(tab, el){
+  plTab = tab;
+  plCat = 'All';
+  plSearch = '';
+  document.getElementById('pl-search').value = '';
+  document.querySelectorAll('.pl-subtab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  buildPLChips();
+  renderPL();
+}
+
+function buildPLChips(){
+  const bar = document.getElementById('pl-chips');
+  bar.innerHTML = '';
+  const items = plData[plTab];
+  const cats = ['All', ...new Set(items.map(i=>i.category).filter(Boolean))];
+  cats.forEach(cat=>{
+    const c = document.createElement('div');
+    c.className = 'pl-chip' + (cat===plCat?' active':'');
+    const count = cat==='All' ? items.length : items.filter(i=>i.category===cat).length;
+    c.textContent = cat + ' (' + count + ')';
+    c.onclick = ()=>{ plCat=cat; buildPLChips(); renderPL(); };
+    bar.appendChild(c);
+  });
+}
+
+function onPLSearch(val){
+  plSearch = val.toLowerCase().trim();
+  renderPL();
+}
+
+function renderPL(){
+  const body   = document.getElementById('pl-body');
+  const items  = plData[plTab];
+  if(!items.length){
+    body.innerHTML = '<div class="pl-empty">No products found.<br>Make sure SKU Master sheets are uploaded.</div>';
+    document.getElementById('pl-summary-count').textContent = '0 products';
+    return;
+  }
+
+  // Filter
+  let visible = plCat==='All' ? items : items.filter(i=>i.category===plCat);
+  if(plSearch){
+    visible = visible.filter(i=>
+      i.name.toLowerCase().includes(plSearch) ||
+      String(i.sku).toLowerCase().includes(plSearch)
+    );
+  }
+
+  // Summary
+  const withPrice = visible.filter(i=>i.price>0).length;
+  const withStock = visible.filter(i=>i.stock!==null).length;
+  document.getElementById('pl-summary-count').textContent =
+    visible.length + ' product' + (visible.length!==1?'s':'') +
+    ' · ' + withPrice + ' priced · ' + withStock + ' with stock';
+
+  // Latest update timestamp
+  const dated = visible.filter(i=>i.lastUpdated);
+  if(dated.length){
+    const latest = dated.reduce((a,b)=>new Date(a.lastUpdated)>new Date(b.lastUpdated)?a:b);
+    document.getElementById('pl-summary-updated').textContent = 'Stock as of: ' + latest.lastUpdated;
+  } else {
+    document.getElementById('pl-summary-updated').textContent = 'No stock counts yet';
+  }
+
+  if(!visible.length){
+    body.innerHTML = '<div class="pl-empty">No products match your search.</div>';
+    return;
+  }
+
+  body.innerHTML = '';
+
+  // Group by category
+  const cats = plCat==='All'
+    ? [...new Set(visible.map(i=>i.category))]
+    : [plCat];
+
+  cats.forEach(cat=>{
+    const catItems = visible.filter(i=>i.category===cat);
+    if(!catItems.length) return;
+
+    if(plCat==='All'){
+      const hdr = document.createElement('div');
+      hdr.className = 'pl-cat-header';
+      hdr.textContent = cat + ' (' + catItems.length + ')';
+      body.appendChild(hdr);
+    }
+
+    catItems.forEach(item=>{
+      const row = document.createElement('div');
+      row.className = 'pl-row';
+
+      // Stock display
+      let stockHtml = '';
+      if(item.stock === null){
+        stockHtml = `<div class="pl-stock">
+          <div class="pl-stock-val pl-stock-na">—</div>
+          <div class="pl-stock-label">no count</div>
+        </div>`;
+      } else {
+        const qty = Number(item.stock);
+        const cls = qty <= 0 ? 'pl-stock-out' : qty <= 5 ? 'pl-stock-low' : 'pl-stock-ok';
+        const label = qty <= 0 ? 'FOR BACKORDER' : qty <= 5 ? 'LOW' : 'IN STOCK';
+        stockHtml = `<div class="pl-stock">
+          <div class="pl-stock-val ${cls}">${qty <= 0 ? '0' : qty}</div>
+          <div class="pl-stock-label">${label}</div>
+        </div>`;
+      }
+
+      // Price display
+      const priceHtml = item.price > 0
+        ? `<div class="pl-price">
+            <div class="pl-price-val">₱${Number(item.price).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+            <div class="pl-price-label">per ${item.unit||'unit'}</div>
+          </div>`
+        : `<div class="pl-price">
+            <div class="pl-price-val" style="color:#ccc">—</div>
+            <div class="pl-price-label">no price</div>
+          </div>`;
+
+      row.innerHTML = `
+        <div class="pl-info">
+          <div class="pl-name">${item.name}</div>
+          <div class="pl-code">${item.sku}</div>
+        </div>
+        ${priceHtml}
+        ${stockHtml}`;
+      body.appendChild(row);
+    });
+  });
+}
+
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
   const hasUnsaved=Object.values(quantities).some(q=>q.loaded>0||q.returned>0);
@@ -3137,6 +3355,7 @@ function openEditStaff(idx){
   // Permissions — admin gets all locked ON, others use stored values
   const isAdmin = s.role === 'admin';
   const perms = [
+    ['edit-can-pl',          isAdmin || s.canViewProductList === true],
     ['edit-can-count-dist',  isAdmin || s.canCountDist !== false],
     ['edit-can-count-retail',isAdmin || s.canCountRetail !== false],
     ['edit-can-po',          isAdmin || s.canManagePO !== false],
@@ -3169,7 +3388,7 @@ function onEditRoleChange(){
 
   // If admin selected — auto-check all permissions and disable toggles
   const isAdmin = role === 'admin';
-  ['edit-can-count-dist','edit-can-count-retail','edit-can-po',
+  ['edit-can-pl','edit-can-count-dist','edit-can-count-retail','edit-can-po',
    'edit-can-transfer','edit-can-production',
    'edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
     const el = document.getElementById(id);
@@ -3185,6 +3404,7 @@ async function saveStaffEdit(){
   const canCountDist    = document.getElementById('edit-can-count-dist').checked;
   const canCountRetail  = document.getElementById('edit-can-count-retail').checked;
   const canManagePO     = document.getElementById('edit-can-po').checked;
+  const canPLView       = document.getElementById('edit-can-pl').checked;
   const canTransfer     = document.getElementById('edit-can-transfer').checked;
   const canProduction   = document.getElementById('edit-can-production').checked;
   const canBoDist       = document.getElementById('edit-can-bo-dist').checked;
@@ -3206,7 +3426,7 @@ async function saveStaffEdit(){
       username: s.username,
       role, assignedUnit: unit,
       canCountDist, canCountRetail,
-      canManagePO, canTransfer, canProduction,
+      canManagePO, canViewProductList: canPLView, canTransfer, canProduction,
       canBackorderDist: canBoDist,
       canBackorderRetail: canBoRetail
     });
@@ -3215,7 +3435,7 @@ async function saveStaffEdit(){
       staff[editingStaffIndex] = {
         ...s, role, assignedUnit: unit,
         canCountDist, canCountRetail, canManagePO,
-        canTransfer, canProduction,
+        canViewProductList: canPLView, canTransfer, canProduction,
         canBackorderDist: canBoDist,
         canBackorderRetail: canBoRetail
       };
@@ -3655,6 +3875,32 @@ init();
 </div>
 
 
+
+
+<!-- ══ PRODUCT LIST SCREEN ══════════════════════════ -->
+<div id="pl-screen" class="screen" style="flex-direction:column">
+  <div class="pl-topbar">
+    <span class="pl-topbar-title">📋 Product List</span>
+    <button class="back-btn" onclick="closePL()">← Back</button>
+  </div>
+  <div class="pl-search-bar">
+    <input type="text" class="pl-search-input" id="pl-search"
+      placeholder="Search by name or SKU code..."
+      oninput="onPLSearch(this.value)">
+  </div>
+  <div class="pl-subtabs">
+    <div class="pl-subtab active" id="pl-tab-dist" onclick="setPLTab('dist',this)">Distribution</div>
+    <div class="pl-subtab" id="pl-tab-retail" onclick="setPLTab('retail',this)">Retail</div>
+  </div>
+  <div class="pl-chips" id="pl-chips"></div>
+  <div class="pl-summary" id="pl-summary">
+    <span id="pl-summary-count">Loading...</span>
+    <span id="pl-summary-updated"></span>
+  </div>
+  <div class="pl-body" id="pl-body">
+    <div class="pl-empty">Loading product list...</div>
+  </div>
+</div>
 
 <!-- ══ TRANSFER SCREEN ══════════════════════════ -->
 <div id="transfer-screen" class="screen" style="flex-direction:column">
