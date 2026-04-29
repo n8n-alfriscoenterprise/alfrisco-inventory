@@ -478,6 +478,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .ts-partial{background:#E3F2FD;color:#0D47A1}
 .ts-received{background:#EAF3DE;color:#27500A}
 .ts-cancelled{background:#F1EFE8;color:#5F5E5A}
+.ts-declined{background:#FCEBEB;color:#A32D2D}
 .trf-route{font-size:12px;color:#555;margin-bottom:3px;display:flex;align-items:center;gap:5px}
 .trf-meta{font-size:11px;color:#aaa}
 .trf-card-row2{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #f5f5f5}
@@ -2513,6 +2514,10 @@ function renderAcknowledgeForm(){
           Confirm Receipt &amp; Update Inventory
         </button>
       </div>
+      <button onclick="declineTransfer()"
+        style="width:100%;padding:10px;background:none;border:1.5px solid #E24B4A;color:#E24B4A;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">
+        ✗ Decline Receipt
+      </button>
       <button onclick="renderPendingTransfers()"
         style="width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
         ← Back to pending list
@@ -2576,9 +2581,71 @@ async function submitAcknowledgment(){
   }
 }
 
+
+// ── DECLINE + CANCEL TRANSFERS ────────────────────────
+async function declineTransfer(){
+  if(!currentTrf) return;
+  const reason = prompt(
+    'Reason for declining this transfer (required):\n' +
+    currentTrf.trfNumber + ' — ' +
+    currentTrf.fromLocation + ' → ' + currentTrf.toLocation
+  );
+  if(reason === null) return; // user cancelled prompt
+  if(!reason.trim()){
+    alert('Please enter a reason for declining.');
+    return;
+  }
+  const btn = document.getElementById('trf-ack-submit-btn');
+  if(btn){ btn.disabled=true; }
+
+  try{
+    const r = await api({
+      action: 'declineTransfer',
+      trfNumber: currentTrf.trfNumber,
+      declinedBy: currentUser.username,
+      reason: reason.trim()
+    });
+    if(r.status==='ok'){
+      currentTrf = null;
+      await loadTransfers();
+      showBanner('trf-success-bar',
+        `Transfer ${r.trfNumber} declined — sender has been notified in the log`);
+      showTrfSubtab('pending', document.getElementById('trf-tab-pending'));
+    } else {
+      alert('Error: '+(r.msg||'Could not decline transfer'));
+      if(btn){ btn.disabled=false; }
+    }
+  }catch(e){
+    alert('Network error: '+e.message);
+    if(btn){ btn.disabled=false; }
+  }
+}
+
+async function cancelTransfer(trfNumber){
+  const reason = prompt('Reason for cancelling ' + trfNumber + ' (optional):');
+  if(reason === null) return; // user cancelled prompt
+  try{
+    const r = await api({
+      action: 'cancelTransfer',
+      trfNumber,
+      cancelledBy: currentUser.username,
+      reason: reason.trim()
+    });
+    if(r.status==='ok'){
+      await loadTransfers();
+      showBanner('trf-success-bar', trfNumber + ' cancelled');
+      renderAllTransfers();
+    } else {
+      alert('Error: '+(r.msg||'Could not cancel'));
+    }
+  }catch(e){
+    alert('Network error: '+e.message);
+  }
+}
+
 // ── ALL TRANSFERS LIST ────────────────────────────────
 function renderAllTransfers(){
-  const statuses = ['All','IN TRANSIT','RECEIVED','PARTIAL','CANCELLED'];
+  const statuses = ['All','IN TRANSIT','RECEIVED','PARTIAL','CANCELLED','DECLINED'];
   const counts = {};
   trfList.forEach(t=>{ counts[t.status]=(counts[t.status]||0)+1; });
 
@@ -2608,7 +2675,8 @@ function renderAllTransfers(){
   visible.forEach(trf=>{
     const statusCls = {
       'PENDING':'ts-pending','IN TRANSIT':'ts-transit',
-      'PARTIAL':'ts-partial','RECEIVED':'ts-received','CANCELLED':'ts-cancelled'
+      'PARTIAL':'ts-partial','RECEIVED':'ts-received',
+      'CANCELLED':'ts-cancelled','DECLINED':'ts-declined'
     }[trf.status]||'ts-pending';
     const card = document.createElement('div');
     card.className='trf-card';
@@ -2629,6 +2697,11 @@ function renderAllTransfers(){
       <div class="trf-card-row2">
         <span style="font-size:11px;color:#888">${trf.lineCount||0} item(s)</span>
         ${trf.receivedBy?`<span style="font-size:11px;color:#27AE60">Rcvd by ${trf.receivedBy}</span>`:''}
+        ${trf.status==='IN TRANSIT'&&(currentUser.role==='admin'||trf.createdBy===currentUser.username)
+          ?`<button onclick="event.stopPropagation();cancelTransfer('${trf.trfNumber}')"
+              style="font-size:10px;background:none;border:1px solid #ccc;color:#888;padding:2px 8px;border-radius:6px;cursor:pointer">
+              Cancel
+            </button>`:''}
       </div>`;
     body.appendChild(card);
   });
