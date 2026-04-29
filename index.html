@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Alfrisco Inventory</title>
+<title>AE-ON | Alfrisco Enterprise Online</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll-behavior:none}
@@ -12,7 +12,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 
 /* LOGIN */
 #login-screen{background:#0A5C46;align-items:center;justify-content:center;padding:2rem}
-.login-card{background:white;border-radius:16px;padding:2rem 1.75rem;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+.login-card{background:white;border-radius:16px;padding:2rem 1.75rem;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
 .logo-icon{width:56px;height:56px;background:#0A5C46;border-radius:14px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center}
 .logo-icon span{color:white;font-size:24px;font-weight:900}
 .logo-title{font-size:19px;font-weight:700;color:#0A5C46;text-align:center}
@@ -511,10 +511,24 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 <!-- LOGIN -->
 <div id="login-screen" class="screen active">
   <div class="login-card">
-    <div style="margin-bottom:1.75rem">
-      <div class="logo-icon"><span>A</span></div>
-      <div class="logo-title">Alfrisco Inventory</div>
-      <div class="logo-sub">Staff Access Portal</div>
+    <div style="margin-bottom:1.75rem;display:flex;flex-direction:column;align-items:center">
+      <div style="background:#0A5C46;border-radius:16px;padding:18px 22px 14px;margin-bottom:12px;display:inline-block">
+        <svg width="180" height="60" viewBox="0 0 180 60" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>AE-ON logo</title>
+<polygon points="16,4 34,4 43,19.5 34,35 16,35 7,19.5" fill="white" fill-opacity="0.95"/>
+<line x1="11" y1="32" x2="18.5" y2="8" stroke="#0A5C46" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="18.5" y1="8" x2="26" y2="32" stroke="#0A5C46" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="13.2" y1="24" x2="22.8" y2="24" stroke="#0A5C46" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="29" y1="8" x2="29" y2="32" stroke="#0A5C46" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="29" y1="8" x2="40" y2="8" stroke="#0A5C46" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="29" y1="20" x2="38" y2="20" stroke="#0A5C46" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="29" y1="32" x2="40" y2="32" stroke="#0A5C46" stroke-width="1.8" stroke-linecap="round"/>
+<text x="52" y="26" font-family="Arial,sans-serif" font-weight="700" font-size="28" letter-spacing="-0.5" fill="white">AE</text>
+<text x="100" y="26" font-family="Arial,sans-serif" font-weight="300" font-size="28" fill="rgba(255,255,255,0.75)">-ON</text>
+<text x="52" y="42" font-family="Arial,sans-serif" font-size="8.5" font-weight="400" fill="rgba(255,255,255,0.55)" letter-spacing="2">ALFRISCO ENTERPRISE ONLINE</text>
+</svg>
+      </div>
+      <div style="font-size:12px;color:#aaa;font-weight:400;letter-spacing:0.5px">Staff Access Portal</div>
     </div>
     <label>Username</label>
     <input type="text" id="login-user" placeholder="Enter your username" autocomplete="username">
@@ -531,8 +545,21 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   <div class="topbar">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
-        <div class="topbar-title">Alfrisco Inventory</div>
-        <div class="topbar-user" id="home-topbar-user"></div>
+        <svg width="90" height="28" viewBox="0 0 90 28" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>AE-ON</title>
+<polygon points="7,1.5 17,1.5 22,10 17,18.5 7,18.5 2,10" fill="white" fill-opacity="0.9"/>
+<line x1="4.5" y1="17" x2="8.8" y2="4" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="8.8" y1="4" x2="13" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="6" y1="12.5" x2="11.5" y2="12.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="15" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="21" y2="4" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="10.5" x2="20" y2="10.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="17" x2="21" y2="17" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<text x="27" y="16" font-family="Arial,sans-serif" font-weight="700" font-size="16" letter-spacing="-0.3" fill="white">AE</text>
+<text x="50" y="16" font-family="Arial,sans-serif" font-weight="300" font-size="16" fill="rgba(255,255,255,0.75)">-ON</text>
+<text x="27" y="25" font-family="Arial,sans-serif" font-size="5.5" font-weight="400" fill="rgba(255,255,255,0.5)" letter-spacing="1.2">ALFRISCO ENTERPRISE ONLINE</text>
+</svg>
+        <div class="topbar-user" id="home-topbar-user" style="margin-top:2px"></div>
       </div>
     </div>
     <div class="topbar-nav-row">
@@ -557,8 +584,21 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   <div class="topbar" id="app-topbar">
     <div class="topbar-row1" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
-        <div class="topbar-title">Alfrisco Inventory</div>
-        <div class="topbar-user" id="topbar-user"></div>
+        <svg width="90" height="28" viewBox="0 0 90 28" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>AE-ON</title>
+<polygon points="7,1.5 17,1.5 22,10 17,18.5 7,18.5 2,10" fill="white" fill-opacity="0.9"/>
+<line x1="4.5" y1="17" x2="8.8" y2="4" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="8.8" y1="4" x2="13" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="6" y1="12.5" x2="11.5" y2="12.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="15" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="21" y2="4" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="10.5" x2="20" y2="10.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="17" x2="21" y2="17" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<text x="27" y="16" font-family="Arial,sans-serif" font-weight="700" font-size="16" letter-spacing="-0.3" fill="white">AE</text>
+<text x="50" y="16" font-family="Arial,sans-serif" font-weight="300" font-size="16" fill="rgba(255,255,255,0.75)">-ON</text>
+<text x="27" y="25" font-family="Arial,sans-serif" font-size="5.5" font-weight="400" fill="rgba(255,255,255,0.5)" letter-spacing="1.2">ALFRISCO ENTERPRISE ONLINE</text>
+</svg>
+        <div class="topbar-user" id="topbar-user" style="margin-top:2px"></div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <button class="mode-btn" id="mode-btn" onclick="toggleMode()" style="display:none">LOAD</button>
@@ -622,8 +662,21 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 <div id="driver-screen" class="screen">
   <div class="topbar" style="display:flex;justify-content:space-between;align-items:center">
     <div>
-      <div class="topbar-title">Alfrisco Inventory</div>
-      <div class="topbar-user" id="driver-topbar-user"></div>
+      <svg width="90" height="28" viewBox="0 0 90 28" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>AE-ON</title>
+<polygon points="7,1.5 17,1.5 22,10 17,18.5 7,18.5 2,10" fill="white" fill-opacity="0.9"/>
+<line x1="4.5" y1="17" x2="8.8" y2="4" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="8.8" y1="4" x2="13" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="6" y1="12.5" x2="11.5" y2="12.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="15" y2="17" stroke="#0A5C46" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="15" y1="4" x2="21" y2="4" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="10.5" x2="20" y2="10.5" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<line x1="15" y1="17" x2="21" y2="17" stroke="#0A5C46" stroke-width="1.2" stroke-linecap="round"/>
+<text x="27" y="16" font-family="Arial,sans-serif" font-weight="700" font-size="16" letter-spacing="-0.3" fill="white">AE</text>
+<text x="50" y="16" font-family="Arial,sans-serif" font-weight="300" font-size="16" fill="rgba(255,255,255,0.75)">-ON</text>
+<text x="27" y="25" font-family="Arial,sans-serif" font-size="5.5" font-weight="400" fill="rgba(255,255,255,0.5)" letter-spacing="1.2">ALFRISCO ENTERPRISE ONLINE</text>
+</svg>
+      <div class="topbar-user" id="driver-topbar-user" style="margin-top:2px"></div>
     </div>
     <button class="logout-btn" onclick="doLogout()">Sign out</button>
     <div style="display:none">
@@ -1045,21 +1098,26 @@ function buildHomeTiles(){
   if(!grid)return;
   grid.innerHTML='';
   const tiles=[];
+  // 1. Stock Movement — always visible
   tiles.push({icon:'📦',name:'Stock Movement',desc:'Load & return stocks for Bajaj routes',cls:'t-movement',fn:'showMovement()'});
-  const canCount=currentUser.canCountDist!==false||currentUser.canCountRetail!==false;
-  if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
+  // 2. Transfer
+  const canTrfTile=currentUser.role==='admin'||currentUser.canTransfer===true;
+  if(canTrfTile) tiles.push({icon:'🔄',name:'Transfer',desc:'Move stock between warehouse, store & Bajaj',cls:'t-transfer',fn:'openTransfer()'});
+  // 3. Purchase Orders
   const canPO=currentUser.canManagePO!==false;
   if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
+  // 4. General Inventory
+  const canCount=currentUser.canCountDist!==false||currentUser.canCountRetail!==false;
+  if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
+  // 5. Dealer Backorder
   tiles.push({icon:'⚠️',name:'Dealer Backorder',desc:'Record out-of-stock distribution dealer requests',cls:'t-backorder',fn:'openBoModal()'});
+  // 6. Retail Backorder
   if(currentUser.canBackorderRetail===true||currentUser.role==='admin')
     tiles.push({icon:'🛒',name:'Retail Backorder',desc:'Record retail customer out-of-stock requests',cls:'t-retail-bo',fn:'openRboModal()'});
-  // Production tile — admin and staff retail only
-  const canTrfTile = currentUser.role==='admin' || currentUser.canTransfer===true;
-  if(canTrfTile) tiles.push({icon:'🔄',name:'Transfer',desc:'Move stock between warehouse, store & Bajaj',cls:'t-transfer',fn:'openTransfer()'});
-  const canProdTile = currentUser.role==='admin' ||
-    currentUser.canProduction===true ||
-    currentUser.role==='staff-retail';
+  // 7. Production
+  const canProdTile=currentUser.role==='admin'||currentUser.canProduction===true||currentUser.role==='staff-retail';
   if(canProdTile) tiles.push({icon:'🏭',name:'Production',desc:'Convert bags to smaller retail units',cls:'t-prod',fn:'openProduction()'});
+  // 8. Admin
   if(currentUser.role==='admin') tiles.push({icon:'⚙️',name:'Admin',desc:'Staff accounts & app settings',cls:'t-admin',fn:'openAdminFromHome()'});
   if(tiles.length%2!==0) tiles[tiles.length-1].full=true;
   tiles.forEach(t=>{
