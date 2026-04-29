@@ -432,6 +432,78 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .edit-save-btn{width:100%;padding:13px;background:#1F4E78;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .edit-save-btn:disabled{background:#ccc;cursor:not-allowed}
 .edit-cancel-btn{width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+
+/* ══ TRANSFER SYSTEM ══════════════════════════════ */
+#transfer-screen{background:#f0f2f5}
+.trf-topbar{background:#3949AB;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.trf-topbar-title{color:white;font-size:15px;font-weight:700}
+.trf-subtabs{display:flex;background:#283593;flex-shrink:0}
+.trf-subtab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;text-align:center;color:rgba(255,255,255,0.55);cursor:pointer;border-bottom:2.5px solid transparent}
+.trf-subtab.active{color:white;border-bottom-color:#90CAF9}
+.trf-success-bar{display:none;background:#3949AB;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0}
+/* Create form */
+.trf-body{flex:1;overflow-y:auto;padding:14px}
+.trf-section{background:white;border-radius:10px;padding:14px;margin-bottom:12px}
+.trf-section-title{font-size:11px;font-weight:700;color:#3949AB;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px}
+.trf-form-label{font-size:11px;font-weight:600;color:#666;display:block;margin-bottom:4px;margin-top:8px}
+.trf-form-label:first-of-type{margin-top:0}
+.trf-select{width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:white;color:#222}
+.trf-select:focus{border-color:#3949AB}
+.trf-loc-row{display:flex;align-items:flex-end;gap:8px}
+.trf-loc-wrap{flex:1}
+.trf-swap-btn{padding:10px 12px;background:#3949AB;color:white;border:none;border-radius:9px;font-size:16px;cursor:pointer;flex-shrink:0;margin-bottom:0}
+.trf-swap-btn:active{opacity:0.8}
+/* Line items */
+.trf-line-row{background:#f8f8f8;border-radius:9px;padding:10px 12px;margin-bottom:8px;position:relative}
+.trf-line-num{font-size:10px;font-weight:700;color:#3949AB;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.trf-line-remove{background:none;border:none;color:#bbb;font-size:16px;cursor:pointer;padding:0;line-height:1}
+.trf-line-remove:hover{color:#E24B4A}
+.trf-line-sku{width:100%;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white;margin-bottom:6px}
+.trf-line-sku:focus{border-color:#3949AB}
+.trf-line-qty-row{display:flex;gap:6px}
+.trf-line-qty{flex:1;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-weight:600;text-align:center;outline:none;background:white}
+.trf-line-qty:focus{border-color:#3949AB}
+.trf-line-unit{flex:1;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white}
+.trf-add-line{width:100%;padding:9px;border:1.5px dashed #3949AB;background:transparent;color:#3949AB;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px}
+.trf-submit-btn{width:100%;padding:13px;background:#3949AB;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.trf-submit-btn:disabled{background:#ccc;cursor:not-allowed}
+/* Transfer cards */
+.trf-card{background:white;border-radius:10px;margin:10px 12px 0;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.07);cursor:pointer}
+.trf-card:active{transform:scale(0.98)}
+.trf-card-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.trf-num{font-size:13px;font-weight:700;color:#3949AB}
+.trf-status-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px}
+.ts-pending{background:#EEF0FB;color:#283593}
+.ts-transit{background:#FFF8E1;color:#F57F17}
+.ts-partial{background:#E3F2FD;color:#0D47A1}
+.ts-received{background:#EAF3DE;color:#27500A}
+.ts-cancelled{background:#F1EFE8;color:#5F5E5A}
+.trf-route{font-size:12px;color:#555;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.trf-meta{font-size:11px;color:#aaa}
+.trf-card-row2{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #f5f5f5}
+/* Acknowledge */
+.trf-ack-section{background:white;border-radius:10px;padding:14px;margin-bottom:12px}
+.trf-ack-header{margin-bottom:12px}
+.trf-ack-num{font-size:15px;font-weight:700;color:#3949AB;margin-bottom:4px}
+.trf-ack-meta{font-size:12px;color:#888;line-height:1.6}
+.trf-ack-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f5f5f5}
+.trf-ack-row:last-child{border-bottom:none}
+.trf-ack-info{flex:1;min-width:0}
+.trf-ack-name{font-size:12px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trf-ack-dispatched{font-size:10px;color:#aaa;margin-top:2px}
+.trf-ack-input{width:60px;text-align:center;font-size:13px;font-weight:700;padding:6px 3px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.trf-ack-input:focus{border-color:#3949AB}
+.trf-ack-input:disabled{background:#f5f5f5;color:#ccc}
+.trf-ack-done{font-size:10px;background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;font-weight:600}
+.trf-ack-btn{width:100%;padding:12px;background:#27AE60;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px}
+.trf-ack-btn:disabled{background:#ccc}
+.trf-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
+.trf-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1.5px solid #e0e0e0;color:#666;background:white;flex-shrink:0}
+.trf-chip.active{background:#3949AB;color:white;border-color:#3949AB}
+.trf-chips{display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #eee;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.trf-chips::-webkit-scrollbar{display:none}
+/* canTransfer tag */
+.tile.t-transfer{background:linear-gradient(135deg,#283593,#3949AB)}
 </style>
 </head>
 <body>
@@ -733,6 +805,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
               Manage POs
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-transfer" style="width:16px;height:16px;accent-color:#3949AB;cursor:pointer">
+              🔄 Transfers
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-production" style="width:16px;height:16px;accent-color:#1B5E20;cursor:pointer">
               🏭 Run Production
             </label>
@@ -978,6 +1054,8 @@ function buildHomeTiles(){
   if(currentUser.canBackorderRetail===true||currentUser.role==='admin')
     tiles.push({icon:'🛒',name:'Retail Backorder',desc:'Record retail customer out-of-stock requests',cls:'t-retail-bo',fn:'openRboModal()'});
   // Production tile — admin and staff retail only
+  const canTrfTile = currentUser.role==='admin' || currentUser.canTransfer===true;
+  if(canTrfTile) tiles.push({icon:'🔄',name:'Transfer',desc:'Move stock between warehouse, store & Bajaj',cls:'t-transfer',fn:'openTransfer()'});
   const canProdTile = currentUser.role==='admin' ||
     currentUser.canProduction===true ||
     currentUser.role==='staff-retail';
@@ -1406,6 +1484,7 @@ function renderStaff(){
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
     const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
+    const trfTag=s.canTransfer?`<span style="font-size:9px;background:#E8EAF6;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🔄Trf</span>`:'';
     const prodTag=s.canProduction?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🏭Prod</span>`:'';
     const boDistTag=s.canBackorderDist!==false?`<span style="font-size:9px;background:#FCEBEB;color:#A32D2D;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">⚠️BO-Dist</span>`:'';
     const boRetailTag=s.canBackorderRetail?`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600">🛒BO-Retail</span>`:'';
@@ -1414,7 +1493,7 @@ function renderStaff(){
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${distTag}${retailTag}${poTag}${prodTag}${boDistTag}${boRetailTag}
+          ${distTag}${retailTag}${poTag}${trfTag}${prodTag}${boDistTag}${boRetailTag}
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -1433,15 +1512,16 @@ async function addStaff(){
   const canDist=document.getElementById('new-can-dist').checked;
   const canRetail=document.getElementById('new-can-retail').checked;
   const canPO=document.getElementById('new-can-po').checked;
+  const canTrf=document.getElementById('new-can-transfer')?document.getElementById('new-can-transfer').checked:false;
   const canProd=document.getElementById('new-can-production')?document.getElementById('new-can-production').checked:false;
   const canBoDist=document.getElementById('new-can-bo-dist')?document.getElementById('new-can-bo-dist').checked:true;
   const canBoRetail=document.getElementById('new-can-bo-retail')?document.getElementById('new-can-bo-retail').checked:false;
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -1995,6 +2075,489 @@ async function submitRetailBackorder(){
 }
 
 
+
+// ════════════════════════════════════════════════════════
+// TRANSFER SYSTEM
+// 4-stage lifecycle: PENDING → IN TRANSIT → PARTIAL/RECEIVED
+// Inventory updates ONLY on acknowledgment
+// ════════════════════════════════════════════════════════
+let trfLines = [];
+let trfList = [];
+let trfFilter = 'All';
+let currentTrf = null;
+
+// ── OPEN / CLOSE ──────────────────────────────────────
+async function openTransfer(){
+  showScreen('transfer-screen');
+  updateFabVisibility();
+  showTrfSubtab('create', document.getElementById('trf-tab-create'));
+  initTrfCreate();
+  await loadTransfers();
+}
+
+function closeTransfer(){ showHome(); }
+
+function showTrfSubtab(tab, el){
+  document.querySelectorAll('.trf-subtab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('trf-view-create').style.display = tab==='create'?'flex':'none';
+  document.getElementById('trf-view-pending').style.display = tab==='pending'?'flex':'none';
+  document.getElementById('trf-view-all').style.display    = tab==='all'?'flex':'none';
+  if(tab==='pending') renderPendingTransfers();
+  if(tab==='all')     renderAllTransfers();
+}
+
+// ── TRANSFER NUMBER ───────────────────────────────────
+function generateTrfNumber(){
+  const d = new Date();
+  const date = d.getFullYear().toString() +
+    String(d.getMonth()+1).padStart(2,'0') +
+    String(d.getDate()).padStart(2,'0');
+  const todayTrfs = trfList.filter(t=>t.trfNumber&&t.trfNumber.includes(date));
+  return 'TRF-'+date+'-'+String(todayTrfs.length+1).padStart(3,'0');
+}
+
+// ── LOAD TRANSFERS ────────────────────────────────────
+async function loadTransfers(){
+  try{
+    const r = await api({action:'getTransfers'});
+    if(r.status==='ok'){
+      trfList = r.transfers || [];
+      updatePendingBadge();
+    }
+  }catch(e){ console.error('loadTransfers failed',e); }
+}
+
+function updatePendingBadge(){
+  const myLoc = getCurrentUserLocation();
+  const pending = trfList.filter(t=>
+    t.status==='IN TRANSIT' && t.toLocation===myLoc
+  ).length;
+  const badge = document.getElementById('trf-pending-badge');
+  if(badge){
+    badge.textContent = pending;
+    badge.style.display = pending>0 ? 'inline' : 'none';
+  }
+}
+
+function getCurrentUserLocation(){
+  if(!currentUser) return '';
+  if(currentUser.role==='staff') return 'Distribution WH';
+  if(currentUser.role==='staff-retail') return 'Retail Store';
+  if(currentUser.role==='driver') return currentUser.assignedUnit||'Bajaj1';
+  return ''; // admin sees all
+}
+
+// ── CREATE TRANSFER ───────────────────────────────────
+function initTrfCreate(){
+  trfLines = [];
+  document.getElementById('trf-from').value = 'Distribution WH';
+  document.getElementById('trf-to').value   = 'Retail Store';
+  document.getElementById('trf-via').value  = 'Bajaj1';
+  document.getElementById('trf-notes').value = '';
+  document.getElementById('trf-create-err').textContent = '';
+  const btn = document.getElementById('trf-submit-btn');
+  if(btn){ btn.disabled=false; btn.textContent='Create Transfer & Mark as Dispatched'; }
+  addTrfLine();
+}
+
+function swapTrfLocations(){
+  const from = document.getElementById('trf-from');
+  const to   = document.getElementById('trf-to');
+  const tmp  = from.value;
+  from.value = to.value;
+  to.value   = tmp;
+  onTrfRouteChange();
+}
+
+function onTrfRouteChange(){
+  // Rebuild SKU datalist based on from location
+  buildTrfDatalist();
+  renderTrfLines();
+}
+
+function buildTrfDatalist(){
+  const from = document.getElementById('trf-from').value;
+  // If from Distribution WH → show DIST SKUs
+  // If from Retail Store → show RETAIL SKUs
+  // If from Bajaj → show both (can carry either)
+  let typeFilter = null;
+  if(from === 'Distribution WH') typeFilter = 'DIST';
+  else if(from === 'Retail Store') typeFilter = 'RETAIL';
+
+  const dlId = 'trf-sku-datalist';
+  let dl = document.getElementById(dlId);
+  if(!dl){ dl=document.createElement('datalist'); dl.id=dlId; document.body.appendChild(dl); }
+  const skus = typeFilter
+    ? liveSKUs.filter(s=>s.type===typeFilter)
+    : liveSKUs;
+  dl.innerHTML = skus.map(s=>`<option value="${s.name}" data-code="${s.code}" data-type="${s.type}">`).join('');
+}
+
+function addTrfLine(){
+  trfLines.push({skuCode:'', skuName:'', qty:1, unit:'bag'});
+  buildTrfDatalist();
+  renderTrfLines();
+  setTimeout(()=>{
+    const container = document.getElementById('trf-line-items');
+    if(container&&container.lastElementChild)
+      container.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+}
+
+function removeTrfLine(idx){
+  trfLines.splice(idx,1);
+  renderTrfLines();
+}
+
+function renderTrfLines(){
+  const container = document.getElementById('trf-line-items');
+  if(!container) return;
+  container.innerHTML = '';
+  const countEl = document.getElementById('trf-item-count');
+  if(countEl) countEl.textContent = trfLines.length+(trfLines.length===1?' item':' items');
+
+  trfLines.forEach((line,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'trf-line-row';
+    row.id = 'trf-row-'+idx;
+    row.innerHTML = `
+      <div class="trf-line-num">
+        Item ${idx+1}
+        ${trfLines.length>1
+          ?`<button class="trf-line-remove" onclick="removeTrfLine(${idx})">×</button>`:''}
+      </div>
+      <input type="text"
+        id="trf-sku-${idx}"
+        class="trf-line-sku"
+        placeholder="Type to search SKU or item name..."
+        list="trf-sku-datalist"
+        autocomplete="off"
+        value="${line.skuName||''}"
+        oninput="onTrfSkuInput(${idx},this.value)">
+      ${line.skuName
+        ?`<div style="font-size:10px;color:#27AE60;margin-bottom:6px">✓ ${line.skuName}</div>`:''}
+      <div class="trf-line-qty-row">
+        <input type="number" class="trf-line-qty"
+          min="1" step="1" value="${line.qty||1}"
+          placeholder="Qty"
+          oninput="trfLines[${idx}].qty=parseFloat(this.value)||1">
+        <select class="trf-line-unit"
+          onchange="trfLines[${idx}].unit=this.value">
+          ${['bag','sack','box','case','pc','bottle','kg']
+            .map(u=>`<option value="${u}"${line.unit===u?' selected':''}>${u}</option>`)
+            .join('')}
+        </select>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function onTrfSkuInput(idx, val){
+  const match = liveSKUs.find(s=>s.name.toLowerCase()===val.toLowerCase());
+  trfLines[idx].skuName = val;
+  trfLines[idx].skuCode = match ? match.code : '';
+  // Update confirm without full re-render
+  const row = document.getElementById('trf-row-'+idx);
+  if(row){
+    let confirmEl = row.querySelector('[data-trf-confirm]');
+    if(!confirmEl){
+      confirmEl = document.createElement('div');
+      confirmEl.setAttribute('data-trf-confirm','1');
+      const input = document.getElementById('trf-sku-'+idx);
+      if(input) input.insertAdjacentElement('afterend', confirmEl);
+    }
+    confirmEl.style.fontSize='10px';
+    confirmEl.style.marginBottom='6px';
+    if(match){
+      confirmEl.style.color='#27AE60';
+      confirmEl.textContent='✓ '+match.name+' ('+match.type+')';
+    } else {
+      confirmEl.style.color='#bbb';
+      confirmEl.textContent = val?'Type exact name or pick from suggestions':'';
+    }
+  }
+}
+
+async function submitTransfer(){
+  const from  = document.getElementById('trf-from').value;
+  const to    = document.getElementById('trf-to').value;
+  const via   = document.getElementById('trf-via').value;
+  const notes = document.getElementById('trf-notes').value.trim();
+  const errEl = document.getElementById('trf-create-err');
+
+  if(from===to){ errEl.textContent='From and To locations cannot be the same.'; return; }
+
+  // Sync any partially typed names
+  trfLines.forEach((line,idx)=>{
+    const input = document.getElementById('trf-sku-'+idx);
+    if(input&&input.value.trim()) trfLines[idx].skuName = input.value.trim();
+  });
+
+  const validLines = trfLines.filter(l=>l.skuName&&l.skuName.trim()&&l.qty>0);
+  if(!validLines.length){
+    errEl.textContent='Please add at least one item with a name and quantity.'; return;
+  }
+
+  const btn = document.getElementById('trf-submit-btn');
+  btn.disabled=true; btn.textContent='Creating transfer...';
+  errEl.textContent='';
+
+  const trfNumber = generateTrfNumber();
+  const now = new Date().toLocaleString('en-PH');
+
+  const lineRows = validLines.map(line=>([
+    trfNumber, line.skuCode||'', line.skuName,
+    line.qty, line.unit, 0, line.qty,
+    'Open', notes
+  ]));
+
+  try{
+    const r = await api({
+      action:'createTransfer',
+      trfNumber, fromLocation:from, toLocation:to, via,
+      status:'IN TRANSIT',
+      createdBy: currentUser.username,
+      createdDate: now,
+      notes,
+      lineItems: lineRows
+    });
+    if(r.status==='ok'){
+      showBanner('trf-success-bar',
+        `Transfer ${trfNumber} created & dispatched — ${validLines.length} item(s) via ${via}`);
+      await loadTransfers();
+      initTrfCreate();
+    } else {
+      errEl.textContent='Error: '+(r.msg||'Could not create transfer');
+      btn.disabled=false;
+      btn.textContent='Create Transfer & Mark as Dispatched';
+    }
+  }catch(e){
+    errEl.textContent='Network error: '+e.message;
+    btn.disabled=false;
+    btn.textContent='Create Transfer & Mark as Dispatched';
+  }
+}
+
+// ── PENDING TRANSFERS (for receiving staff) ───────────
+function renderPendingTransfers(){
+  const body = document.getElementById('trf-pending-body');
+  const myLoc = getCurrentUserLocation();
+  const isAdmin = currentUser && currentUser.role==='admin';
+
+  const pending = isAdmin
+    ? trfList.filter(t=>t.status==='IN TRANSIT')
+    : trfList.filter(t=>t.status==='IN TRANSIT' && t.toLocation===myLoc);
+
+  if(!pending.length){
+    body.innerHTML = `<div class="trf-empty">
+      No pending transfers for ${isAdmin?'any location':myLoc}.<br>
+      All deliveries are up to date.
+    </div>`;
+    return;
+  }
+
+  body.innerHTML = '';
+  pending.forEach(trf=>{
+    const card = document.createElement('div');
+    card.className = 'trf-card';
+    card.onclick = () => openAcknowledgeView(trf.trfNumber);
+    card.innerHTML = `
+      <div class="trf-card-row1">
+        <div>
+          <div class="trf-num">${trf.trfNumber}</div>
+          <div class="trf-route">
+            <span style="font-weight:600">${trf.fromLocation}</span>
+            <span style="color:#aaa">→</span>
+            <span style="font-weight:600">${trf.toLocation}</span>
+            <span style="font-size:10px;color:#aaa">via ${trf.via}</span>
+          </div>
+          <div class="trf-meta">${trf.createdDate} · ${trf.createdBy}</div>
+        </div>
+        <span class="trf-status-badge ts-transit">IN TRANSIT</span>
+      </div>
+      <div class="trf-card-row2">
+        <span style="font-size:11px;color:#888">${trf.lineCount||0} item(s)</span>
+        <span style="font-size:12px;font-weight:700;color:#3949AB">Tap to acknowledge →</span>
+      </div>`;
+    body.appendChild(card);
+  });
+}
+
+// ── ACKNOWLEDGE RECEIPT ───────────────────────────────
+async function openAcknowledgeView(trfNumber){
+  try{
+    const r = await api({action:'getTransferDetail', trfNumber});
+    if(r.status==='ok'){
+      currentTrf = {...r.transfer, lineItems: r.lineItems};
+      renderAcknowledgeForm();
+      showTrfSubtab('pending', document.getElementById('trf-tab-pending'));
+    }
+  }catch(e){ alert('Could not load transfer details.'); }
+}
+
+function renderAcknowledgeForm(){
+  const trf = currentTrf;
+  const body = document.getElementById('trf-pending-body');
+
+  const lineItemsHTML = (trf.lineItems||[]).map((li,i)=>{
+    const remaining = Number(li.qtyDispatched||li.qtyOrdered||0) - Number(li.qtyReceived||0);
+    const done = remaining <= 0;
+    return `
+      <div class="trf-ack-row">
+        <div class="trf-ack-info">
+          <div class="trf-ack-name">${li.itemName||li.skuCode}</div>
+          <div class="trf-ack-dispatched">
+            Dispatched: ${li.qtyDispatched||li.qtyOrdered||0} ${li.unit||'bag'}
+            ${li.qtyReceived>0 ? ' · Already received: '+li.qtyReceived : ''}
+          </div>
+        </div>
+        ${done
+          ? '<span class="trf-ack-done">Received ✓</span>'
+          : `<input class="trf-ack-input" type="number" min="0"
+               max="${remaining}" placeholder="${remaining}"
+               id="ack-qty-${i}" value="${remaining}">`}
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="padding:12px">
+      <div class="trf-ack-section">
+        <div class="trf-ack-header">
+          <div class="trf-ack-num">${trf.trfNumber}</div>
+          <div><span class="trf-status-badge ts-transit" style="font-size:11px">IN TRANSIT</span></div>
+          <div class="trf-ack-meta" style="margin-top:8px">
+            From: <strong>${trf.fromLocation}</strong> → To: <strong>${trf.toLocation}</strong><br>
+            Via: ${trf.via} · Dispatched by: ${trf.createdBy}<br>
+            ${trf.notes ? 'Notes: '+trf.notes : ''}
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#888;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">
+          Enter quantities received
+        </div>
+        ${lineItemsHTML}
+        <div class="modal-err" id="ack-err" style="margin-top:8px"></div>
+        <button class="trf-ack-btn" onclick="submitAcknowledgment()">
+          Confirm Receipt & Update Inventory
+        </button>
+      </div>
+      <button onclick="renderPendingTransfers()"
+        style="width:100%;padding:10px;background:none;border:1.5px solid #e0e0e0;color:#888;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">
+        ← Back to pending list
+      </button>
+    </div>`;
+}
+
+async function submitAcknowledgment(){
+  if(!currentTrf) return;
+  const lines = currentTrf.lineItems||[];
+  const receipts = [];
+
+  lines.forEach((li,i)=>{
+    const input = document.getElementById('ack-qty-'+i);
+    if(!input) return; // already fully received
+    const qty = parseFloat(input.value)||0;
+    if(qty>0) receipts.push({
+      skuCode: li.skuCode,
+      itemName: li.itemName||li.skuCode,
+      qtyReceived: qty,
+      unit: li.unit||'bag',
+      lineIndex: i
+    });
+  });
+
+  if(!receipts.length){
+    document.getElementById('ack-err').textContent='Enter received quantities for at least one item.';
+    return;
+  }
+
+  const btn = document.querySelector('.trf-ack-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Updating inventory...'; }
+  document.getElementById('ack-err').textContent='';
+
+  try{
+    const r = await api({
+      action: 'acknowledgeTransfer',
+      trfNumber: currentTrf.trfNumber,
+      receivedBy: currentUser.username,
+      fromLocation: currentTrf.fromLocation,
+      toLocation: currentTrf.toLocation,
+      receipts
+    });
+    if(r.status==='ok'){
+      currentTrf = null;
+      await loadTransfers();
+      showBanner('trf-success-bar',
+        `${receipts.length} item(s) acknowledged — inventory updated for ${r.toLocation||'destination'}`);
+      renderPendingTransfers();
+    } else {
+      document.getElementById('ack-err').textContent='Error: '+(r.msg||'Could not submit');
+      if(btn){ btn.disabled=false; btn.textContent='Confirm Receipt & Update Inventory'; }
+    }
+  }catch(e){
+    document.getElementById('ack-err').textContent='Network error: '+e.message;
+    if(btn){ btn.disabled=false; btn.textContent='Confirm Receipt & Update Inventory'; }
+  }
+}
+
+// ── ALL TRANSFERS LIST ────────────────────────────────
+function renderAllTransfers(){
+  const statuses = ['All','IN TRANSIT','RECEIVED','PARTIAL','CANCELLED'];
+  const counts = {};
+  trfList.forEach(t=>{ counts[t.status]=(counts[t.status]||0)+1; });
+
+  const chips = document.getElementById('trf-status-chips');
+  chips.innerHTML = '';
+  statuses.forEach(s=>{
+    const cnt = s==='All' ? trfList.length : (counts[s]||0);
+    if(s!=='All'&&cnt===0) return;
+    const c = document.createElement('div');
+    c.className = 'trf-chip'+(s===trfFilter?' active':'');
+    c.textContent = s==='All'?`All (${cnt})`:`${s} (${cnt})`;
+    c.onclick = ()=>{ trfFilter=s; renderAllTransfers(); };
+    chips.appendChild(c);
+  });
+
+  const body = document.getElementById('trf-all-body');
+  const visible = trfFilter==='All'
+    ? trfList
+    : trfList.filter(t=>t.status===trfFilter);
+
+  if(!visible.length){
+    body.innerHTML='<div class="trf-empty">No transfers found.</div>';
+    return;
+  }
+  body.innerHTML='';
+  visible.sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  visible.forEach(trf=>{
+    const statusCls = {
+      'PENDING':'ts-pending','IN TRANSIT':'ts-transit',
+      'PARTIAL':'ts-partial','RECEIVED':'ts-received','CANCELLED':'ts-cancelled'
+    }[trf.status]||'ts-pending';
+    const card = document.createElement('div');
+    card.className='trf-card';
+    card.innerHTML=`
+      <div class="trf-card-row1">
+        <div>
+          <div class="trf-num">${trf.trfNumber}</div>
+          <div class="trf-route">
+            <span style="font-weight:600">${trf.fromLocation}</span>
+            <span style="color:#aaa">→</span>
+            <span style="font-weight:600">${trf.toLocation}</span>
+            <span style="font-size:10px;color:#aaa">via ${trf.via}</span>
+          </div>
+          <div class="trf-meta">${trf.createdDate} · ${trf.createdBy}</div>
+        </div>
+        <span class="trf-status-badge ${statusCls}">${trf.status}</span>
+      </div>
+      <div class="trf-card-row2">
+        <span style="font-size:11px;color:#888">${trf.lineCount||0} item(s)</span>
+        ${trf.receivedBy?`<span style="font-size:11px;color:#27AE60">Rcvd by ${trf.receivedBy}</span>`:''}
+      </div>`;
+    body.appendChild(card);
+  });
+}
+
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
   const hasUnsaved=Object.values(quantities).some(q=>q.loaded>0||q.returned>0);
@@ -2428,6 +2991,7 @@ function openEditStaff(idx){
     ['edit-can-count-dist',  isAdmin || s.canCountDist !== false],
     ['edit-can-count-retail',isAdmin || s.canCountRetail !== false],
     ['edit-can-po',          isAdmin || s.canManagePO !== false],
+    ['edit-can-transfer',    isAdmin || s.canTransfer === true],
     ['edit-can-production',  isAdmin || s.canProduction === true ||
                              s.role === 'staff-retail'],
     ['edit-can-bo-dist',     isAdmin || s.canBackorderDist !== false],
@@ -2457,7 +3021,8 @@ function onEditRoleChange(){
   // If admin selected — auto-check all permissions and disable toggles
   const isAdmin = role === 'admin';
   ['edit-can-count-dist','edit-can-count-retail','edit-can-po',
-   'edit-can-production','edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
+   'edit-can-transfer','edit-can-production',
+   'edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
     const el = document.getElementById(id);
     if(el){ if(isAdmin) el.checked = true; el.disabled = isAdmin; }
   });
@@ -2471,6 +3036,7 @@ async function saveStaffEdit(){
   const canCountDist    = document.getElementById('edit-can-count-dist').checked;
   const canCountRetail  = document.getElementById('edit-can-count-retail').checked;
   const canManagePO     = document.getElementById('edit-can-po').checked;
+  const canTransfer     = document.getElementById('edit-can-transfer').checked;
   const canProduction   = document.getElementById('edit-can-production').checked;
   const canBoDist       = document.getElementById('edit-can-bo-dist').checked;
   const canBoRetail     = document.getElementById('edit-can-bo-retail').checked;
@@ -2491,7 +3057,7 @@ async function saveStaffEdit(){
       username: s.username,
       role, assignedUnit: unit,
       canCountDist, canCountRetail,
-      canManagePO, canProduction,
+      canManagePO, canTransfer, canProduction,
       canBackorderDist: canBoDist,
       canBackorderRetail: canBoRetail
     });
@@ -2500,7 +3066,7 @@ async function saveStaffEdit(){
       staff[editingStaffIndex] = {
         ...s, role, assignedUnit: unit,
         canCountDist, canCountRetail, canManagePO,
-        canProduction,
+        canTransfer, canProduction,
         canBackorderDist: canBoDist,
         canBackorderRetail: canBoRetail
       };
@@ -2940,6 +3506,88 @@ init();
 </div>
 
 
+
+<!-- ══ TRANSFER SCREEN ══════════════════════════ -->
+<div id="transfer-screen" class="screen" style="flex-direction:column">
+  <div class="trf-topbar">
+    <span class="trf-topbar-title">🔄 Transfer</span>
+    <button class="back-btn" onclick="closeTransfer()">← Back</button>
+  </div>
+  <div class="trf-subtabs">
+    <div class="trf-subtab active" id="trf-tab-create" onclick="showTrfSubtab('create',this)">Create</div>
+    <div class="trf-subtab" id="trf-tab-pending" onclick="showTrfSubtab('pending',this)">Pending <span id="trf-pending-badge" style="display:none;background:rgba(255,255,255,0.3);border-radius:20px;padding:1px 6px;font-size:10px;margin-left:3px">0</span></div>
+    <div class="trf-subtab" id="trf-tab-all" onclick="showTrfSubtab('all',this)">All</div>
+  </div>
+  <div class="trf-success-bar" id="trf-success-bar"></div>
+
+  <!-- CREATE VIEW -->
+  <div id="trf-view-create" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div class="trf-body">
+      <div class="trf-section">
+        <div class="trf-section-title">Transfer Route</div>
+        <div class="trf-loc-row">
+          <div class="trf-loc-wrap">
+            <span class="trf-form-label">From</span>
+            <select class="trf-select" id="trf-from" onchange="onTrfRouteChange()">
+              <option value="Distribution WH">Distribution Warehouse</option>
+              <option value="Retail Store">Retail Store</option>
+              <option value="Bajaj1">Bajaj 1</option>
+              <option value="Bajaj2">Bajaj 2</option>
+            </select>
+          </div>
+          <button class="trf-swap-btn" onclick="swapTrfLocations()" title="Swap locations">⇄</button>
+          <div class="trf-loc-wrap">
+            <span class="trf-form-label">To</span>
+            <select class="trf-select" id="trf-to" onchange="onTrfRouteChange()">
+              <option value="Retail Store">Retail Store</option>
+              <option value="Distribution WH">Distribution Warehouse</option>
+              <option value="Bajaj1">Bajaj 1</option>
+              <option value="Bajaj2">Bajaj 2</option>
+            </select>
+          </div>
+        </div>
+        <span class="trf-form-label">Via (transport vehicle)</span>
+        <select class="trf-select" id="trf-via">
+          <option value="Bajaj1">Bajaj 1</option>
+          <option value="Bajaj2">Bajaj 2</option>
+          <option value="Direct">Direct (no vehicle)</option>
+        </select>
+        <span class="trf-form-label">Notes (optional)</span>
+        <input type="text" class="trf-select" id="trf-notes" placeholder="Any special instructions...">
+      </div>
+
+      <div class="trf-section">
+        <div class="trf-section-title" style="display:flex;justify-content:space-between;align-items:center">
+          Items to Transfer
+          <span id="trf-item-count" style="font-size:11px;color:#3949AB;font-weight:600">0 items</span>
+        </div>
+        <div id="trf-line-items"></div>
+        <button class="trf-add-line" onclick="addTrfLine()">+ Add Item</button>
+      </div>
+
+      <div class="modal-err" id="trf-create-err" style="margin-bottom:8px"></div>
+      <button class="trf-submit-btn" id="trf-submit-btn" onclick="submitTransfer()">
+        Create Transfer &amp; Mark as Dispatched
+      </button>
+    </div>
+  </div>
+
+  <!-- PENDING VIEW -->
+  <div id="trf-view-pending" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div id="trf-pending-body" style="flex:1;overflow-y:auto;padding:12px">
+      <div class="trf-empty">Loading pending transfers...</div>
+    </div>
+  </div>
+
+  <!-- ALL TRANSFERS VIEW -->
+  <div id="trf-view-all" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="trf-chips" id="trf-status-chips"></div>
+    <div id="trf-all-body" style="flex:1;overflow-y:auto;padding-bottom:14px">
+      <div class="trf-empty">Loading transfers...</div>
+    </div>
+  </div>
+</div>
+
 <!-- STAFF EDIT MODAL -->
 <div class="modal-overlay" id="staff-edit-modal" style="display:none">
   <div class="modal-card">
@@ -3009,6 +3657,23 @@ init();
             </div>
             <label class="edit-toggle">
               <input type="checkbox" id="edit-can-po">
+              <span class="edit-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transfer Permissions -->
+      <div class="edit-section">
+        <div class="edit-section-title">Transfers</div>
+        <div class="edit-perm-grid">
+          <div class="edit-perm-row">
+            <div>
+              <div class="edit-perm-label">🔄 Create &amp; Receive Transfers</div>
+              <div class="edit-perm-sub">Can move stock between warehouse, store and Bajaj units</div>
+            </div>
+            <label class="edit-toggle">
+              <input type="checkbox" id="edit-can-transfer">
               <span class="edit-toggle-slider"></span>
             </label>
           </div>
