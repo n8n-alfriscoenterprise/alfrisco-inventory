@@ -600,9 +600,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 </svg>
         <div class="topbar-user" id="topbar-user" style="margin-top:2px"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        <button class="mode-btn" id="mode-btn" onclick="toggleMode()" style="display:none">LOAD</button>
-      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0"></div>
     </div>
     <div class="topbar-nav-row" id="topbar-nav-row">
       <button class="tnav active" id="tnav-home" onclick="showHome()">🏠 Home</button>
@@ -615,6 +613,14 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
   </div>
   <!-- MOVEMENT AREA (shown only in Stock Movement context) -->
   <div id="movement-area" style="display:none">
+    <!-- Section header — matches other screen patterns -->
+    <div style="background:#0A5C46;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.1)">
+      <span style="color:white;font-size:14px;font-weight:700">📦 Stock Movement</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="mode-btn" id="mode-btn" onclick="toggleMode()">LOAD</button>
+        <button class="back-btn" onclick="showHome()">← Home</button>
+      </div>
+    </div>
     <div class="unit-bar">
       <span class="unit-label">Unit / Location:</span>
       <select class="unit-select" id="unit-select" onchange="onUnitChange()">
@@ -1210,7 +1216,7 @@ async function toggleMode(){
     }catch(e){
       showBanner('success-bar','Could not fetch today\'s load — check connection');
     }
-    b.textContent='RETURN';b.disabled=false;
+    b.textContent='RETURN';b.disabled=false;b.className='mode-btn return-mode';
   }
   buildSkuList();
 }
@@ -2448,8 +2454,16 @@ async function openAcknowledgeView(trfNumber){
     const r = await api({action:'getTransferDetail', trfNumber});
     if(r.status==='ok'){
       currentTrf = {...r.transfer, lineItems: r.lineItems};
+      // Show pending tab WITHOUT triggering renderPendingTransfers
+      // (which would overwrite our acknowledge form)
+      document.querySelectorAll('.trf-subtab').forEach(t=>t.classList.remove('active'));
+      const tab = document.getElementById('trf-tab-pending');
+      if(tab) tab.classList.add('active');
+      document.getElementById('trf-view-create').style.display = 'none';
+      document.getElementById('trf-view-pending').style.display = 'flex';
+      document.getElementById('trf-view-all').style.display    = 'none';
+      // Now render the form into the pending body
       renderAcknowledgeForm();
-      showTrfSubtab('pending', document.getElementById('trf-tab-pending'));
     }
   }catch(e){ alert('Could not load transfer details.'); }
 }
@@ -2495,8 +2509,8 @@ function renderAcknowledgeForm(){
         </div>
         ${lineItemsHTML}
         <div class="modal-err" id="ack-err" style="margin-top:8px"></div>
-        <button class="trf-ack-btn" onclick="submitAcknowledgment()">
-          Confirm Receipt & Update Inventory
+        <button class="trf-ack-btn" id="trf-ack-submit-btn" onclick="submitAcknowledgment()">
+          Confirm Receipt &amp; Update Inventory
         </button>
       </div>
       <button onclick="renderPendingTransfers()"
@@ -2529,9 +2543,10 @@ async function submitAcknowledgment(){
     return;
   }
 
-  const btn = document.querySelector('.trf-ack-btn');
+  const btn = document.getElementById('trf-ack-submit-btn');
   if(btn){ btn.disabled=true; btn.textContent='Updating inventory...'; }
-  document.getElementById('ack-err').textContent='';
+  const errEl2 = document.getElementById('ack-err');
+  if(errEl2) errEl2.textContent='';
 
   try{
     const r = await api({
@@ -2547,13 +2562,16 @@ async function submitAcknowledgment(){
       await loadTransfers();
       showBanner('trf-success-bar',
         `${receipts.length} item(s) acknowledged — inventory updated for ${r.toLocation||'destination'}`);
-      renderPendingTransfers();
+      // Now safe to call showTrfSubtab — currentTrf is null so no form to protect
+      showTrfSubtab('pending', document.getElementById('trf-tab-pending'));
     } else {
-      document.getElementById('ack-err').textContent='Error: '+(r.msg||'Could not submit');
+      const errEl3 = document.getElementById('ack-err');
+      if(errEl3) errEl3.textContent='Error: '+(r.msg||'Could not submit');
       if(btn){ btn.disabled=false; btn.textContent='Confirm Receipt & Update Inventory'; }
     }
   }catch(e){
-    document.getElementById('ack-err').textContent='Network error: '+e.message;
+    const errEl4 = document.getElementById('ack-err');
+    if(errEl4) errEl4.textContent='Network error: '+e.message;
     if(btn){ btn.disabled=false; btn.textContent='Confirm Receipt & Update Inventory'; }
   }
 }
