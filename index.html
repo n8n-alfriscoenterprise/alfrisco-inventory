@@ -3694,8 +3694,7 @@ async function submitAllProduction(){
     return{...line,bomItem:bi,standard:std,actual:act,variance:act-std};
   }).filter(Boolean);
   if(!summary.length){alert('No valid BOM rules found for selected items.');return;}
-  const msg=summary.map(s=>`${s.direction==='dis'?'🏭':'🔄'} ${s.skuName} × ${s.qty} → ${s.actual} ${s.bomItem.outputName}`+(s.variance!==0?` (variance: ${s.variance>=0?'+':''}${s.variance.toFixed(1)})`:'') ).join('
-');
+  const msg=summary.map(s=>`${s.direction==='dis'?'🏭':'🔄'} ${s.skuName} × ${s.qty} → ${s.actual} ${s.bomItem.outputName}`+(s.variance!==0?` (variance: ${s.variance>=0?'+':''}${s.variance.toFixed(1)})`:'') ).join('\n');
   if(!confirm(`Production batch:
 
 ${msg}
