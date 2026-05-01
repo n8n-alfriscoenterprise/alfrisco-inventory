@@ -369,23 +369,24 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .audit-who{font-weight:600;color:#222}
 
 /* PRODUCTION SCREEN */
-.prod-card{background:white;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
-.prod-unverified{border:1.5px solid #FAC775}
-.prod-card-header{margin-bottom:12px}
-.prod-card-name{font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.prod-card-rule{font-size:12px;color:#666;line-height:1.4}
-.prod-warn-badge{font-size:10px;background:#FAEEDA;color:#633806;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap}
-.prod-input-row{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
-.prod-input-group{flex:1}
-.prod-output-group{flex:1;text-align:center}
-.prod-label{font-size:10px;font-weight:600;color:#888;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px}
-.prod-bags-input{width:60px;text-align:center;font-size:18px;font-weight:700;padding:8px 4px;border-radius:9px;border:1.5px solid #1B5E20;background:#E8F5E9;color:#1B5E20;outline:none}
-.prod-stepper{width:36px;height:36px;border-radius:8px;border:1.5px solid #1B5E20;background:white;color:#1B5E20;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.prod-output-val{font-size:28px;font-weight:700;color:#1B5E20;line-height:1}
-.prod-output-unit{font-size:11px;color:#888;margin-top:3px}
-.prod-submit-btn{width:100%;padding:12px;background:#1B5E20;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
-.prod-submit-btn:disabled{background:#ccc;cursor:not-allowed}
-.prod-submit-warn{background:#C07000}
+.prod-line-card{background:white;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.07)}
+.prod-line-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.prod-line-num{font-size:11px;font-weight:700;color:#1B5E20}
+.prod-line-del{background:none;border:none;color:#bbb;font-size:18px;cursor:pointer;padding:0;line-height:1}
+.prod-line-del:hover{color:#E24B4A}
+.prod-field-label{font-size:10px;font-weight:600;color:#888;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px}
+.prod-select{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;background:white;color:#222;margin-bottom:8px}
+.prod-select:focus{border-color:#1B5E20}
+.prod-dir-row{display:flex;gap:6px;margin-bottom:8px}
+.prod-dir-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #e0e0e0;background:white;color:#888;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.prod-dir-btn.active-dis{background:#1B5E20;color:white;border-color:#1B5E20}
+.prod-dir-btn.active-asm{background:#2E7D32;color:white;border-color:#2E7D32}
+.prod-nums-row{display:flex;gap:8px}
+.prod-num-wrap{flex:1}
+.prod-num-input{width:100%;padding:9px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;font-weight:600;text-align:center;outline:none;background:#fafafa}
+.prod-num-input:focus{border-color:#1B5E20;background:white}
+.prod-variance{font-size:11px;font-weight:600;margin-top:4px;text-align:center;min-height:16px}
+.prod-rule-hint{font-size:10px;color:#aaa;margin-top:6px;padding:5px 8px;background:#f5f5f5;border-radius:6px}
 .prod-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
 
 /* BACKORDER LINE ITEMS */
@@ -3562,193 +3563,163 @@ async function receiveItems(){
 }
 
 // ── PRODUCTION CONVERSION SYSTEM ──
-let bom=[],prodHistory=[];
+let bom = [];
+let prodLines = [];
 
 async function openProduction(){
-  const isAdmin=currentUser&&currentUser.role==='admin';
-  const canProd=isAdmin||currentUser.canProduction===true||currentUser.role==='staff-retail';
+  const isAdmin = currentUser && currentUser.role==='admin';
+  const canProd = isAdmin || currentUser.canProduction===true || currentUser.role==='staff-retail';
   if(!canProd){alert('You do not have permission to run production conversions.');return;}
-  showScreen('prod-screen');updateFabVisibility();
-  const list=document.getElementById('prod-list');
-  list.innerHTML='<div class="prod-empty" style="color:#1B5E20">Loading conversion rules...</div>';
-  await loadBOM();buildProdList();
+  showScreen('prod-screen');
+  updateFabVisibility();
+  document.getElementById('prod-lines').innerHTML = '<div class="prod-empty" style="color:#1B5E20">Loading...</div>';
+  await loadBOM();
+  prodLines = [];
+  addProdLine();
 }
 
-function closeProduction(){showHome();}
+function closeProduction(){ showHome(); }
 
 async function loadBOM(){
   try{
-    const r=await api({action:'getBOM'});
-    if(r.status==='ok'&&Array.isArray(r.bom)){bom=r.bom.filter(b=>String(b.active).toUpperCase()==='YES');}
-    else{console.warn('getBOM returned:',r);bom=[];}
-  }catch(e){console.error('BOM load failed:',e);bom=[];}
+    const r = await api({action:'getBOM'});
+    if(r.status==='ok'&&Array.isArray(r.bom)){ bom=r.bom; }
+    else{ bom=[]; }
+  }catch(e){ bom=[]; }
 }
 
-function buildProdList(){
-  const list=document.getElementById('prod-list');list.innerHTML='';
+function addProdLine(){
+  prodLines.push({skuCode:'',skuName:'',direction:'dis',qty:1,actualYield:'',ratio:1});
+  renderProdLines();
+  setTimeout(()=>{
+    const el=document.getElementById('prod-lines');
+    if(el&&el.lastElementChild)el.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+}
+
+function removeProdLine(idx){
+  prodLines.splice(idx,1);
+  if(!prodLines.length) addProdLine();
+  else renderProdLines();
+}
+
+function renderProdLines(){
+  const container=document.getElementById('prod-lines');
+  if(!container)return;
+  container.innerHTML='';
   if(!bom.length){
-    list.innerHTML='<div class="prod-empty">No production rules found.<br>Make sure SKU Master - Retail has Production Item = YES rows.</div>';
+    container.innerHTML='<div class="prod-empty">No production items found.<br>Make sure SKU Master - Retail has Production Item = YES rows.</div>';
     return;
   }
-
-  // Separate disassembly and assembly
-  const disItems = bom.filter(b=>!b.canAssemble);
-  const asmItems = bom.filter(b=>b.canAssemble);
-
-  function buildSection(items, title, color){
-    if(!items.length) return;
-    const hdr = document.createElement('div');
-    hdr.style.cssText = `padding:8px 14px;font-size:10px;font-weight:700;letter-spacing:1px;color:white;background:${color};text-transform:uppercase`;
-    hdr.textContent = title;
-    list.appendChild(hdr);
-
-    items.forEach((item,i)=>{
-      const idx = bom.indexOf(item);
-      const card=document.createElement('div');
-      card.className='prod-card';
-      card.innerHTML=`
-        <div class="prod-card-header">
-          <div>
-            <div class="prod-card-name">${item.sourceName}</div>
-            <div class="prod-card-rule">
-              ${item.canAssemble
-                ? `Reassemble → <strong>${item.outputName}</strong> (1:${item.ratio} ratio)`
-                : `1 unit → <strong>${item.ratio} units</strong> of ${item.outputName}`}
-            </div>
-          </div>
+  const disItems=bom.filter(b=>!b.canAssemble);
+  const asmItems=bom.filter(b=> b.canAssemble);
+  prodLines.forEach((line,idx)=>{
+    const items=line.direction==='dis'?disItems:asmItems;
+    const skuOpts='<option value="">-- Select item --</option>'+
+      items.map(b=>`<option value="${b.sourceSku}|${b.sourceName}|${b.ratio}"${line.skuCode===b.sourceSku?' selected':''}>${b.sourceName} (1:${b.ratio})</option>`).join('');
+    let ruleHint='',varianceHtml='';
+    if(line.skuCode&&line.qty>0){
+      const bi=bom.find(b=>b.sourceSku===line.skuCode&&(line.direction==='asm'?b.canAssemble:!b.canAssemble));
+      if(bi){
+        const std=line.qty*bi.ratio;
+        ruleHint=`Standard yield: <strong>${std}</strong> units of ${bi.outputName}`;
+        if(line.actualYield!==''){
+          const act=parseFloat(line.actualYield)||0;
+          const v=act-std;
+          const vc=v<0?'#E24B4A':v>0?'#27AE60':'#888';
+          varianceHtml=`<div class="prod-variance" style="color:${vc}">Variance: ${v>=0?'+':''}${v.toFixed(1)} vs standard (${std})</div>`;
+        }
+      }
+    }
+    const card=document.createElement('div');
+    card.className='prod-line-card';
+    card.id='prod-line-'+idx;
+    card.innerHTML=`
+      <div class="prod-line-header">
+        <span class="prod-line-num">Item ${idx+1}</span>
+        ${prodLines.length>1?`<button class="prod-line-del" onclick="removeProdLine(${idx})">×</button>`:''}
+      </div>
+      <span class="prod-field-label">Product</span>
+      <select class="prod-select" onchange="onProdSKU(${idx},this.value)">${skuOpts}</select>
+      <span class="prod-field-label">Operation</span>
+      <div class="prod-dir-row">
+        <button class="prod-dir-btn ${line.direction==='dis'?'active-dis':''}" onclick="onProdDir(${idx},'dis')">🏭 Disassemble</button>
+        <button class="prod-dir-btn ${line.direction==='asm'?'active-asm':''}" onclick="onProdDir(${idx},'asm')">🔄 Assemble</button>
+      </div>
+      <div class="prod-nums-row">
+        <div class="prod-num-wrap">
+          <span class="prod-field-label">Units to Convert</span>
+          <input type="number" class="prod-num-input" min="1" step="1" value="${line.qty||1}" placeholder="Qty" oninput="onProdQty(${idx},this.value)">
         </div>
-        <div class="prod-input-row">
-          <div class="prod-input-group">
-            <label class="prod-label">${item.canAssemble?'Units to assemble':'Units to convert'}</label>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button>
-              <input class="prod-bags-input" type="number" min="1" step="1"
-                id="bags-${idx}" value="1" oninput="updateOutput(${idx})">
-              <button class="prod-stepper" onclick="stepBags(${idx},1)">+</button>
-            </div>
-          </div>
-          <div class="prod-output-group">
-            <label class="prod-label">Standard yield</label>
-            <div class="prod-output-val" id="output-${idx}">${item.ratio}</div>
-            <div class="prod-output-unit">${item.outputName}</div>
-          </div>
+        <div class="prod-num-wrap">
+          <span class="prod-field-label">Actual Yield</span>
+          <input type="number" class="prod-num-input" min="0" step="0.1" value="${line.actualYield!==''?line.actualYield:''}" placeholder="Optional" style="border-color:${line.actualYield!==''?'#1B5E20':'#e0e0e0'}" oninput="onProdActual(${idx},this.value)">
         </div>
-        <!-- Actual yield override for variance tracking -->
-        <div style="background:#f8f8f8;border-radius:8px;padding:10px;margin-bottom:10px">
-          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">
-            Actual Yield (override if different from standard)
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <input type="number" min="0" step="1"
-              id="actual-${idx}"
-              placeholder="Same as standard"
-              style="flex:1;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;background:white"
-              oninput="updateVariance(${idx})">
-            <div style="text-align:center;min-width:60px">
-              <div style="font-size:10px;color:#aaa;margin-bottom:2px">Variance</div>
-              <div id="variance-${idx}" style="font-size:13px;font-weight:700;color:#aaa">—</div>
-            </div>
-          </div>
-        </div>
-        <button class="prod-submit-btn" style="background:${color}"
-          onclick="submitProduction(${idx})">
-          ${item.canAssemble ? '🔄 Assemble' : '🏭 Convert (Disassemble)'}
-        </button>`;
-      list.appendChild(card);
-      updateOutput(idx);
-    });
+      </div>
+      ${varianceHtml}
+      ${ruleHint?`<div class="prod-rule-hint">${ruleHint}</div>`:''}`;
+    container.appendChild(card);
+  });
+}
+
+function onProdSKU(idx,val){
+  if(!val){prodLines[idx].skuCode='';prodLines[idx].skuName='';renderProdLines();return;}
+  const p=val.split('|');
+  prodLines[idx].skuCode=p[0]||'';
+  prodLines[idx].skuName=p[1]||'';
+  prodLines[idx].ratio=parseFloat(p[2])||1;
+  prodLines[idx].actualYield='';
+  renderProdLines();
+}
+
+function onProdDir(idx,dir){
+  prodLines[idx].direction=dir;
+  prodLines[idx].skuCode='';
+  prodLines[idx].skuName='';
+  prodLines[idx].actualYield='';
+  renderProdLines();
+}
+
+function onProdQty(idx,val){ prodLines[idx].qty=parseInt(val)||1; renderProdLines(); }
+function onProdActual(idx,val){ prodLines[idx].actualYield=val!==''?val:''; renderProdLines(); }
+
+async function submitAllProduction(){
+  const valid=prodLines.filter(l=>l.skuCode&&l.qty>0);
+  if(!valid.length){alert('Please select at least one product and enter a quantity.');return;}
+  const summary=valid.map(line=>{
+    const bi=bom.find(b=>b.sourceSku===line.skuCode&&(line.direction==='asm'?b.canAssemble:!b.canAssemble));
+    if(!bi)return null;
+    const std=line.qty*bi.ratio;
+    const act=line.actualYield!==''?parseFloat(line.actualYield)||0:std;
+    return{...line,bomItem:bi,standard:std,actual:act,variance:act-std};
+  }).filter(Boolean);
+  if(!summary.length){alert('No valid BOM rules found for selected items.');return;}
+  const msg=summary.map(s=>`${s.direction==='dis'?'🏭':'🔄'} ${s.skuName} × ${s.qty} → ${s.actual} ${s.bomItem.outputName}`+(s.variance!==0?` (variance: ${s.variance>=0?'+':''}${s.variance.toFixed(1)})`:'') ).join('
+');
+  if(!confirm(`Production batch:
+
+${msg}
+
+Update Stock Counts - Retail?`))return;
+  const btn=document.getElementById('prod-convert-btn');
+  btn.disabled=true;btn.textContent='Converting...';
+  const now=new Date().toLocaleString('en-PH');
+  let allOk=true;
+  for(const s of summary){
+    try{
+      const r=await api({action:'submitProduction',submittedBy:currentUser.username,timestamp:now,sourceSku:s.skuCode,sourceName:s.skuName,bagsConsumed:s.qty,outputSku:s.bomItem.outputSku,outputName:s.bomItem.outputName,unitsProduced:s.actual,standardUnits:s.standard,ratio:s.bomItem.ratio,canAssemble:s.direction==='asm',notes:s.variance!==0?`Variance: ${s.variance>=0?'+':''}${s.variance.toFixed(1)} vs standard ${s.standard}`:''});
+      if(r.status!=='ok')allOk=false;
+    }catch(e){allOk=false;}
   }
-
-  buildSection(disItems, '🏭 Disassembly — Bag → Retail Units', '#1B5E20');
-  buildSection(asmItems, '🔄 Assembly — Retail Units → Bag', '#2E7D32');
+  btn.disabled=false;btn.textContent='🏭 CONVERT';
+  const bar=document.getElementById('prod-success-bar');
+  if(allOk){
+    bar.textContent=`✓ ${summary.length} item(s) converted — stock counts updated`;
+    bar.style.display='block';setTimeout(()=>bar.style.display='none',5000);
+    prodLines=[];addProdLine();
+  }else{alert('Some items failed. Check your connection and try again.');}
 }
 
-function stepBags(idx,delta){
-  const input=document.getElementById('bags-'+idx);
-  const newVal=Math.max(1,(parseInt(input.value)||1)+delta);
-  input.value=newVal;
-  updateOutput(idx);
-}
-
-function updateOutput(idx){
-  const input=document.getElementById('bags-'+idx);
-  const bags=parseInt(input.value)||0;
-  const item=bom[idx];
-  const standard=bags*item.ratio;
-  const outEl=document.getElementById('output-'+idx);
-  if(outEl)outEl.textContent=standard.toLocaleString();
-  updateVariance(idx);
-}
-
-function updateVariance(idx){
-  const bags=parseInt(document.getElementById('bags-'+idx).value)||0;
-  const item=bom[idx];
-  const standard=bags*item.ratio;
-  const actualInput=document.getElementById('actual-'+idx);
-  const varianceEl=document.getElementById('variance-'+idx);
-  if(!actualInput||!varianceEl)return;
-  const actualVal=actualInput.value.trim();
-  if(!actualVal){
-    varianceEl.textContent='—';varianceEl.style.color='#aaa';return;
-  }
-  const actual=parseFloat(actualVal)||0;
-  const variance=actual-standard;
-  varianceEl.textContent=(variance>=0?'+':'')+variance.toFixed(1);
-  varianceEl.style.color=variance<0?'#E24B4A':variance>0?'#27AE60':'#aaa';
-}
-
-async function submitProduction(idx){
-  const item    = bom[idx];
-  const qty     = parseInt(document.getElementById('bags-'+idx).value)||0;
-  if(qty<=0){alert('Enter a quantity greater than 0.');return;}
-
-  const standard  = qty * item.ratio;
-  const actualInput = document.getElementById('actual-'+idx);
-  const actualVal = actualInput ? actualInput.value.trim() : '';
-  const actual    = actualVal ? (parseFloat(actualVal)||0) : standard;
-  const variance  = actual - standard;
-
-  const dirLabel  = item.canAssemble ? 'Assembly' : 'Disassembly';
-  const arrow     = item.canAssemble ? '→' : '→';
-  const msg = `${dirLabel}: ${qty} × ${item.sourceName}
-`+
-    `${arrow} ${actual} units of ${item.outputName}
-`+
-    (variance!==0 ? `Variance: ${variance>0?'+':''}${variance.toFixed(1)} units vs standard (${standard})
-`:'')+
-    `
-This will update Stock Counts - Retail. Continue?`;
-  if(!confirm(msg))return;
-
-  const now = new Date().toLocaleString('en-PH');
-  try{
-    const r = await api({
-      action:        'submitProduction',
-      submittedBy:   currentUser.username,
-      timestamp:     now,
-      sourceSku:     item.sourceSku,
-      sourceName:    item.sourceName,
-      bagsConsumed:  qty,
-      outputSku:     item.outputSku,
-      outputName:    item.outputName,
-      unitsProduced: actual,
-      standardUnits: standard,
-      ratio:         item.ratio,
-      canAssemble:   item.canAssemble||false,
-      notes:         variance!==0 ? `Variance: ${variance>0?'+':''}${variance.toFixed(1)} vs standard ${standard}` : ''
-    });
-    if(r.status==='ok'){
-      document.getElementById('bags-'+idx).value = 1;
-      if(actualInput) actualInput.value = '';
-      updateOutput(idx);
-      const bar = document.getElementById('prod-success-bar');
-      bar.textContent = `✓ ${dirLabel}: ${qty} × ${item.sourceName} → ${actual} units of ${item.outputName}`+
-        (variance!==0 ? ` (variance: ${variance>0?'+':''}${variance.toFixed(1)})` : '');
-      bar.style.display='block';
-      setTimeout(()=>bar.style.display='none', 6000);
-    }else{alert('Error: '+(r.msg||'Could not submit'));}
-  }catch(e){alert('Network error: '+e.message);}
-}
 
 // ── FAB VISIBILITY CONTROL ──
 function updateFabVisibility(){
