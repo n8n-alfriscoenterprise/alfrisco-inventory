@@ -3637,7 +3637,7 @@ function renderProdLines(){
     card.innerHTML=`
       <div class="prod-line-header">
         <span class="prod-line-num">Item ${idx+1}</span>
-        ${prodLines.length>1?`<button class="prod-line-del" onclick="removeProdLine(${idx})">×</button>`:''}
+        ${prodLines.length>1?'<button class="prod-line-del" onclick="removeProdLine('+idx+')">&#215;</button>':''}
       </div>
       <span class="prod-field-label">Product</span>
       <select class="prod-select" onchange="onProdSKU(${idx},this.value)">${skuOpts}</select>
@@ -3657,7 +3657,7 @@ function renderProdLines(){
         </div>
       </div>
       ${varianceHtml}
-      ${ruleHint?`<div class="prod-rule-hint">${ruleHint}</div>`:''}`;
+      ${ruleHint?'<div class="prod-rule-hint">'+ruleHint+'</div>':''}\`;
     container.appendChild(card);
   });
 }
