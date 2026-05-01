@@ -835,7 +835,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
           <option value="RETAIL">Retail</option>
         </select>
         <span class="po-form-label">Supplier</span>
-        <select class="po-form-select" id="po-supplier">
+        <select class="po-form-select" id="po-supplier" onchange="onPOSupplierChange()">
           <option value="A-Legacy">A-Legacy</option>
 <option value="AAS">AAS</option>
 <option value="Alfrisco Distribution">Alfrisco Distribution</option>
@@ -1566,11 +1566,12 @@ async function confirmDelivery(){
       action:'markDelivered',
       driver:currentUser.username,
       unit,
+      dealer:dealer||'',
       code:item.code,
       name:item.name,
       qty,
-      notes:dealer?(dealer+(notes?', '+notes:'')):notes,
-      backorder
+      backorder,
+      notes:notes||''
     });
     if(r.status==='ok'){
       driverManifest[deliverTarget].delivered=(driverManifest[deliverTarget].delivered||0)+qty;
@@ -3404,21 +3405,108 @@ function initPOCreate(){
   onPOTypeChange();renderPOLineItems();updatePOTotals();
 }
 
+function onPOSupplierChange(){
+  // Rebuild ALL existing line item dropdowns when supplier changes
+  if(!poLineItems.length) return;
+  const type     = document.getElementById('po-type').value;
+  const supplier = document.getElementById('po-supplier').value;
+
+  poLineItems.forEach((line, idx) => {
+    if(line.removed) return;
+    const sel = document.querySelector(`#po-line-${idx} select`);
+    if(!sel) return;
+
+    // Rebuild options for this line
+    const filtered = liveSKUs.filter(s => s.type === type && s.supplier === supplier);
+    const unassigned = liveSKUs.filter(s =>
+      s.type === type && (!s.supplier || s.supplier.trim() === '')
+    );
+    const cats = [...new Set(filtered.map(s=>s.category))];
+    let skuOpts = '<option value="">-- Select item --</option>';
+    skuOpts += cats.map(cat=>{
+      const items = filtered.filter(s=>s.category===cat)
+        .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
+        .join('');
+      return items ? `<optgroup label="📦 ${cat}">${items}</optgroup>` : '';
+    }).join('');
+    if(unassigned.length){
+      const uItems = unassigned
+        .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
+        .join('');
+      skuOpts += `<optgroup label="⚠️ No Supplier Assigned">${uItems}</optgroup>`;
+    }
+    sel.innerHTML = skuOpts;
+
+    // Re-select current value if it still exists for this supplier
+    if(line.skuCode){
+      const matchOpt = sel.querySelector(`option[value="${line.skuCode}|${line.skuName}"]`);
+      if(matchOpt){
+        sel.value = `${line.skuCode}|${line.skuName}`;
+      } else {
+        // SKU not in new supplier — clear it
+        sel.value = '';
+        poLineItems[idx].skuCode = '';
+        poLineItems[idx].skuName = '';
+        poLineItems[idx].unitCost = 0;
+        const costInput = document.querySelector(`#po-line-${idx} .po-line-cost`);
+        if(costInput) costInput.value = '';
+        updatePOTotals();
+      }
+    }
+  });
+}
+
 function onPOTypeChange(){
-  const type=document.getElementById('po-type').value;
-  const sup=document.getElementById('po-supplier');
-  const assignedSups=[...new Set(liveSKUs.filter(s=>s.type===type&&s.supplier).map(s=>s.supplier))].sort();
-  const allSups=type==='DIST'?DIST_SUPPLIERS:RETAIL_SUPPLIERS;
-  const supList=assignedSups.length>0?assignedSups:allSups;
-  sup.innerHTML=supList.map(s=>`<option value="${s}">${s}</option>`).join('');
+  const type = document.getElementById('po-type').value;
+  const sup  = document.getElementById('po-supplier');
+  const assignedSups = [...new Set(liveSKUs.filter(s=>s.type===type&&s.supplier).map(s=>s.supplier))].sort();
+  const allSups = type==='DIST' ? DIST_SUPPLIERS : RETAIL_SUPPLIERS;
+  const supList = assignedSups.length > 0 ? assignedSups : allSups;
+  sup.innerHTML = supList.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // Clear all line items when type changes — SKUs are different
+  if(poLineItems.length > 0){
+    if(confirm('Changing type will clear all current line items. Continue?')){
+      poLineItems = [];
+      renderPOLineItems();
+      updatePOTotals();
+    } else {
+      // Revert type selection
+      document.getElementById('po-type').value = type === 'DIST' ? 'RETAIL' : 'DIST';
+    }
+  }
 }
 
 function addPOLineItem(){
   const type=document.getElementById('po-type').value;
   const supplier=document.getElementById('po-supplier').value;
-  const filtered=liveSKUs.filter(s=>{if(s.type!==type)return false;if(s.supplier&&supplier)return s.supplier===supplier;return true;});
-  const cats=[...new Set(filtered.map(s=>s.category))];
-  const skuOpts=cats.map(cat=>{const items=filtered.filter(s=>s.category===cat).map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`).join('');return`<optgroup label="${cat}">${items}</optgroup>`;}).join('');
+  // Filter strictly to selected supplier — no fallback bleed-through
+  const filtered = liveSKUs.filter(s => {
+    if(s.type !== type) return false;
+    return s.supplier === supplier;
+  });
+  // SKUs with no supplier assigned shown in separate group
+  const unassigned = liveSKUs.filter(s =>
+    s.type === type && (!s.supplier || s.supplier.trim() === '')
+  );
+
+  const cats = [...new Set(filtered.map(s=>s.category))];
+  let skuOpts = cats.map(cat=>{
+    const items = filtered.filter(s=>s.category===cat)
+      .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
+      .join('');
+    return items ? `<optgroup label="📦 ${cat}">${items}</optgroup>` : '';
+  }).join('');
+
+  if(unassigned.length){
+    const uItems = unassigned
+      .map(s=>`<option value="${s.code}|${s.name}">${s.name}${s.cost?' · ₱'+Number(s.cost).toLocaleString('en-PH'):''}</option>`)
+      .join('');
+    skuOpts += `<optgroup label="⚠️ No Supplier Assigned">${uItems}</optgroup>`;
+  }
+
+  if(!filtered.length && !unassigned.length){
+    skuOpts = '<option value="" disabled>No SKUs found for this supplier</option>';
+  }
   const idx=poLineItems.length;poLineItems.push({skuCode:'',skuName:'',qty:1,unitCost:0,unit:'bag'});
   const div=document.createElement('div');div.className='po-line-item';div.id='po-line-'+idx;
   div.innerHTML=`<div class="po-line-info"><select style="width:100%;padding:6px 8px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:11px;outline:none;color:#222;background:white" onchange="onPOLineSelect(${idx},this)"><option value="">-- Select item --</option>${skuOpts}</select></div><div class="po-line-inputs"><div style="display:flex;flex-direction:column;align-items:center"><span style="font-size:9px;color:#aaa;margin-bottom:2px">Qty</span><input class="po-line-qty" type="number" min="1" value="1" oninput="onPOLineQty(${idx},this.value)"></div><div style="display:flex;flex-direction:column;align-items:center"><span style="font-size:9px;color:#aaa;margin-bottom:2px">Unit cost ₱</span><input class="po-line-cost" type="number" min="0" placeholder="0.00" oninput="onPOLineCost(${idx},this.value)"></div></div><button class="po-line-del" onclick="removePOLine(${idx})">×</button>`;
