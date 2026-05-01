@@ -541,6 +541,33 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .pl-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
 .pl-updated{padding:6px 14px 10px;text-align:right;font-size:10px;color:#bbb;background:white;border-top:1px solid #f0f0f0;flex-shrink:0}
 .tile.t-product{background:linear-gradient(135deg,#1B5E20,#2E7D32)}
+
+/* COST PRICE EDITOR */
+#cost-editor-screen{background:#f0f2f5}
+.ce-topbar{background:#1F4E78;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ce-topbar-title{color:white;font-size:15px;font-weight:700}
+.ce-filter-bar{padding:10px 12px;background:white;border-bottom:1px solid #eee;flex-shrink:0;display:flex;gap:8px}
+.ce-search{flex:1;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none}
+.ce-search:focus{border-color:#1F4E78}
+.ce-type-toggle{display:flex;border:1.5px solid #e0e0e0;border-radius:8px;overflow:hidden;flex-shrink:0}
+.ce-type-btn{padding:7px 12px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:white;color:#888}
+.ce-type-btn.active{background:#1F4E78;color:white}
+.ce-progress{padding:6px 14px;background:#EEF3FF;border-bottom:1px solid #C5CAE9;font-size:11px;color:#1F4E78;font-weight:600;flex-shrink:0;display:flex;justify-content:space-between}
+.ce-body{flex:1;overflow-y:auto}
+.ce-cat-header{padding:7px 14px 4px;font-size:10px;font-weight:700;letter-spacing:1px;color:#999;background:#f0f2f5;text-transform:uppercase;border-bottom:1px solid #e8e8e8}
+.ce-row{display:flex;align-items:center;padding:9px 12px;background:white;border-bottom:1px solid #f0f0f0;gap:8px}
+.ce-row.has-cost{background:#F0FFF4}
+.ce-info{flex:1;min-width:0}
+.ce-name{font-size:12px;font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ce-code{font-size:10px;color:#bbb;margin-top:2px}
+.ce-input-wrap{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
+.ce-input-label{font-size:9px;color:#aaa;margin-bottom:3px;font-weight:600}
+.ce-cost-input{width:80px;text-align:right;font-size:13px;font-weight:600;padding:6px 8px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none;color:#222}
+.ce-cost-input:focus{border-color:#1F4E78;background:white}
+.ce-cost-input.filled{border-color:#27AE60;background:#F0FFF4;color:#1a6b33}
+.ce-save-fab{position:fixed;bottom:20px;right:16px;background:#1F4E78;color:white;border:none;border-radius:28px;padding:12px 22px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(31,78,120,0.4);z-index:150;display:flex;align-items:center;gap:8px}
+.ce-save-fab:disabled{background:#aaa;box-shadow:none}
+.ce-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
 </style>
 </head>
 <body>
@@ -866,6 +893,18 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
     <button class="back-btn" onclick="closeAdmin()">← Back</button>
   </div>
   <div class="admin-body">
+    <!-- Cost Price Editor shortcut -->
+    <div class="admin-section" style="cursor:pointer" onclick="openCostEditor()">
+      <div class="admin-section-hdr" style="justify-content:space-between;align-items:center">
+        <span>💰 Cost Price Editor</span>
+        <span style="font-size:11px;color:#1F4E78;font-weight:600">Edit all SKU costs →</span>
+      </div>
+      <div style="padding:10px 14px;font-size:12px;color:#888">
+        Type in cost prices for Distribution and Retail SKUs.<br>
+        Used for PO auto-fill and margin calculations.
+      </div>
+    </div>
+
     <div class="admin-section">
       <div class="admin-section-hdr">
         Staff Accounts
@@ -2925,6 +2964,194 @@ function renderPL(){
   });
 }
 
+
+// ════════════════════════════════════════════════════════
+// COST PRICE EDITOR — admin only
+// ════════════════════════════════════════════════════════
+let ceType = 'dist';
+let ceSearch = '';
+let ceEdits = {};  // {skuCode: newCost}
+let ceSKUs = [];   // current type's SKUs from liveSKUs
+
+function openCostEditor(){
+  showScreen('cost-editor-screen');
+  ceType = 'dist';
+  ceSearch = '';
+  ceEdits = {};
+  document.getElementById('ce-search').value = '';
+  document.getElementById('ce-btn-dist').classList.add('active');
+  document.getElementById('ce-btn-retail').classList.remove('active');
+  buildCEList();
+}
+
+function closeCostEditor(){
+  if(Object.keys(ceEdits).length > 0){
+    if(!confirm('You have unsaved changes. Leave without saving?')) return;
+  }
+  showAdmin();
+}
+
+function setCEType(type){
+  if(Object.keys(ceEdits).length > 0){
+    if(!confirm('Switching type will lose unsaved changes. Continue?')) return;
+  }
+  ceType = type;
+  ceEdits = {};
+  ceSearch = '';
+  document.getElementById('ce-search').value = '';
+  document.getElementById('ce-btn-dist').classList.toggle('active', type==='dist');
+  document.getElementById('ce-btn-retail').classList.toggle('active', type==='retail');
+  buildCEList();
+}
+
+function filterCostEditor(val){
+  ceSearch = val.toLowerCase().trim();
+  renderCEList();
+}
+
+function buildCEList(){
+  const typeFilter = ceType === 'dist' ? 'DIST' : 'RETAIL';
+  ceSKUs = liveSKUs.filter(s => s.type === typeFilter);
+  renderCEList();
+}
+
+function renderCEList(){
+  const body = document.getElementById('ce-body');
+  if(!ceSKUs.length){
+    body.innerHTML = '<div class="ce-empty">No SKUs found. Make sure SKU Masters are uploaded.</div>';
+    updateCEProgress();
+    return;
+  }
+
+  let visible = ceSearch
+    ? ceSKUs.filter(s =>
+        s.name.toLowerCase().includes(ceSearch) ||
+        String(s.code).toLowerCase().includes(ceSearch))
+    : ceSKUs;
+
+  if(!visible.length){
+    body.innerHTML = '<div class="ce-empty">No products match your search.</div>';
+    updateCEProgress();
+    return;
+  }
+
+  body.innerHTML = '';
+  const cats = [...new Set(visible.map(s=>s.category))];
+
+  cats.forEach(cat => {
+    const catSkus = visible.filter(s=>s.category===cat);
+    if(!catSkus.length) return;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'ce-cat-header';
+    const filled = catSkus.filter(s=>{
+      const edit = ceEdits[s.code];
+      return edit !== undefined ? edit > 0 : s.cost > 0;
+    }).length;
+    hdr.textContent = cat + ' — ' + filled + '/' + catSkus.length + ' filled';
+    body.appendChild(hdr);
+
+    catSkus.forEach(sku => {
+      const currentCost = ceEdits[sku.code] !== undefined
+        ? ceEdits[sku.code]
+        : (sku.cost || 0);
+      const hasCost = currentCost > 0;
+
+      const row = document.createElement('div');
+      row.className = 'ce-row' + (hasCost ? ' has-cost' : '');
+      row.id = 'ce-row-' + sku.code.replace(/[^a-z0-9]/gi,'_');
+      row.innerHTML = `
+        <div class="ce-info">
+          <div class="ce-name">${sku.name}</div>
+          <div class="ce-code">${sku.code}${sku.supplier?' · '+sku.supplier:''}</div>
+        </div>
+        <div class="ce-input-wrap">
+          <span class="ce-input-label">COST PRICE ₱</span>
+          <input class="ce-cost-input ${hasCost?'filled':''}"
+            type="number" min="0" step="0.01"
+            value="${hasCost ? currentCost : ''}"
+            placeholder="0.00"
+            id="ce-input-${sku.code.replace(/[^a-z0-9]/gi,'_')}"
+            oninput="onCEInput('${sku.code}', this)">
+        </div>`;
+      body.appendChild(row);
+    });
+  });
+
+  updateCEProgress();
+}
+
+function onCEInput(code, input){
+  const val = parseFloat(input.value) || 0;
+  ceEdits[code] = val;
+
+  // Update row highlight
+  const rowId = 'ce-row-' + code.replace(/[^a-z0-9]/gi,'_');
+  const row = document.getElementById(rowId);
+  if(row) row.className = 'ce-row' + (val > 0 ? ' has-cost' : '');
+  input.className = 'ce-cost-input' + (val > 0 ? ' filled' : '');
+
+  updateCEProgress();
+  const btn = document.getElementById('ce-save-fab');
+  if(btn) btn.disabled = Object.keys(ceEdits).length === 0;
+}
+
+function updateCEProgress(){
+  const total = ceSKUs.length;
+  const filled = ceSKUs.filter(s => {
+    const edit = ceEdits[s.code];
+    return edit !== undefined ? edit > 0 : s.cost > 0;
+  }).length;
+  const pct = total > 0 ? Math.round(filled/total*100) : 0;
+  const prog = document.getElementById('ce-progress-text');
+  const pctEl = document.getElementById('ce-progress-pct');
+  if(prog) prog.textContent = filled + ' of ' + total + ' SKUs have cost price';
+  if(pctEl) pctEl.textContent = pct + '% complete';
+}
+
+async function saveCostPrices(){
+  const edits = Object.entries(ceEdits).filter(([,v]) => v >= 0);
+  if(!edits.length){ alert('No changes to save.'); return; }
+
+  const btn = document.getElementById('ce-save-fab');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving ' + edits.length + ' prices...';
+
+  try{
+    const r = await api({
+      action: 'updateCostPrices',
+      type: ceType,
+      edits: Object.fromEntries(edits)
+    });
+    if(r.status === 'ok'){
+      // Update liveSKUs cache so PO auto-fill uses new costs immediately
+      edits.forEach(([code, cost]) => {
+        const sku = liveSKUs.find(s=>s.code===code);
+        if(sku) sku.cost = cost;
+      });
+      ceEdits = {};
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Changes';
+      // Show success in topbar area
+      const prog = document.getElementById('ce-progress-text');
+      if(prog){
+        const old = prog.textContent;
+        prog.style.color = '#27AE60';
+        prog.textContent = '✓ ' + edits.length + ' cost prices saved!';
+        setTimeout(()=>{ prog.style.color=''; buildCEList(); }, 2500);
+      }
+    } else {
+      alert('Error: ' + (r.msg||'Could not save'));
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Changes';
+    }
+  }catch(e){
+    alert('Network error: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
+  }
+}
+
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
   const hasUnsaved=Object.values(quantities).some(q=>q.loaded>0||q.returned>0);
@@ -3876,6 +4103,34 @@ init();
 
 
 
+
+
+<!-- COST PRICE EDITOR SCREEN -->
+<div id="cost-editor-screen" class="screen" style="flex-direction:column">
+  <div class="ce-topbar">
+    <span class="ce-topbar-title">💰 Cost Price Editor</span>
+    <button class="back-btn" onclick="closeCostEditor()">← Back</button>
+  </div>
+  <div class="ce-filter-bar">
+    <input type="text" class="ce-search" id="ce-search"
+      placeholder="Search by name or code..."
+      oninput="filterCostEditor(this.value)">
+    <div class="ce-type-toggle">
+      <button class="ce-type-btn active" id="ce-btn-dist" onclick="setCEType('dist')">DIST</button>
+      <button class="ce-type-btn" id="ce-btn-retail" onclick="setCEType('retail')">RETAIL</button>
+    </div>
+  </div>
+  <div class="ce-progress" id="ce-progress">
+    <span id="ce-progress-text">Loading...</span>
+    <span id="ce-progress-pct"></span>
+  </div>
+  <div class="ce-body" id="ce-body">
+    <div class="ce-empty">Loading SKUs...</div>
+  </div>
+  <button class="ce-save-fab" id="ce-save-fab" onclick="saveCostPrices()" disabled>
+    💾 Save Changes
+  </button>
+</div>
 
 <!-- ══ PRODUCT LIST SCREEN ══════════════════════════ -->
 <div id="pl-screen" class="screen" style="flex-direction:column">
