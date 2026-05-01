@@ -3586,30 +3586,166 @@ async function loadBOM(){
 
 function buildProdList(){
   const list=document.getElementById('prod-list');list.innerHTML='';
-  if(!bom.length){list.innerHTML='<div class="prod-empty">No conversion rules found.<br>Upload Production BOM to Google Sheets first.</div>';return;}
-  bom.forEach((item,idx)=>{
-    const unverified=item.verified==='NO';
-    const card=document.createElement('div');card.className='prod-card'+(unverified?' prod-unverified':'');
-    card.innerHTML=`<div class="prod-card-header"><div><div class="prod-card-name">${item.sourceName}${unverified?'<span class="prod-warn-badge">⚠️ Unverified</span>':''}</div><div class="prod-card-rule">1 bag (${item.bagSizeKg}kg) → <strong>${item.ratio} units</strong> of ${item.outputName}</div></div></div><div class="prod-input-row"><div class="prod-input-group"><label class="prod-label">Bags to convert</label><div style="display:flex;align-items:center;gap:8px"><button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button><input class="prod-bags-input" type="number" min="1" step="1" id="bags-${idx}" value="1" oninput="updateOutput(${idx})"><button class="prod-stepper" onclick="stepBags(${idx},1)">+</button></div></div><div class="prod-output-group"><label class="prod-label">Units produced</label><div class="prod-output-val" id="output-${idx}">${item.ratio}</div><div class="prod-output-unit">${item.outputName}</div></div></div><button class="prod-submit-btn ${unverified?'prod-submit-warn':''}" onclick="submitProduction(${idx})">${unverified?'⚠️ ':''} Convert</button>`;
-    list.appendChild(card);updateOutput(idx);
-  });
+  if(!bom.length){
+    list.innerHTML='<div class="prod-empty">No production rules found.<br>Make sure SKU Master - Retail has Production Item = YES rows.</div>';
+    return;
+  }
+
+  // Separate disassembly and assembly
+  const disItems = bom.filter(b=>!b.canAssemble);
+  const asmItems = bom.filter(b=>b.canAssemble);
+
+  function buildSection(items, title, color){
+    if(!items.length) return;
+    const hdr = document.createElement('div');
+    hdr.style.cssText = `padding:8px 14px;font-size:10px;font-weight:700;letter-spacing:1px;color:white;background:${color};text-transform:uppercase`;
+    hdr.textContent = title;
+    list.appendChild(hdr);
+
+    items.forEach((item,i)=>{
+      const idx = bom.indexOf(item);
+      const card=document.createElement('div');
+      card.className='prod-card';
+      card.innerHTML=`
+        <div class="prod-card-header">
+          <div>
+            <div class="prod-card-name">${item.sourceName}</div>
+            <div class="prod-card-rule">
+              ${item.canAssemble
+                ? `Reassemble → <strong>${item.outputName}</strong> (1:${item.ratio} ratio)`
+                : `1 unit → <strong>${item.ratio} units</strong> of ${item.outputName}`}
+            </div>
+          </div>
+        </div>
+        <div class="prod-input-row">
+          <div class="prod-input-group">
+            <label class="prod-label">${item.canAssemble?'Units to assemble':'Units to convert'}</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="prod-stepper" onclick="stepBags(${idx},-1)">−</button>
+              <input class="prod-bags-input" type="number" min="1" step="1"
+                id="bags-${idx}" value="1" oninput="updateOutput(${idx})">
+              <button class="prod-stepper" onclick="stepBags(${idx},1)">+</button>
+            </div>
+          </div>
+          <div class="prod-output-group">
+            <label class="prod-label">Standard yield</label>
+            <div class="prod-output-val" id="output-${idx}">${item.ratio}</div>
+            <div class="prod-output-unit">${item.outputName}</div>
+          </div>
+        </div>
+        <!-- Actual yield override for variance tracking -->
+        <div style="background:#f8f8f8;border-radius:8px;padding:10px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">
+            Actual Yield (override if different from standard)
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="number" min="0" step="1"
+              id="actual-${idx}"
+              placeholder="Same as standard"
+              style="flex:1;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;background:white"
+              oninput="updateVariance(${idx})">
+            <div style="text-align:center;min-width:60px">
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">Variance</div>
+              <div id="variance-${idx}" style="font-size:13px;font-weight:700;color:#aaa">—</div>
+            </div>
+          </div>
+        </div>
+        <button class="prod-submit-btn" style="background:${color}"
+          onclick="submitProduction(${idx})">
+          ${item.canAssemble ? '🔄 Assemble' : '🏭 Convert (Disassemble)'}
+        </button>`;
+      list.appendChild(card);
+      updateOutput(idx);
+    });
+  }
+
+  buildSection(disItems, '🏭 Disassembly — Bag → Retail Units', '#1B5E20');
+  buildSection(asmItems, '🔄 Assembly — Retail Units → Bag', '#2E7D32');
 }
 
-function stepBags(idx,delta){const input=document.getElementById('bags-'+idx);const newVal=Math.max(1,(parseInt(input.value)||1)+delta);input.value=newVal;updateOutput(idx);}
-function updateOutput(idx){const input=document.getElementById('bags-'+idx);const bags=parseInt(input.value)||0;const item=bom[idx];const units=bags*item.ratio;const outEl=document.getElementById('output-'+idx);if(outEl)outEl.textContent=units.toLocaleString();}
+function stepBags(idx,delta){
+  const input=document.getElementById('bags-'+idx);
+  const newVal=Math.max(1,(parseInt(input.value)||1)+delta);
+  input.value=newVal;
+  updateOutput(idx);
+}
+
+function updateOutput(idx){
+  const input=document.getElementById('bags-'+idx);
+  const bags=parseInt(input.value)||0;
+  const item=bom[idx];
+  const standard=bags*item.ratio;
+  const outEl=document.getElementById('output-'+idx);
+  if(outEl)outEl.textContent=standard.toLocaleString();
+  updateVariance(idx);
+}
+
+function updateVariance(idx){
+  const bags=parseInt(document.getElementById('bags-'+idx).value)||0;
+  const item=bom[idx];
+  const standard=bags*item.ratio;
+  const actualInput=document.getElementById('actual-'+idx);
+  const varianceEl=document.getElementById('variance-'+idx);
+  if(!actualInput||!varianceEl)return;
+  const actualVal=actualInput.value.trim();
+  if(!actualVal){
+    varianceEl.textContent='—';varianceEl.style.color='#aaa';return;
+  }
+  const actual=parseFloat(actualVal)||0;
+  const variance=actual-standard;
+  varianceEl.textContent=(variance>=0?'+':'')+variance.toFixed(1);
+  varianceEl.style.color=variance<0?'#E24B4A':variance>0?'#27AE60':'#aaa';
+}
 
 async function submitProduction(idx){
-  const item=bom[idx];const bags=parseInt(document.getElementById('bags-'+idx).value)||0;
-  if(bags<=0){alert('Enter at least 1 bag.');return;}
-  const units=bags*item.ratio;const unverified=item.verified==='NO';
-  const msg=unverified?'⚠️ This conversion is UNVERIFIED.\n\nRatio: 1 bag = '+item.ratio+' units\nPlease confirm the ratio is correct.\n\nConvert '+bags+' bag(s) of '+item.sourceName+' → '+units+' units of '+item.outputName+'?':'Convert '+bags+' bag(s) of '+item.sourceName+'\n→ '+units+' units of '+item.outputName+'\n\nThis will update Stock Counts - Retail. Continue?';
+  const item    = bom[idx];
+  const qty     = parseInt(document.getElementById('bags-'+idx).value)||0;
+  if(qty<=0){alert('Enter a quantity greater than 0.');return;}
+
+  const standard  = qty * item.ratio;
+  const actualInput = document.getElementById('actual-'+idx);
+  const actualVal = actualInput ? actualInput.value.trim() : '';
+  const actual    = actualVal ? (parseFloat(actualVal)||0) : standard;
+  const variance  = actual - standard;
+
+  const dirLabel  = item.canAssemble ? 'Assembly' : 'Disassembly';
+  const arrow     = item.canAssemble ? '→' : '→';
+  const msg = `${dirLabel}: ${qty} × ${item.sourceName}
+`+
+    `${arrow} ${actual} units of ${item.outputName}
+`+
+    (variance!==0 ? `Variance: ${variance>0?'+':''}${variance.toFixed(1)} units vs standard (${standard})
+`:'')+
+    `
+This will update Stock Counts - Retail. Continue?`;
   if(!confirm(msg))return;
-  const now=new Date().toLocaleString('en-PH');
+
+  const now = new Date().toLocaleString('en-PH');
   try{
-    const r=await api({action:'submitProduction',submittedBy:currentUser.username,timestamp:now,sourceSku:item.sourceSku,sourceName:item.sourceName,bagsConsumed:bags,outputSku:item.outputSku,outputName:item.outputName,unitsProduced:units,ratio:item.ratio});
+    const r = await api({
+      action:        'submitProduction',
+      submittedBy:   currentUser.username,
+      timestamp:     now,
+      sourceSku:     item.sourceSku,
+      sourceName:    item.sourceName,
+      bagsConsumed:  qty,
+      outputSku:     item.outputSku,
+      outputName:    item.outputName,
+      unitsProduced: actual,
+      standardUnits: standard,
+      ratio:         item.ratio,
+      canAssemble:   item.canAssemble||false,
+      notes:         variance!==0 ? `Variance: ${variance>0?'+':''}${variance.toFixed(1)} vs standard ${standard}` : ''
+    });
     if(r.status==='ok'){
-      document.getElementById('bags-'+idx).value=1;updateOutput(idx);
-      const bar=document.getElementById('prod-success-bar');bar.textContent='✓ Converted '+bags+' bag(s) of '+item.sourceName+' → '+units+' units of '+item.outputName;bar.style.display='block';setTimeout(()=>bar.style.display='none',6000);
+      document.getElementById('bags-'+idx).value = 1;
+      if(actualInput) actualInput.value = '';
+      updateOutput(idx);
+      const bar = document.getElementById('prod-success-bar');
+      bar.textContent = `✓ ${dirLabel}: ${qty} × ${item.sourceName} → ${actual} units of ${item.outputName}`+
+        (variance!==0 ? ` (variance: ${variance>0?'+':''}${variance.toFixed(1)})` : '');
+      bar.style.display='block';
+      setTimeout(()=>bar.style.display='none', 6000);
     }else{alert('Error: '+(r.msg||'Could not submit'));}
   }catch(e){alert('Network error: '+e.message);}
 }
