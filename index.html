@@ -569,6 +569,40 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .ce-save-fab{position:fixed;bottom:20px;right:16px;background:#1F4E78;color:white;border:none;border-radius:28px;padding:12px 22px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(31,78,120,0.4);z-index:150;display:flex;align-items:center;gap:8px}
 .ce-save-fab:disabled{background:#aaa;box-shadow:none}
 .ce-empty{padding:40px 20px;text-align:center;color:#aaa;font-size:13px}
+
+/* PO ENHANCED STYLES */
+.po-rejection-banner{background:#FCEBEB;border:1.5px solid #E24B4A;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.po-rejection-title{font-size:11px;font-weight:700;color:#A32D2D;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.po-rejection-comment{font-size:13px;color:#333;line-height:1.5;margin-bottom:8px}
+.po-resubmit-note{font-size:11px;color:#A32D2D;font-style:italic}
+.po-approved-banner{background:#EAF3DE;border:1.5px solid #27AE60;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.po-approved-title{font-size:11px;font-weight:700;color:#1B5E20;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.po-payment-section{background:#EEF0FB;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.po-payment-title{font-size:11px;font-weight:700;color:#283593;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+.po-payment-row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.po-payment-field{flex:1}
+.po-payment-label{font-size:10px;font-weight:600;color:#666;display:block;margin-bottom:4px}
+.po-payment-select{width:100%;padding:8px 10px;border:1.5px solid #C5CAE9;border-radius:8px;font-size:12px;outline:none;background:white}
+.po-payment-select:focus{border-color:#3949AB}
+.po-cheque-ref{width:100%;padding:8px 10px;border:1.5px solid #C5CAE9;border-radius:8px;font-size:13px;font-weight:600;font-family:monospace;outline:none;letter-spacing:1px;text-transform:uppercase}
+.po-cheque-ref:focus{border-color:#3949AB}
+.po-due-date-display{font-size:13px;font-weight:700;color:#283593;padding:8px 10px;background:white;border:1.5px solid #C5CAE9;border-radius:8px}
+.po-reject-section{background:#FCEBEB;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:none}
+.po-reject-title{font-size:11px;font-weight:700;color:#A32D2D;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.po-reject-textarea{width:100%;padding:9px 12px;border:1.5px solid #E24B4A;border-radius:8px;font-size:13px;outline:none;resize:none;height:80px;font-family:inherit}
+.po-receipt-header{background:#FFF8E1;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.po-receipt-title{font-size:11px;font-weight:700;color:#F57F17;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+.po-doc-ref-input{width:100%;padding:9px 12px;border:1.5px solid #FAC775;border-radius:8px;font-size:13px;font-weight:600;outline:none;font-family:monospace;letter-spacing:0.5px}
+.po-doc-ref-input:focus{border-color:#F57F17}
+.po-receive-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5;gap:8px}
+.po-receive-info{flex:1;min-width:0}
+.po-receive-name{font-size:12px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-receive-ordered{font-size:10px;color:#aaa;margin-top:2px}
+.po-recv-qty{width:60px;text-align:center;font-size:13px;font-weight:700;padding:6px 4px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.po-recv-qty:focus{border-color:#1A3A5C}
+.po-recv-cost{width:72px;text-align:right;font-size:12px;font-weight:600;padding:6px 6px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
+.po-recv-cost:focus{border-color:#1A3A5C}
+.po-received-badge{font-size:10px;background:#EAF3DE;color:#27500A;padding:3px 8px;border-radius:20px;font-weight:600;white-space:nowrap;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -3539,27 +3573,332 @@ async function openPODetail(poNumber){
 }
 
 function renderPODetail(){
-  const po=currentPO;const isAdmin=currentUser.role==='admin';
-  const canReceive=isAdmin||(po.type==='DIST'&&currentUser.role==='staff')||(po.type==='RETAIL'&&currentUser.role==='staff-retail');
-  const canCancel=isAdmin||(po.createdBy===currentUser.username&&['DRAFT','PENDING'].includes(po.status));
-  const statusCls={DRAFT:'s-draft',PENDING:'s-pending',APPROVED:'s-approved',PARTIAL:'s-partial',RECEIVED:'s-received',REJECTED:'s-rejected',CANCELLED:'s-cancelled'}[po.status]||'';
-  let actionBtns='';
-  if(isAdmin&&po.status==='PENDING'){actionBtns+=`<button class="po-btn po-btn-success" onclick="approvePO()">Approve</button>`;actionBtns+=`<button class="po-btn po-btn-danger" onclick="rejectPO()">Reject</button>`;}
-  if(canReceive&&['APPROVED','PARTIAL'].includes(po.status)){actionBtns+=`<button class="po-btn po-btn-primary" onclick="receiveItems()">Receive Items</button>`;}
-  if(canCancel&&!['RECEIVED','CANCELLED','REJECTED'].includes(po.status)){actionBtns+=`<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>`;}
-  const lineItemsHTML=(po.lineItems||[]).map((li,i)=>{const outstanding=Number(li.qtyOutstanding)||Number(li.qtyOrdered)-Number(li.qtyReceived||0);const received=Number(li.qtyReceived||0);const isFull=outstanding<=0;return`<div class="po-receive-row"><div class="po-receive-info"><div class="po-receive-name">${li.itemName||li.skuCode}</div><div class="po-receive-ordered">Ordered: ${li.qtyOrdered} · Received: ${received} · Outstanding: ${outstanding}</div></div>${isFull?'<span class="po-received-badge">Received ✓</span>':`<input class="po-receive-input" type="number" min="0" max="${outstanding}" placeholder="0" id="recv-${i}" ${['APPROVED','PARTIAL'].includes(po.status)&&canReceive?'':'disabled'}>`}</div>`;}).join('');
-  document.getElementById('po-detail-body').innerHTML=`<div class="po-detail-header"><div class="po-detail-num">${po.poNumber}</div><div><span class="po-status-badge ${statusCls}">${po.status}</span></div><div class="po-detail-meta" style="margin-top:8px">Supplier: <strong>${po.supplier}</strong><br>Type: ${po.type} · Created: ${po.createdDate}<br>Created by: ${po.createdBy}${po.approvedBy?'<br>Approved by: '+po.approvedBy:''}<br>Total: <strong>₱${Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>${po.notes?'<br>Notes: '+po.notes:''}</div></div>${actionBtns?`<div class="po-action-row">${actionBtns}</div>`:''}<div class="po-detail-section"><div class="po-detail-section-title">Line Items</div>${lineItemsHTML||'<div style="color:#aaa;font-size:12px">No line items found</div>'}</div><div class="po-action-row" style="margin-top:4px"><button class="po-btn po-btn-secondary" onclick="backToPOList()">← Back to list</button></div>`;
+  const po = currentPO;
+  const isAdmin = currentUser.role === 'admin';
+  const isCreator = po.createdBy === currentUser.username;
+  const canReceive = isAdmin
+    || (po.type==='DIST'   && currentUser.role==='staff')
+    || (po.type==='RETAIL' && currentUser.role==='staff-retail');
+  const canCancel = isAdmin
+    || (isCreator && ['DRAFT','PENDING'].includes(po.status));
+  const canResubmit = isCreator && po.status === 'REJECTED';
+
+  const statusCls = {
+    DRAFT:'s-draft', PENDING:'s-pending', APPROVED:'s-approved',
+    PARTIAL:'s-partial', RECEIVED:'s-received',
+    REJECTED:'s-rejected', CANCELLED:'s-cancelled'
+  }[po.status] || '';
+
+  const body = document.getElementById('po-detail-body');
+  body.innerHTML = '';
+
+  // ── REJECTION BANNER (visible to creator on REJECTED) ──
+  if(po.status === 'REJECTED' && po.rejectionReason){
+    const rb = document.createElement('div');
+    rb.className = 'po-rejection-banner';
+    rb.innerHTML = '<div class="po-rejection-title">⛔ PO Rejected</div>'
+      + '<div class="po-rejection-comment">' + po.rejectionReason + '</div>'
+      + '<div class="po-resubmit-note">Please review the comment above, update the PO as needed, then tap Resubmit for Re-approval.</div>';
+    body.appendChild(rb);
+  }
+
+  // ── APPROVED BANNER (visible to creator on APPROVED) ──
+  if(po.status === 'APPROVED' && isCreator && !isAdmin){
+    const ab = document.createElement('div');
+    ab.className = 'po-approved-banner';
+    ab.innerHTML = '<div class="po-approved-title">✅ PO Approved</div>'
+      + '<div style="font-size:12px;color:#1B5E20">Your PO has been approved'
+      + (po.paymentTermsDays ? ' with ' + po.paymentTermsDays + '-day payment terms' : '')
+      + (po.dueDate ? ' — due by <strong>' + po.dueDate + '</strong>' : '') + '.'
+      + ' Proceed to receive items when goods arrive.</div>';
+    body.appendChild(ab);
+  }
+
+  // ── HEADER ──
+  const hdr = document.createElement('div');
+  hdr.className = 'po-detail-header';
+  hdr.innerHTML = '<div class="po-detail-num">' + po.poNumber + '</div>'
+    + '<div><span class="po-status-badge ' + statusCls + '">' + po.status + '</span></div>'
+    + '<div class="po-detail-meta" style="margin-top:8px">'
+    + 'Supplier: <strong>' + po.supplier + '</strong><br>'
+    + 'Type: ' + po.type + ' &nbsp;·&nbsp; Created: ' + po.createdDate + '<br>'
+    + 'Created by: ' + po.createdBy
+    + (po.approvedBy ? '<br>Approved by: ' + po.approvedBy : '')
+    + (po.paymentMode ? '<br>Payment: ' + po.paymentMode
+        + (po.chequeRef ? ' — Cheque #' + po.chequeRef : '')
+        + (po.dueDate ? ' — Due: <strong>' + po.dueDate + '</strong>' : '') : '')
+    + (po.docRef ? '<br>Doc Ref #: <strong>' + po.docRef + '</strong>' : '')
+    + '<br>Total: <strong>₱' + Number(po.totalValue||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</strong>'
+    + (po.notes ? '<br>Notes: ' + po.notes : '')
+    + '</div>';
+  body.appendChild(hdr);
+
+  // ── APPROVAL SECTION (admin only, PENDING status) ──
+  if(isAdmin && po.status === 'PENDING'){
+    const approvalDiv = document.createElement('div');
+    approvalDiv.innerHTML = ''
+      // Payment terms
+      + '<div class="po-payment-section">'
+        + '<div class="po-payment-title">Payment Terms</div>'
+        + '<div class="po-payment-row">'
+          + '<div class="po-payment-field">'
+            + '<span class="po-payment-label">Terms (days)</span>'
+            + '<select class="po-payment-select" id="po-terms-days" onchange="updatePODueDate()">'
+              + '<option value="">-- Select --</option>'
+              + ['7','15','30','45','60'].map(d => '<option value="' + d + '">' + d + ' days</option>').join('')
+            + '</select>'
+          + '</div>'
+          + '<div class="po-payment-field">'
+            + '<span class="po-payment-label">Due date (auto)</span>'
+            + '<div class="po-due-date-display" id="po-due-date-display">—</div>'
+          + '</div>'
+        + '</div>'
+        + '<div class="po-payment-row">'
+          + '<div class="po-payment-field">'
+            + '<span class="po-payment-label">Mode of payment</span>'
+            + '<select class="po-payment-select" id="po-payment-mode" onchange="onPOPaymentModeChange()">'
+              + '<option value="">-- Select --</option>'
+              + ['Cheque','Cash Out','GCash','Maya','Bank Transfer']
+                .map(m => '<option value="' + m + '">' + m + '</option>').join('')
+            + '</select>'
+          + '</div>'
+          + '<div class="po-payment-field" id="po-cheque-field" style="display:none">'
+            + '<span class="po-payment-label">Cheque ref # (10 chars)</span>'
+            + '<input class="po-cheque-ref" id="po-cheque-ref" type="text" maxlength="10" placeholder="XXXXXXXXXX">'
+          + '</div>'
+        + '</div>'
+      + '</div>'
+      // Reject reason (hidden until Reject tapped)
+      + '<div class="po-reject-section" id="po-reject-section">'
+        + '<div class="po-reject-title">Rejection reason (required)</div>'
+        + '<textarea class="po-reject-textarea" id="po-reject-reason" placeholder="Explain why this PO is being rejected and what changes are needed..."></textarea>'
+        + '<div class="modal-err" id="po-reject-err" style="margin-top:4px"></div>'
+      + '</div>'
+      // Action buttons
+      + '<div class="po-action-row">'
+        + '<button class="po-btn po-btn-success" onclick="approvePO()">✓ Approve</button>'
+        + '<button class="po-btn po-btn-danger" id="po-reject-toggle-btn" onclick="toggleRejectSection()">✗ Reject</button>'
+        + '<button class="po-btn po-btn-danger" id="po-reject-confirm-btn" onclick="rejectPO()" style="display:none">Confirm Rejection</button>'
+      + '</div>';
+    body.appendChild(approvalDiv);
+  }
+
+  // ── RESUBMIT (creator on REJECTED) ──
+  if(canResubmit){
+    const rsDiv = document.createElement('div');
+    rsDiv.innerHTML = '<div class="po-action-row">'
+      + '<button class="po-btn po-btn-primary" onclick="resubmitPO()">↩ Resubmit for Approval</button>'
+      + '<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>'
+      + '</div>';
+    body.appendChild(rsDiv);
+  }
+
+  // ── RECEIPT SECTION (on APPROVED/PARTIAL, for receiving staff) ──
+  if(canReceive && ['APPROVED','PARTIAL'].includes(po.status)){
+    const rcptDiv = document.createElement('div');
+    rcptDiv.className = 'po-receipt-header';
+    rcptDiv.innerHTML = '<div class="po-receipt-title">📦 Delivery Acknowledgment</div>'
+      + '<span class="po-payment-label">Document Ref # &nbsp;<span style="font-size:10px;color:#aaa">(DR / SI / AR — whichever applies)</span></span>'
+      + '<input class="po-doc-ref-input" id="po-doc-ref" type="text" maxlength="30" placeholder="e.g. DR-2026-001234">';
+    body.appendChild(rcptDiv);
+  }
+
+  // ── LINE ITEMS ──
+  const itemsSection = document.createElement('div');
+  itemsSection.className = 'po-detail-section';
+  const canEdit = canReceive && ['APPROVED','PARTIAL'].includes(po.status);
+
+  let lineHTML = '<div class="po-detail-section-title">Line Items</div>';
+
+  if(canEdit){
+    lineHTML += '<div style="font-size:10px;color:#888;margin-bottom:8px">'
+      + 'Qty and unit cost are editable — adjust for price changes or partial returns.</div>';
+  }
+
+  (po.lineItems||[]).forEach((li, i) => {
+    const outstanding = Number(li.qtyOutstanding) || (Number(li.qtyOrdered) - Number(li.qtyReceived||0));
+    const received    = Number(li.qtyReceived||0);
+    const isFull      = outstanding <= 0;
+    const defaultCost = Number(li.unitCost||0);
+
+    lineHTML += '<div class="po-receive-row">'
+      + '<div class="po-receive-info">'
+        + '<div class="po-receive-name">' + (li.itemName||li.skuCode) + '</div>'
+        + '<div class="po-receive-ordered">Ordered: ' + li.qtyOrdered
+          + ' &nbsp;·&nbsp; Received: ' + received
+          + ' &nbsp;·&nbsp; Outstanding: ' + outstanding + '</div>'
+      + '</div>';
+
+    if(isFull){
+      lineHTML += '<span class="po-received-badge">Received ✓</span>';
+    } else if(canEdit){
+      lineHTML += '<input class="po-recv-qty" type="number" min="0" max="' + outstanding + '"'
+          + ' placeholder="' + outstanding + '" id="recv-qty-' + i + '" value="' + outstanding + '">'
+        + '<input class="po-recv-cost" type="number" min="0" step="0.01"'
+          + ' placeholder="cost" id="recv-cost-' + i + '" value="' + defaultCost + '">';
+    }
+
+    lineHTML += '</div>';
+  });
+
+  itemsSection.innerHTML = lineHTML;
+  body.appendChild(itemsSection);
+
+  // ── RECEIVE BUTTON ──
+  if(canReceive && ['APPROVED','PARTIAL'].includes(po.status)){
+    const recvDiv = document.createElement('div');
+    recvDiv.className = 'po-action-row';
+    recvDiv.innerHTML = '<button class="po-btn po-btn-primary" onclick="receiveItems()">📦 Confirm Receipt &amp; Update Inventory</button>';
+    body.appendChild(recvDiv);
+  }
+
+  // ── CANCEL (non-received statuses, authorized) ──
+  if(canCancel && !canResubmit && !['RECEIVED','CANCELLED','REJECTED'].includes(po.status)
+     && !(isAdmin && po.status==='PENDING')){
+    const cancelDiv = document.createElement('div');
+    cancelDiv.className = 'po-action-row';
+    cancelDiv.innerHTML = '<button class="po-btn po-btn-secondary" onclick="cancelPO()">Cancel PO</button>';
+    body.appendChild(cancelDiv);
+  }
+
+  // ── BACK ──
+  const backDiv = document.createElement('div');
+  backDiv.className = 'po-action-row';
+  backDiv.style.marginTop = '4px';
+  backDiv.innerHTML = '<button class="po-btn po-btn-secondary" onclick="backToPOList()">← Back to list</button>';
+  body.appendChild(backDiv);
+}
+
+function updatePODueDate(){
+  const days  = parseInt(document.getElementById('po-terms-days').value) || 0;
+  const el    = document.getElementById('po-due-date-display');
+  if(!el) return;
+  if(!days){ el.textContent = '—'; return; }
+  const due = new Date();
+  due.setDate(due.getDate() + days);
+  el.textContent = due.toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+}
+
+function onPOPaymentModeChange(){
+  const mode  = document.getElementById('po-payment-mode').value;
+  const field = document.getElementById('po-cheque-field');
+  if(field) field.style.display = mode === 'Cheque' ? 'block' : 'none';
+}
+
+function toggleRejectSection(){
+  const sec   = document.getElementById('po-reject-section');
+  const tog   = document.getElementById('po-reject-toggle-btn');
+  const conf  = document.getElementById('po-reject-confirm-btn');
+  if(!sec) return;
+  const showing = sec.style.display !== 'none';
+  sec.style.display  = showing ? 'none' : 'block';
+  tog.style.display  = showing ? 'inline-flex' : 'none';
+  conf.style.display = showing ? 'none' : 'inline-flex';
 }
 
 function backToPOList(){currentPO=null;document.getElementById('po-view-detail').style.display='none';showPOSubtab('list',document.getElementById('po-tab-list'));}
-async function approvePO(){if(!confirm('Approve '+currentPO.poNumber+'?'))return;try{const r=await api({action:'approvePO',poNumber:currentPO.poNumber,approvedBy:currentUser.username});if(r.status==='ok'){showBanner('po-success-bar','PO approved');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
-async function rejectPO(){const reason=prompt('Reason for rejection (optional):');if(reason===null)return;try{const r=await api({action:'rejectPO',poNumber:currentPO.poNumber,rejectedBy:currentUser.username,reason});if(r.status==='ok'){showBanner('po-success-bar','PO rejected');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
+async function approvePO(){
+  const days    = document.getElementById('po-terms-days') ? document.getElementById('po-terms-days').value : '';
+  const mode    = document.getElementById('po-payment-mode') ? document.getElementById('po-payment-mode').value : '';
+  const cheque  = document.getElementById('po-cheque-ref') ? document.getElementById('po-cheque-ref').value.trim().toUpperCase() : '';
+  const dueDisp = document.getElementById('po-due-date-display') ? document.getElementById('po-due-date-display').textContent : '';
+
+  if(mode==='Cheque' && cheque.length!==10){
+    alert('Cheque reference must be exactly 10 characters.');return;
+  }
+  if(!confirm('Approve '+currentPO.poNumber+'?'))return;
+  try{
+    const r=await api({
+      action:'approvePO',
+      poNumber:currentPO.poNumber,
+      approvedBy:currentUser.username,
+      paymentTermsDays:days||'',
+      paymentMode:mode||'',
+      chequeRef:cheque||'',
+      dueDate:dueDisp&&dueDisp!=='—'?dueDisp:''
+    });
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO '+currentPO.poNumber+' approved'+(mode?' — '+mode+' payment':'')+' ✓');
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
+async function rejectPO(){
+  const reasonEl = document.getElementById('po-reject-reason');
+  const errEl    = document.getElementById('po-reject-err');
+  const reason   = reasonEl ? reasonEl.value.trim() : '';
+  if(!reason){
+    if(errEl) errEl.textContent = 'Please enter a rejection reason — the creator needs this to make corrections.';
+    return;
+  }
+  if(!confirm('Reject '+currentPO.poNumber+'? The creator will be notified to review your comment.'))return;
+  try{
+    const r=await api({action:'rejectPO',poNumber:currentPO.poNumber,rejectedBy:currentUser.username,reason});
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO rejected — '+currentPO.createdBy+' has been notified');
+      await openPODetail(currentPO.poNumber);await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
+
+async function resubmitPO(){
+  if(!confirm('Resubmit '+currentPO.poNumber+' for approval? Make sure you have addressed the rejection comments.'))return;
+  try{
+    const r=await api({action:'resubmitPO',poNumber:currentPO.poNumber,resubmittedBy:currentUser.username});
+    if(r.status==='ok'){
+      showBanner('po-success-bar','PO resubmitted for approval ✓');
+      await openPODetail(currentPO.poNumber);await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){alert('Network error');}
+}
 async function cancelPO(){if(!confirm('Cancel '+currentPO.poNumber+'? This cannot be undone.'))return;try{const r=await api({action:'cancelPO',poNumber:currentPO.poNumber,cancelledBy:currentUser.username});if(r.status==='ok'){showBanner('po-success-bar','PO cancelled');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error');}}
 async function receiveItems(){
-  const lines=currentPO.lineItems||[];const receipts=[];
-  lines.forEach((li,i)=>{const input=document.getElementById('recv-'+i);if(!input)return;const qty=parseFloat(input.value)||0;if(qty>0)receipts.push({skuCode:li.skuCode,itemName:li.itemName,qtyReceived:qty,lineIndex:i});});
-  if(!receipts.length){alert('Enter quantities to receive for at least one item.');return;}
-  try{const r=await api({action:'receivePO',poNumber:currentPO.poNumber,receivedBy:currentUser.username,poType:currentPO.type,receipts});if(r.status==='ok'){showBanner('po-success-bar',receipts.length+' item(s) received — stock counts updated');await openPODetail(currentPO.poNumber);await loadPOs();}else alert('Error: '+r.msg);}catch(e){alert('Network error: '+e.message);}
+  const lines = currentPO.lineItems || [];
+  const receipts = [];
+  const docRef = document.getElementById('po-doc-ref') ? document.getElementById('po-doc-ref').value.trim() : '';
+
+  lines.forEach((li, i)=>{
+    const qtyInput  = document.getElementById('recv-qty-'+i);
+    const costInput = document.getElementById('recv-cost-'+i);
+    if(!qtyInput) return; // already fully received
+    const qty  = parseFloat(qtyInput.value)  || 0;
+    const cost = parseFloat(costInput ? costInput.value : li.unitCost) || Number(li.unitCost) || 0;
+    if(qty > 0) receipts.push({
+      skuCode:     li.skuCode,
+      itemName:    li.itemName||li.skuCode,
+      qtyReceived: qty,
+      unitCost:    cost,
+      lineIndex:   i
+    });
+  });
+
+  if(!receipts.length){ alert('Enter quantities to receive for at least one item.'); return; }
+
+  const confirmMsg = receipts.map(r =>
+    r.qtyReceived + ' x ' + r.itemName + ' @ ₱' + Number(r.unitCost).toLocaleString('en-PH',{minimumFractionDigits:2})
+  ).join('\n');
+
+  if(!confirm('Confirm receipt of:\n\n' + confirmMsg + '\n\nThis will update inventory stock counts as STOCK IN.')) return;
+
+  try{
+    const r = await api({
+      action:      'receivePO',
+      poNumber:    currentPO.poNumber,
+      receivedBy:  currentUser.username,
+      poType:      currentPO.type,
+      docRef:      docRef,
+      receipts
+    });
+    if(r.status==='ok'){
+      const summary = receipts.length + ' item(s) received'
+        + (docRef ? ' — Doc Ref: ' + docRef : '')
+        + ' — inventory updated as STOCK IN ✓';
+      showBanner('po-success-bar', summary);
+      await openPODetail(currentPO.poNumber);
+      await loadPOs();
+    }else alert('Error: '+r.msg);
+  }catch(e){ alert('Network error: '+e.message); }
 }
 
 // ── PRODUCTION CONVERSION SYSTEM ──
