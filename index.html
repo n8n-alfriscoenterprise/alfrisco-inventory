@@ -4265,68 +4265,76 @@ function onEditRoleChange(){
 
 async function saveStaffEdit(){
   if(editingStaffIndex < 0) return;
-  const s = staff[editingStaffIndex];
-  const role    = document.getElementById('edit-role').value;
-  const unit    = role === 'driver' ? document.getElementById('edit-unit').value : 'All';
-  const canCountDist    = document.getElementById('edit-can-count-dist').checked;
-  const canCountRetail  = document.getElementById('edit-can-count-retail').checked;
-  const canManagePODist   = document.getElementById('edit-can-po-dist').checked;
-  const canManagePORetail = document.getElementById('edit-can-po-retail').checked;
-  const canPLView       = document.getElementById('edit-can-pl').checked;
-  const canTransfer     = document.getElementById('edit-can-transfer').checked;
-  const canProduction   = document.getElementById('edit-can-production').checked;
-  const canBoDist       = document.getElementById('edit-can-bo-dist').checked;
-  const canBoRetail     = document.getElementById('edit-can-bo-retail').checked;
+  const s   = staff[editingStaffIndex];
   const errEl = document.getElementById('edit-staff-err');
+  const btn   = document.getElementById('edit-save-btn');
 
-  // Prevent demoting yourself
+  const role = document.getElementById('edit-role').value;
+  const unit = role === 'driver'
+    ? document.getElementById('edit-unit').value
+    : 'All';
+
+  // Self-demotion guard
   if(s.username === currentUser.username && role !== 'admin'){
     errEl.textContent = 'You cannot change your own role.'; return;
   }
 
-  const btn = document.getElementById('edit-save-btn');
+  // ── PERMISSION MAP — add new permissions here only ──
+  // Format: { apiKey: 'edit-checkbox-id' }
+  // apiKey  = what gets sent to updateStaff in Apps Script
+  // checkbox = the id of the toggle in the edit modal
+  const PERM_MAP = [
+    { key:'canCountDist',      id:'edit-can-count-dist'  },
+    { key:'canCountRetail',    id:'edit-can-count-retail' },
+    { key:'canManagePODist',   id:'edit-can-po-dist'      },
+    { key:'canManagePORetail', id:'edit-can-po-retail'    },
+    { key:'canTransfer',       id:'edit-can-transfer'     },
+    { key:'canProduction',     id:'edit-can-production'   },
+    { key:'canBackorderDist',  id:'edit-can-bo-dist'      },
+    { key:'canBackorderRetail',id:'edit-can-bo-retail'    },
+    { key:'canViewProductList',id:'edit-can-pl'           },
+  ];
+
+  // Collect all permission values from checkboxes
+  const perms = {};
+  PERM_MAP.forEach(function(p){
+    const el = document.getElementById(p.id);
+    perms[p.key] = el ? el.checked : false;
+  });
+
   btn.disabled = true; btn.textContent = 'Saving...';
   errEl.textContent = '';
 
   try{
-    const r = await api({
-      action: 'updateStaff',
-      username: s.username,
-      role, assignedUnit: unit,
-      canCountDist, canCountRetail,
-      canManagePODist, canManagePORetail,
-      canViewProductList: canPLView, canTransfer, canProduction,
-      canBackorderDist: canBoDist,
-      canBackorderRetail: canBoRetail
-    });
+    const r = await api(Object.assign(
+      { action:'updateStaff', username:s.username, role, assignedUnit:unit },
+      perms
+    ));
+
     if(r.status === 'ok'){
-      // Update local staff cache
-      staff[editingStaffIndex] = {
-        ...s, role, assignedUnit: unit,
-        canCountDist, canCountRetail, canManagePO,
-        canManagePODist, canManagePORetail,
-        canViewProductList: canPLView, canTransfer, canProduction,
-        canBackorderDist: canBoDist,
-        canBackorderRetail: canBoRetail
-      };
+      // Update local cache — merge new values over existing account
+      staff[editingStaffIndex] = Object.assign({}, s,
+        { role, assignedUnit:unit }, perms
+      );
       LS.set('alf_staff_cache', staff);
       closeEditStaff();
       renderStaff();
-      // Flash success
+      // Flash success banner in admin body
       const adminBody = document.querySelector('.admin-body');
       if(adminBody){
         const flash = document.createElement('div');
-        flash.style.cssText = 'background:#0A5C46;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;border-radius:8px;margin-bottom:8px';
+        flash.style.cssText = 'background:#0A5C46;color:white;padding:9px 14px;'
+          + 'font-size:12px;font-weight:600;text-align:center;border-radius:8px;margin-bottom:8px';
         flash.textContent = s.username + ' permissions updated ✓';
         adminBody.insertBefore(flash, adminBody.firstChild);
-        setTimeout(()=>flash.remove(), 4000);
+        setTimeout(function(){ flash.remove(); }, 4000);
       }
     } else {
       errEl.textContent = 'Error: ' + (r.msg || 'Could not save');
       btn.disabled = false; btn.textContent = 'Save Changes';
     }
   } catch(e){
-    errEl.textContent = 'Network error. Check your connection.';
+    errEl.textContent = 'Network error: ' + e.message;
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
 }
