@@ -971,8 +971,12 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
               Count Retail
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
-              <input type="checkbox" id="new-can-po" checked style="width:16px;height:16px;accent-color:#1A3A5C;cursor:pointer">
-              Manage POs
+              <input type="checkbox" id="new-can-po-dist" style="width:16px;height:16px;accent-color:#1A3A5C;cursor:pointer">
+              📦 Manage Distribution POs
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-po-retail" style="width:16px;height:16px;accent-color:#283593;cursor:pointer">
+              🛒 Manage Retail POs
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-pl" checked style="width:16px;height:16px;accent-color:#2E7D32;cursor:pointer">
@@ -1272,7 +1276,10 @@ function showHome(){
   showScreen('home-screen');
   updateFabVisibility();
   document.getElementById('home-topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
-  const canPO=currentUser.canManagePO!==false && currentUser.role!=='driver';
+  const canPO=(currentUser.role==='admin'
+    || currentUser.canManagePODist===true
+    || currentUser.canManagePORetail===true)
+    && currentUser.role!=='driver';
   const isAdmin=currentUser.role==='admin';
   const hpo=document.getElementById('home-po-nav');
   const hadm=document.getElementById('home-admin-nav');
@@ -1298,8 +1305,10 @@ function buildHomeTiles(){
   const canTrfTile=currentUser.role==='admin'||currentUser.canTransfer===true;
   if(canTrfTile) tiles.push({icon:'🔄',name:'Transfer',desc:'Move stock between warehouse, store & Bajaj',cls:'t-transfer',fn:'openTransfer()'});
   // 3. Purchase Orders
-  const canPO=currentUser.canManagePO!==false;
-  if(canPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
+  const canPODist   = currentUser.role==='admin' || currentUser.canManagePODist===true;
+  const canPORetail = currentUser.role==='admin' || currentUser.canManagePORetail===true;
+  const canAnyPO    = canPODist || canPORetail;
+  if(canAnyPO) tiles.push({icon:'📋',name:'Purchase Orders',desc:'Create, approve & receive supplier orders',cls:'t-po',fn:'openPO()',badge:'po-pending-badge'});
   // 4. General Inventory
   const canCount=currentUser.canCountDist!==false||currentUser.canCountRetail!==false;
   if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
@@ -1328,7 +1337,9 @@ function showMovement(){
   showScreen('app-screen');
   updateFabVisibility();
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
-  const canPO=currentUser.canManagePO!==false;
+  const canPO=currentUser.role==='admin'
+    || currentUser.canManagePODist===true
+    || currentUser.canManagePORetail===true;
   const isAdmin=currentUser.role==='admin';
   if(document.getElementById('tnav-po')) document.getElementById('tnav-po').style.display=canPO?'block':'none';
   if(document.getElementById('tnav-admin')) document.getElementById('tnav-admin').style.display=isAdmin?'block':'none';
@@ -1362,7 +1373,7 @@ function openAdminFromHome(){
   document.getElementById('topbar-user').textContent=`${currentUser.username} · ${currentUser.role}`;
   document.getElementById('movement-area').style.display='none';
   document.getElementById('mode-btn').style.display='none';
-  if(document.getElementById('tnav-po')) document.getElementById('tnav-po').style.display=currentUser.canManagePO!==false?'block':'none';
+  if(document.getElementById('tnav-po')) document.getElementById('tnav-po').style.display=(_canAnyPO)?'block':'none';
   if(document.getElementById('tnav-admin')) document.getElementById('tnav-admin').style.display='block';
   setTNav('tnav-admin');
   openAdminModal();
@@ -1736,7 +1747,9 @@ function renderStaff(){
     const unitTag=s.role==='driver'&&s.assignedUnit?` · ${s.assignedUnit}`:'';
     const distTag=s.canCountDist===false?'':`<span style="font-size:9px;background:#EDE0F5;color:#7B2D8B;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">DIST</span>`;
     const retailTag=s.canCountRetail===false?'':`<span style="font-size:9px;background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">RETAIL</span>`;
-    const poTag=s.canManagePO===false?'':`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO</span>`;
+    const poDTag=s.canManagePODist  ?`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO-D</span>`:'';
+    const poRTag=s.canManagePORetail?`<span style="font-size:9px;background:#EAF0FB;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO-R</span>`:'';
+    const poTag=poDTag+poRTag;
     const plTag=s.canViewProductList!==false?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">📋PL</span>`:'';
     const trfTag=s.canTransfer?`<span style="font-size:9px;background:#E8EAF6;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🔄Trf</span>`:'';
     const prodTag=s.canProduction?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🏭Prod</span>`:'';
@@ -1768,15 +1781,17 @@ async function addStaff(){
   const canPO=document.getElementById('new-can-po').checked;
   const canPL=document.getElementById('new-can-pl')?document.getElementById('new-can-pl').checked:true;
   const canTrf=document.getElementById('new-can-transfer')?document.getElementById('new-can-transfer').checked:false;
+  const canPODist=document.getElementById('new-can-po-dist')?document.getElementById('new-can-po-dist').checked:false;
+  const canPORetail=document.getElementById('new-can-po-retail')?document.getElementById('new-can-po-retail').checked:false;
   const canProd=document.getElementById('new-can-production')?document.getElementById('new-can-production').checked:false;
   const canBoDist=document.getElementById('new-can-bo-dist')?document.getElementById('new-can-bo-dist').checked:true;
   const canBoRetail=document.getElementById('new-can-bo-retail')?document.getElementById('new-can-bo-retail').checked:false;
   if(!u||!p){alert('Username and password are required.');return;}
   if(staff.find(s=>s.username.toLowerCase()===u.toLowerCase())){alert('Username already exists.');return;}
   try{
-    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+    const result=await api({action:'addStaff',username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePODist:canPODist,canManagePORetail:canPORetail,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
     if(result.status==='ok'){
-      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePO:canPO,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
+      staff.push({username:u,password:p,role:r,assignedUnit:unit,canCountDist:canDist,canCountRetail:canRetail,canManagePODist:canPODist,canManagePORetail:canPORetail,canViewProductList:canPL,canTransfer:canTrf,canProduction:canProd,canBackorderDist:canBoDist,canBackorderRetail:canBoRetail});
       LS.set('alf_staff_cache',staff);
       document.getElementById('new-username').value='';
       document.getElementById('new-password').value='';
@@ -3489,7 +3504,15 @@ function buildPOStatusChips(){
 
 function renderPOList(){
   const body=document.getElementById('po-list-body');
-  const canSee=currentUser.role==='admin'?poList:poList.filter(p=>{if(p.type==='DIST'&&currentUser.role==='staff')return true;if(p.type==='RETAIL'&&currentUser.role==='staff-retail')return true;if(p.createdBy===currentUser.username)return true;return false;});
+  const _isAdm2=currentUser.role==='admin';
+  const _canDist2=_isAdm2||currentUser.canManagePODist===true||currentUser.role==='staff';
+  const _canRet2=_isAdm2||currentUser.canManagePORetail===true||currentUser.role==='staff-retail';
+  const canSee=_isAdm2?poList:poList.filter(p=>{
+    if(p.type==='DIST'&&_canDist2)return true;
+    if(p.type==='RETAIL'&&_canRet2)return true;
+    if(p.createdBy===currentUser.username)return true;
+    return false;
+  });
   const visible=poFilter==='All'?canSee:canSee.filter(p=>p.status===poFilter);
   if(!visible.length){body.innerHTML='<div class="po-list-empty">No purchase orders found.<br>Tap "+ New PO" to create one.</div>';return;}
   body.innerHTML='';
@@ -3504,9 +3527,21 @@ function renderPOList(){
 
 function initPOCreate(){
   poLineItems=[];
-  document.getElementById('po-type').value='DIST';
+  const _isAdm=currentUser.role==='admin';
+  const hasDist  =_isAdm||currentUser.canManagePODist===true;
+  const hasRetail=_isAdm||currentUser.canManagePORetail===true;
+  const typeEl=document.getElementById('po-type');
+  if(typeEl){
+    Array.from(typeEl.options).forEach(function(opt){
+      if(opt.value==='DIST')   opt.hidden=!hasDist;
+      if(opt.value==='RETAIL') opt.hidden=!hasRetail;
+    });
+    typeEl.value=hasDist?'DIST':'RETAIL';
+  }
   document.getElementById('po-notes').value='';
   document.getElementById('po-delivery-date').value='';
+  const errEl=document.getElementById('po-create-err');
+  if(errEl)errEl.textContent='';
   onPOTypeChange();renderPOLineItems();updatePOTotals();
 }
 
@@ -3647,8 +3682,8 @@ function renderPODetail(){
   const isAdmin = currentUser.role === 'admin';
   const isCreator = po.createdBy === currentUser.username;
   const canReceive = isAdmin
-    || (po.type==='DIST'   && currentUser.role==='staff')
-    || (po.type==='RETAIL' && currentUser.role==='staff-retail');
+    || (po.type==='DIST'   && (currentUser.canManagePODist===true   || currentUser.role==='staff'))
+    || (po.type==='RETAIL' && (currentUser.canManagePORetail===true || currentUser.role==='staff-retail'));
   const canCancel = isAdmin
     || (isCreator && ['DRAFT','PENDING'].includes(po.status));
   const canResubmit = isCreator && po.status === 'REJECTED';
@@ -4188,7 +4223,8 @@ function openEditStaff(idx){
     ['edit-can-pl',          isAdmin || s.canViewProductList === true],
     ['edit-can-count-dist',  isAdmin || s.canCountDist !== false],
     ['edit-can-count-retail',isAdmin || s.canCountRetail !== false],
-    ['edit-can-po',          isAdmin || s.canManagePO !== false],
+    ['edit-can-po-dist',     isAdmin || s.canManagePODist===true],
+    ['edit-can-po-retail',   isAdmin || s.canManagePORetail===true],
     ['edit-can-transfer',    isAdmin || s.canTransfer === true],
     ['edit-can-production',  isAdmin || s.canProduction === true ||
                              s.role === 'staff-retail'],
@@ -4218,7 +4254,8 @@ function onEditRoleChange(){
 
   // If admin selected — auto-check all permissions and disable toggles
   const isAdmin = role === 'admin';
-  ['edit-can-pl','edit-can-count-dist','edit-can-count-retail','edit-can-po',
+  ['edit-can-pl','edit-can-count-dist','edit-can-count-retail',
+   'edit-can-po-dist','edit-can-po-retail',
    'edit-can-transfer','edit-can-production',
    'edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
     const el = document.getElementById(id);
@@ -4233,7 +4270,8 @@ async function saveStaffEdit(){
   const unit    = role === 'driver' ? document.getElementById('edit-unit').value : 'All';
   const canCountDist    = document.getElementById('edit-can-count-dist').checked;
   const canCountRetail  = document.getElementById('edit-can-count-retail').checked;
-  const canManagePO     = document.getElementById('edit-can-po').checked;
+  const canManagePODist   = document.getElementById('edit-can-po-dist').checked;
+  const canManagePORetail = document.getElementById('edit-can-po-retail').checked;
   const canPLView       = document.getElementById('edit-can-pl').checked;
   const canTransfer     = document.getElementById('edit-can-transfer').checked;
   const canProduction   = document.getElementById('edit-can-production').checked;
@@ -4256,7 +4294,8 @@ async function saveStaffEdit(){
       username: s.username,
       role, assignedUnit: unit,
       canCountDist, canCountRetail,
-      canManagePO, canViewProductList: canPLView, canTransfer, canProduction,
+      canManagePODist, canManagePORetail,
+      canViewProductList: canPLView, canTransfer, canProduction,
       canBackorderDist: canBoDist,
       canBackorderRetail: canBoRetail
     });
@@ -4265,6 +4304,7 @@ async function saveStaffEdit(){
       staff[editingStaffIndex] = {
         ...s, role, assignedUnit: unit,
         canCountDist, canCountRetail, canManagePO,
+        canManagePODist, canManagePORetail,
         canViewProductList: canPLView, canTransfer, canProduction,
         canBackorderDist: canBoDist,
         canBackorderRetail: canBoRetail
@@ -4905,11 +4945,21 @@ init();
         <div class="edit-perm-grid">
           <div class="edit-perm-row">
             <div>
-              <div class="edit-perm-label">📋 Manage POs</div>
-              <div class="edit-perm-sub">Can create, receive and manage purchase orders</div>
+              <div class="edit-perm-label">📦 Manage Distribution POs</div>
+              <div class="edit-perm-sub">Can create, approve & receive DIST purchase orders</div>
             </div>
             <label class="edit-toggle">
-              <input type="checkbox" id="edit-can-po">
+              <input type="checkbox" id="edit-can-po-dist">
+              <span class="edit-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="edit-perm-row">
+            <div>
+              <div class="edit-perm-label">🛒 Manage Retail POs</div>
+              <div class="edit-perm-sub">Can create, approve & receive RETAIL purchase orders</div>
+            </div>
+            <label class="edit-toggle">
+              <input type="checkbox" id="edit-can-po-retail">
               <span class="edit-toggle-slider"></span>
             </label>
           </div>
