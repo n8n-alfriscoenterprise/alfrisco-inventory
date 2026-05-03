@@ -603,6 +603,47 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
 .po-recv-cost{width:72px;text-align:right;font-size:12px;font-weight:600;padding:6px 6px;border-radius:7px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none}
 .po-recv-cost:focus{border-color:#1A3A5C}
 .po-received-badge{font-size:10px;background:#EAF3DE;color:#27500A;padding:3px 8px;border-radius:20px;font-weight:600;white-space:nowrap;flex-shrink:0}
+
+/* ══ STOCK ADJUSTMENT ══════════════════════════════ */
+#sa-screen{background:#f0f2f5}
+.sa-topbar{background:#00695C;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sa-topbar-title{color:white;font-size:15px;font-weight:700}
+.sa-success-bar{display:none;background:#00695C;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0}
+.sa-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+/* Segment + type selector */
+.sa-config{background:white;border-radius:10px;padding:14px;margin-bottom:2px}
+.sa-config-title{font-size:10px;font-weight:700;color:#888;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+.sa-seg-row,.sa-type-row{display:flex;gap:6px;margin-bottom:10px}
+.sa-seg-btn,.sa-type-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #e0e0e0;background:white;color:#888;font-size:12px;font-weight:600;cursor:pointer;text-align:center}
+.sa-seg-btn.active-dist{background:#7B2D8B;color:white;border-color:#7B2D8B}
+.sa-seg-btn.active-retail{background:#C07000;color:white;border-color:#C07000}
+.sa-type-btn.active{background:#00695C;color:white;border-color:#00695C}
+.sa-notes-label{font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px}
+.sa-notes-input{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.sa-notes-input:focus{border-color:#00695C}
+.sa-notes-input.required-empty{border-color:#E24B4A}
+/* Line rows */
+.sa-line-card{background:white;border-radius:10px;padding:12px}
+.sa-line-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sa-line-num{font-size:11px;font-weight:700;color:#00695C}
+.sa-line-del{background:none;border:none;color:#bbb;font-size:18px;cursor:pointer;padding:0;line-height:1}
+.sa-line-del:hover{color:#E24B4A}
+.sa-field-label{font-size:10px;font-weight:600;color:#888;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.sa-sku-select{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;outline:none;background:white;color:#222;margin-bottom:8px}
+.sa-sku-select:focus{border-color:#00695C}
+.sa-cols-grid{display:grid;gap:6px;margin-top:4px}
+.sa-col-cell{display:flex;flex-direction:column}
+.sa-col-val{background:#f5f5f5;border-radius:7px;padding:7px 10px;font-size:13px;font-weight:600;color:#444;text-align:center}
+.sa-col-val.positive{color:#27AE60;background:#EAF3DE}
+.sa-col-val.negative{color:#E24B4A;background:#FCEBEB}
+.sa-col-input{padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:13px;font-weight:600;text-align:center;outline:none;background:white;width:100%}
+.sa-col-input:focus{border-color:#00695C}
+/* Bottom buttons */
+.sa-btn-row{padding:10px 14px 14px;background:#f0f2f5;flex-shrink:0}
+.sa-add-btn{width:100%;padding:10px;border:2px dashed #00695C;background:white;color:#00695C;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.sa-submit-btn{width:100%;padding:14px;background:#00695C;color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(0,105,92,.3)}
+.sa-submit-btn:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+.tile.t-sa{background:linear-gradient(135deg,#004D40,#00695C)}
 </style>
 </head>
 <body>
@@ -832,11 +873,9 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
     <span style="color:white;font-size:15px;font-weight:700">🏭 Production</span>
     <button class="back-btn" onclick="closeProduction()">← Back</button>
   </div>
-  <div style="background:#1B5E20;padding:6px 14px 10px;flex-shrink:0">
-    <div style="font-size:11px;color:rgba(255,255,255,0.7)">Retail repacking — converts bags to smaller selling units</div>
-  </div>
   <div id="prod-success-bar" style="display:none;background:#1B5E20;color:white;padding:9px 14px;font-size:12px;font-weight:600;text-align:center;flex-shrink:0"></div>
-  <div id="prod-list" style="flex:1;overflow-y:auto;padding:14px;background:#f0f2f5;display:flex;flex-direction:column;gap:12px"></div>
+  <!-- Line items container — must be id="prod-lines" -->
+  <div id="prod-lines" style="flex:1;overflow-y:auto;padding:12px 14px 6px;background:#f0f2f5;display:flex;flex-direction:column;gap:10px"></div>
 </div>
 
 <!-- PO SCREEN -->
@@ -981,6 +1020,10 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;overscroll
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-pl" checked style="width:16px;height:16px;accent-color:#2E7D32;cursor:pointer">
               📋 View Product List
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
+              <input type="checkbox" id="new-can-sa" style="width:16px;height:16px;accent-color:#00695C;cursor:pointer">
+              📊 Stock Adjustment
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer">
               <input type="checkbox" id="new-can-transfer" style="width:16px;height:16px;accent-color:#3949AB;cursor:pointer">
@@ -1312,6 +1355,8 @@ function buildHomeTiles(){
   // 4. General Inventory
   const canCount=currentUser.canCountDist!==false||currentUser.canCountRetail!==false;
   if(canCount) tiles.push({icon:'🔢',name:'General Inventory',desc:'Physical count for Distribution or Retail',cls:'t-inventory',fn:'openCount()'});
+  const canSATile = currentUser.role==='admin' || currentUser.canStockAdjust===true;
+  if(canSATile) tiles.push({icon:'📊',name:'Stock Adjustment',desc:'Receive, count, remove or record damage',cls:'t-sa',fn:'openSA()'});
   // 5. Dealer Backorder
   tiles.push({icon:'⚠️',name:'Dealer Backorder',desc:'Record out-of-stock distribution dealer requests',cls:'t-backorder',fn:'openBoModal()'});
   // 6. Retail Backorder
@@ -1750,6 +1795,7 @@ function renderStaff(){
     const poDTag=s.canManagePODist  ?`<span style="font-size:9px;background:#E0EAF5;color:#1A3A5C;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO-D</span>`:'';
     const poRTag=s.canManagePORetail?`<span style="font-size:9px;background:#EAF0FB;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">PO-R</span>`:'';
     const poTag=poDTag+poRTag;
+    const saTag=s.canStockAdjust?'<span style="font-size:9px;background:#E0F2F1;color:#004D40;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">📊SA</span>':'';
     const plTag=s.canViewProductList!==false?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">📋PL</span>`:'';
     const trfTag=s.canTransfer?`<span style="font-size:9px;background:#E8EAF6;color:#283593;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🔄Trf</span>`:'';
     const prodTag=s.canProduction?`<span style="font-size:9px;background:#E8F5E9;color:#1B5E20;padding:1px 6px;border-radius:10px;font-weight:600;margin-right:3px">🏭Prod</span>`:'';
@@ -1760,7 +1806,7 @@ function renderStaff(){
         <div class="staff-name">${s.username}</div>
         <div class="staff-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:11px;color:#999">${s.role}${unitTag}</span>
-          ${plTag}${distTag}${retailTag}${poTag}${trfTag}${prodTag}${boDistTag}${boRetailTag}
+          ${saTag}${plTag}${distTag}${retailTag}${poTag}${trfTag}${prodTag}${boDistTag}${boRetailTag}
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -3273,6 +3319,257 @@ async function saveCostPrices(){
   }
 }
 
+// ════════════════════════════════════════════════════════
+// STOCK ADJUSTMENT SYSTEM
+// Types: receive | count | remove | damage
+// Segments: dist | retail
+// ════════════════════════════════════════════════════════
+let saSegment = 'dist';
+let saType    = 'receive';
+let saLines   = [];
+let saStockMap= {};
+
+const SA_TYPES = {
+  receive:{ label:'Receive',        hint:'Adds quantity to current stock' },
+  count:  { label:'Inventory Count',hint:'Sets stock to the counted value' },
+  remove: { label:'Remove',         hint:'Reduces stock — e.g. unrecorded transfer' },
+  damage: { label:'Damage',         hint:'Reduces stock — records loss/damage' }
+};
+
+async function openSA(){
+  const isAdmin = currentUser && currentUser.role==='admin';
+  const canSA   = isAdmin || currentUser.canStockAdjust===true;
+  if(!canSA){ alert('You do not have permission to perform stock adjustments.'); return; }
+  showScreen('sa-screen');
+  updateFabVisibility();
+  saSegment='dist'; saType='receive'; saLines=[]; saStockMap={};
+  document.getElementById('sa-notes').value='';
+  document.getElementById('sa-notes').classList.remove('required-empty');
+  setSASegmentUI('dist');
+  setSATypeUI('receive');
+  await loadSAStockMap();
+  addSALine();
+  updateSASubmitBtn();
+}
+
+function closeSA(){ showHome(); }
+
+async function loadSAStockMap(){
+  try{
+    const r = await api({action:'getProductList'});
+    if(r.status==='ok'){
+      const items = saSegment==='dist' ? (r.dist||[]) : (r.retail||[]);
+      saStockMap={};
+      items.forEach(item=>{ saStockMap[item.sku] = item.stock!==null ? Number(item.stock) : 0; });
+    }
+  }catch(e){ console.error('loadSAStockMap',e); }
+}
+
+function setSASegment(seg){
+  saSegment=seg; saLines=[]; saStockMap={};
+  setSASegmentUI(seg);
+  loadSAStockMap().then(()=>renderSALines());
+}
+
+function setSASegmentUI(seg){
+  const d=document.getElementById('sa-seg-dist');
+  const r=document.getElementById('sa-seg-retail');
+  if(d) d.className='sa-seg-btn'+(seg==='dist'?' active-dist':'');
+  if(r) r.className='sa-seg-btn'+(seg==='retail'?' active-retail':'');
+}
+
+function setSAType(type){
+  saType=type;
+  setSATypeUI(type);
+  renderSALines();
+}
+
+function setSATypeUI(type){
+  ['receive','count','remove','damage'].forEach(t=>{
+    const btn=document.getElementById('sa-type-'+t);
+    if(btn) btn.className='sa-type-btn'+(t===type?' active':'');
+  });
+}
+
+function addSALine(){
+  saLines.push({skuCode:'',skuName:'',qtyInput:'',costInput:'',currentStock:null});
+  renderSALines();
+  setTimeout(()=>{
+    const el=document.getElementById('sa-lines');
+    if(el&&el.lastElementChild) el.lastElementChild.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+}
+
+function removeSALine(idx){
+  saLines.splice(idx,1);
+  if(!saLines.length) addSALine();
+  else renderSALines();
+  updateSASubmitBtn();
+}
+
+function renderSALines(){
+  const container=document.getElementById('sa-lines');
+  if(!container) return;
+  container.innerHTML='';
+  const typeFilter=saSegment==='dist'?'DIST':'RETAIL';
+  const skus=liveSKUs.filter(s=>s.type===typeFilter);
+
+  saLines.forEach((line,idx)=>{
+    const skuOpts='<option value="">-- Select item --</option>'
+      +skus.map(s=>'<option value="'+s.code+'|'+s.name+'"'+(line.skuCode===s.code?' selected':'')+'>'+s.name+'</option>').join('');
+
+    const current = line.skuCode!=='' ? (saStockMap[line.skuCode]||0) : null;
+    line.currentStock=current;
+
+    const card=document.createElement('div');
+    card.className='sa-line-card';
+    card.id='sa-line-'+idx;
+    card.innerHTML=
+      '<div class="sa-line-header">'
+        +'<span class="sa-line-num">Item '+(idx+1)+'</span>'
+        +(saLines.length>1?'<button class="sa-line-del" onclick="removeSALine('+idx+')">&#215;</button>':'')
+      +'</div>'
+      +'<span class="sa-field-label">Item</span>'
+      +'<select class="sa-sku-select" onchange="onSASKU('+idx+',this.value)">'+skuOpts+'</select>'
+      +buildSAColsHTML(idx,line,current);
+    container.appendChild(card);
+  });
+  updateSASubmitBtn();
+}
+
+function buildSAColsHTML(idx,line,current){
+  const qty  = parseFloat(line.qtyInput)||0;
+  const cur  = current!==null ? current : 0;
+  const hasItem = line.skuCode!=='';
+
+  if(saType==='receive'){
+    const after = cur+qty;
+    return '<div class="sa-cols-grid" style="grid-template-columns:1fr 1fr 1fr 1fr">'
+      +'<div class="sa-col-cell"><span class="sa-field-label">In Stock</span>'
+        +'<div class="sa-col-val">'+(hasItem?cur:'—')+'</div></div>'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Add Stock</span>'
+        +'<input class="sa-col-input" type="number" min="0" step="1" value="'+(line.qtyInput||'')+'" placeholder="0" oninput="onSAQty('+idx+',this.value)"></div>'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Cost (&#8369;)</span>'
+        +'<input class="sa-col-input" type="number" min="0" step="0.01" value="'+(line.costInput||'')+'" placeholder="0.00" oninput="saLines['+idx+'].costInput=this.value"></div>'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Stock After</span>'
+        +'<div class="sa-col-val '+(hasItem&&qty>0?'positive':'')+'">'+(hasItem&&qty>0?after:'—')+'</div></div>'
+      +'</div>';
+  }
+  if(saType==='count'){
+    const diff=qty-cur;
+    const diffStr=(diff>0?'+':'')+diff;
+    const diffCls=diff>0?'positive':diff<0?'negative':'';
+    return '<div class="sa-cols-grid" style="grid-template-columns:1fr 1fr 1fr">'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Expected Stock</span>'
+        +'<div class="sa-col-val">'+(hasItem?cur:'—')+'</div></div>'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Counted Stock</span>'
+        +'<input class="sa-col-input" type="number" min="0" step="1" value="'+(line.qtyInput||'')+'" placeholder="0" oninput="onSAQty('+idx+',this.value)"></div>'
+      +'<div class="sa-col-cell"><span class="sa-field-label">Difference</span>'
+        +'<div class="sa-col-val '+(hasItem&&line.qtyInput!==''?diffCls:'')+'">'+(hasItem&&line.qtyInput!==''?diffStr:'—')+'</div></div>'
+      +'</div>';
+  }
+  // remove or damage
+  const lbl   = saType==='damage'?'Damaged Stock':'Remove Stock';
+  const after2= Math.max(0,cur-qty);
+  return '<div class="sa-cols-grid" style="grid-template-columns:1fr 1fr 1fr">'
+    +'<div class="sa-col-cell"><span class="sa-field-label">In Stock</span>'
+      +'<div class="sa-col-val">'+(hasItem?cur:'—')+'</div></div>'
+    +'<div class="sa-col-cell"><span class="sa-field-label">'+lbl+'</span>'
+      +'<input class="sa-col-input" type="number" min="0" step="1" value="'+(line.qtyInput||'')+'" placeholder="0" oninput="onSAQty('+idx+',this.value)"></div>'
+    +'<div class="sa-col-cell"><span class="sa-field-label">Stock After</span>'
+      +'<div class="sa-col-val '+(hasItem&&qty>0?'negative':'')+'">'+(hasItem&&qty>0?after2:'—')+'</div></div>'
+    +'</div>';
+}
+
+function onSASKU(idx,val){
+  if(!val){ saLines[idx].skuCode=''; saLines[idx].skuName=''; renderSALines(); return; }
+  const parts=val.split('|');
+  saLines[idx].skuCode=parts[0]||'';
+  saLines[idx].skuName=parts[1]||'';
+  saLines[idx].currentStock=saStockMap[parts[0]]||0;
+  const sku=liveSKUs.find(s=>s.code===parts[0]);
+  if(sku&&sku.cost) saLines[idx].costInput=String(sku.cost);
+  renderSALines();
+}
+
+function onSAQty(idx,val){
+  saLines[idx].qtyInput=val;
+  renderSALines();
+}
+
+function updateSASubmitBtn(){
+  const btn=document.getElementById('sa-submit-btn');
+  if(!btn) return;
+  btn.disabled=!saLines.some(l=>l.skuCode&&l.qtyInput!=='');
+}
+
+async function submitSA(){
+  const notes=document.getElementById('sa-notes').value.trim();
+  if(!notes){
+    document.getElementById('sa-notes').classList.add('required-empty');
+    document.getElementById('sa-notes').focus();
+    return;
+  }
+  document.getElementById('sa-notes').classList.remove('required-empty');
+
+  const valid=saLines.filter(l=>l.skuCode&&l.qtyInput!=='');
+  if(!valid.length){ alert('Select at least one item and enter a quantity.'); return; }
+
+  const entries=valid.map(line=>{
+    const qty=parseFloat(line.qtyInput)||0;
+    const cur=saStockMap[line.skuCode]||0;
+    let adjQty, stockAfter;
+    if(saType==='receive')      { adjQty=qty;          stockAfter=cur+qty; }
+    else if(saType==='count')   { adjQty=qty-cur;       stockAfter=qty; }
+    else                        { adjQty=-Math.min(qty,cur); stockAfter=Math.max(0,cur-qty); }
+    return { skuCode:line.skuCode, skuName:line.skuName,
+             currentStock:cur, qtyInput:qty, adjQty, stockAfter,
+             cost:saType==='receive'?(parseFloat(line.costInput)||0):0 };
+  });
+
+  const typeLabel=SA_TYPES[saType].label;
+  const confirmLines=entries.map(e=>
+    e.skuName+': '+e.currentStock+' → '+e.stockAfter
+    +' ('+(e.adjQty>=0?'+':'')+e.adjQty+')'
+  ).join('\n');
+
+  if(!confirm(typeLabel+' — '+saSegment.toUpperCase()
+    +'\n\n'+confirmLines
+    +'\n\nNotes: '+notes
+    +'\n\nApply these adjustments?')) return;
+
+  const btn=document.getElementById('sa-submit-btn');
+  btn.disabled=true; btn.textContent='Applying...';
+
+  const now=new Date().toLocaleString('en-PH');
+  const batchRef='SA-'+Date.now().toString().slice(-8);
+
+  try{
+    const r=await api({
+      action:'submitStockAdjustment',
+      segment:saSegment, adjType:saType, notes,
+      batchRef, submittedBy:currentUser.username, timestamp:now, entries
+    });
+    if(r.status==='ok'){
+      const bar=document.getElementById('sa-success-bar');
+      bar.textContent='✓ '+typeLabel+' applied — '+entries.length+' item(s) updated';
+      bar.style.display='block';
+      setTimeout(()=>bar.style.display='none',5000);
+      saLines=[]; saStockMap={};
+      document.getElementById('sa-notes').value='';
+      await loadSAStockMap();
+      addSALine();
+      btn.disabled=false; btn.textContent='📊 Apply Adjustment';
+    } else {
+      alert('Error: '+(r.msg||'Could not apply'));
+      btn.disabled=false; btn.textContent='📊 Apply Adjustment';
+    }
+  }catch(e){
+    alert('Network error: '+e.message);
+    btn.disabled=false; btn.textContent='📊 Apply Adjustment';
+  }
+}
+
 // ── UNIT SELECTOR CHANGE ──
 function onUnitChange(){
   const hasUnsaved=Object.values(quantities).some(q=>q.loaded>0||q.returned>0);
@@ -4221,6 +4518,7 @@ function openEditStaff(idx){
   const isAdmin = s.role === 'admin';
   const perms = [
     ['edit-can-pl',          isAdmin || s.canViewProductList === true],
+    ['edit-can-sa',          isAdmin || s.canStockAdjust === true],
     ['edit-can-count-dist',  isAdmin || s.canCountDist !== false],
     ['edit-can-count-retail',isAdmin || s.canCountRetail !== false],
     ['edit-can-po-dist',     isAdmin || s.canManagePODist===true],
@@ -4254,7 +4552,7 @@ function onEditRoleChange(){
 
   // If admin selected — auto-check all permissions and disable toggles
   const isAdmin = role === 'admin';
-  ['edit-can-pl','edit-can-count-dist','edit-can-count-retail',
+  ['edit-can-pl','edit-can-sa','edit-can-count-dist','edit-can-count-retail',
    'edit-can-po-dist','edit-can-po-retail',
    'edit-can-transfer','edit-can-production',
    'edit-can-bo-dist','edit-can-bo-retail'].forEach(id => {
@@ -4293,6 +4591,7 @@ async function saveStaffEdit(){
     { key:'canBackorderDist',  id:'edit-can-bo-dist'      },
     { key:'canBackorderRetail',id:'edit-can-bo-retail'    },
     { key:'canViewProductList',id:'edit-can-pl'           },
+    { key:'canStockAdjust',    id:'edit-can-sa'           },
   ];
 
   // Collect all permission values from checkboxes
@@ -4805,6 +5104,51 @@ init();
   </div>
   <div class="pl-body" id="pl-body">
     <div class="pl-empty">Loading product list...</div>
+  </div>
+</div>
+
+
+<!-- ══ STOCK ADJUSTMENT SCREEN ══════════════════ -->
+<div id="sa-screen" class="screen" style="flex-direction:column">
+  <div class="sa-topbar">
+    <span class="sa-topbar-title">📊 Stock Adjustment</span>
+    <button class="back-btn" onclick="closeSA()">← Back</button>
+  </div>
+  <div class="sa-success-bar" id="sa-success-bar"></div>
+  <div class="sa-body" id="sa-body">
+
+    <!-- Config card -->
+    <div class="sa-config">
+      <div class="sa-config-title">Adjustment Setup</div>
+
+      <div class="sa-config-title" style="margin-bottom:6px">Segment</div>
+      <div class="sa-seg-row">
+        <button class="sa-seg-btn" id="sa-seg-dist"   onclick="setSASegment('dist')">📦 Distribution</button>
+        <button class="sa-seg-btn" id="sa-seg-retail"  onclick="setSASegment('retail')">🛒 Retail</button>
+      </div>
+
+      <div class="sa-config-title" style="margin-bottom:6px">Adjustment Type</div>
+      <div class="sa-type-row">
+        <button class="sa-type-btn" id="sa-type-receive"  onclick="setSAType('receive')">📥 Receive</button>
+        <button class="sa-type-btn" id="sa-type-count"    onclick="setSAType('count')">🔢 Count</button>
+        <button class="sa-type-btn" id="sa-type-remove"   onclick="setSAType('remove')">➖ Remove</button>
+        <button class="sa-type-btn" id="sa-type-damage"   onclick="setSAType('damage')">⚠️ Damage</button>
+      </div>
+
+      <span class="sa-notes-label">Reason / Notes <span style="color:#E24B4A">*</span></span>
+      <input type="text" class="sa-notes-input" id="sa-notes"
+        placeholder="Required — describe reason for this adjustment...">
+    </div>
+
+    <!-- Line items injected here -->
+    <div id="sa-lines"></div>
+  </div>
+
+  <div class="sa-btn-row">
+    <button class="sa-add-btn" onclick="addSALine()">+ Add Item</button>
+    <button class="sa-submit-btn" id="sa-submit-btn" onclick="submitSA()" disabled>
+      📊 Apply Adjustment
+    </button>
   </div>
 </div>
 
