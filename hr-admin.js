@@ -127,7 +127,8 @@ async function saveOpHours(){
     const r = await api(payload);
     if(r.status === 'ok'){
       closeOpHoursModal();
-      showToast('Operating hours updated ✓','success',4500);
+      showToast('Hours updated — applied from ' + (r.effectiveFrom || 'this cutoff')
+        + ' and recalculated ✓','success',5500);
       await _hraLoad();          // recompute payroll with the new basis
     } else { err.textContent = r.msg || 'Could not save.'; }
   }catch(e){ err.textContent = 'Network error: '+e.message; }
