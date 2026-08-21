@@ -6,15 +6,21 @@
 // ════════════════════════════════════════════════════════
 let _hrOffset = 0;    // 0 = current cutoff, -1 = previous, …
 let _hrBusy   = false;
-let _hrReqs   = { advances: [], leaves: [] };   // this employee's own requests
+let _hrReqs   = { advances: [], leaves: [], reimbursements: [] };
 let _hrPolicy = null;                          // leave rules for this account
+let _hrViewAs = null;   // admin viewing/acting on another employee's record
 
-function openHR(){
+// `asEmployee` lets an admin open someone else's record and act for them.
+function openHR(asEmployee){
   showScreen('hr-screen');
   updateFabVisibility();
+  _hrViewAs = (asEmployee && asEmployee !== currentUser.username) ? asEmployee : null;
   _hrOffset = 0;
   _hrLoad();
 }
+
+// Whose record is on screen (admin may be viewing another employee's)
+function _hrSubject(){ return _hrViewAs || currentUser.username; }
 
 function closeHR(){
   if(currentUser && currentUser.role === 'driver') showDriver();
@@ -39,12 +45,14 @@ async function _hrLoad(){
   try{
     // Pay record + own requests in parallel — one wait, not two
     const [r, rq] = await Promise.all([
-      api({ action:'getMyHR', username: currentUser.username, offset: _hrOffset }),
-      api({ action:'getHRRequests', username: currentUser.username, role: currentUser.role })
+      api({ action:'getMyHR', username: _hrSubject(), offset: _hrOffset }),
+      api({ action:'getHRRequests', username: _hrSubject(),
+            role: _hrViewAs ? 'staff' : currentUser.role })
         .catch(function(){ return { status:'error' }; })
     ]);
-    _hrReqs = (rq && rq.status==='ok') ? { advances: rq.advances||[], leaves: rq.leaves||[] }
-                                       : { advances: [], leaves: [] };
+    _hrReqs = (rq && rq.status==='ok')
+      ? { advances: rq.advances||[], leaves: rq.leaves||[], reimbursements: rq.reimbursements||[] }
+      : { advances: [], leaves: [], reimbursements: [] };
     if(r.status === 'ok'){ _hrPolicy = r.leavePolicy || null; _hrRender(r); }
     else if(content) content.innerHTML = '<div class="hr-empty">Could not load your HR record.</div>';
   }catch(e){
@@ -74,8 +82,15 @@ function _hrRender(d){
 
   const hourly = d.payType === 'hourly';
 
+  // Admin acting on someone else's record — make that unmistakable
+  let html = _hrViewAs
+    ? '<div class="hr-viewas">👤 Viewing <strong>'+_hrViewAs+'</strong>’s record as Admin. '
+      + 'Anything you file here is recorded for them, by you.'
+      + '<button class="hr-viewas-exit" onclick="openHR()">Back to mine</button></div>'
+    : '';
+
   // ── Attendance standing (hourly counts hours & full days instead of late/half) ──
-  let html = '<div class="hr-card">'
+  html += '<div class="hr-card">'
     + '<div class="hr-card-title">Attendance standing'
       + (hourly ? ' <span style="color:#7B1FA2">· paid hourly</span>' : '')
       + (d.scheduleName ? ' <span style="color:#888;font-weight:600">· '+d.scheduleName
@@ -118,6 +133,10 @@ function _hrRender(d){
           + '<div class="hr-pay-row"><span>Hours worked ('+(d.hoursPaid||0)+'h × rate)</span><span>'+_hrPeso(d.gross)+'</span></div>'
         : '<div class="hr-pay-row"><span>Daily rate</span><span>'+_hrPeso(d.dailyRate)+'</span></div>'
           + '<div class="hr-pay-row"><span>Basic ('+d.daysWorked+' day'+(d.daysWorked!==1?'s':'')+' × rate)</span><span>'+_hrPeso(d.gross)+'</span></div>')
+      + (d.allowance > 0
+          ? '<div class="hr-pay-row add"><span>Allowance ('+d.daysWorked+' × '+_hrPeso(d.allowanceRate)+')</span><span>+ '+_hrPeso(d.allowance)+'</span></div>' : '')
+      + (d.reimbursement > 0
+          ? '<div class="hr-pay-row add"><span>Reimbursements</span><span>+ '+_hrPeso(d.reimbursement)+'</span></div>' : '')
       + (d.lateDeduction > 0
           ? '<div class="hr-pay-row ded"><span>Late deductions</span><span>− '+_hrPeso(d.lateDeduction)+'</span></div>' : '')
       + (d.undertimeDeduction > 0
@@ -184,18 +203,33 @@ function _hrStatusPill(st){
 }
 
 function _hrRenderRequests(){
-  const adv = _hrReqs.advances || [], lv = _hrReqs.leaves || [];
+  const adv = _hrReqs.advances || [], lv = _hrReqs.leaves || [], rb = _hrReqs.reimbursements || [];
   let html = '<div class="hr-card">'
     + '<div class="hr-card-title">Requests</div>'
     + '<div class="hr-req-actions">'
-      + '<button class="hr-req-btn adv" onclick="openCashAdvanceModal()">💵 Request Cash Advance</button>'
-      + '<button class="hr-req-btn lv" onclick="openLeaveModal()">🌴 Request Leave</button>'
+      + '<button class="hr-req-btn adv" onclick="openCashAdvanceModal()">💵 Cash Advance</button>'
+      + '<button class="hr-req-btn lv" onclick="openLeaveModal()">🌴 Leave</button>'
+      + '<button class="hr-req-btn rmb" onclick="openReimburseModal()">🧾 Reimbursement</button>'
     + '</div>';
 
-  if(!adv.length && !lv.length){
+  if(!adv.length && !lv.length && !rb.length){
     html += '<div class="hr-note">No requests yet. Anything you submit goes to Admin for approval and appears here.</div>';
     return html + '</div>';
   }
+
+  rb.slice(0,6).forEach(function(x){
+    html += '<div class="hr-req-row">'
+      + '<div class="hr-req-main">'
+        + '<div class="hr-req-title">🧾 '+x.category+' · <strong>'+_hrPeso(x.amount)+'</strong>'
+          + (x.paid ? ' <span class="hr-req-settled">paid</span>' : '')
+          + (x.receipt && x.receipt.indexOf('http')===0
+              ? ' <a href="'+x.receipt+'" target="_blank" rel="noopener" style="font-size:10px">receipt</a>' : '') + '</div>'
+        + '<div class="hr-req-meta">'+(typeof phDate==='function'?phDate(x.expenseDate):x.expenseDate)
+          + (x.resolvedBy ? ' · by '+x.resolvedBy : '') + '</div>'
+        + '<div class="hr-req-reason">“'+x.description+'”</div>'
+      + '</div>' + _hrStatusPill(x.status)
+    + '</div>';
+  });
 
   adv.slice(0,6).forEach(function(a){
     html += '<div class="hr-req-row">'
@@ -276,11 +310,81 @@ async function submitCashAdvance(){
   if(!reason){ err.textContent = 'Please give a reason.'; return; }
   btn.disabled = true; btn.textContent = 'Sending…';
   try{
-    const r = await api({ action:'submitCashAdvance', requestedBy: currentUser.username,
+    const r = await api({ action:'submitCashAdvance', requestedBy: _hrSubject(),
                           amount: amount, reason: reason });
     if(r.status === 'ok'){
       closeCashAdvanceModal();
       showToast('Cash advance request sent to Admin 📨','success',4500);
+      await _hrLoad();
+    } else { err.textContent = 'Error: ' + (r.msg||'Could not send'); }
+  }catch(e){ err.textContent = 'Network error: ' + e.message; }
+  btn.disabled = false; btn.textContent = '📨 Submit Request';
+}
+
+// ── REIMBURSEMENT REQUEST ────────────────────────────────────────
+let _rmbPhoto = '';
+function openReimburseModal(){
+  const today = (_hrPolicy && _hrPolicy.today)
+    || ((typeof phToday==='function') ? phToday() : new Date().toLocaleDateString('sv-SE'));
+  document.getElementById('rmb-amount').value = '';
+  document.getElementById('rmb-category').value = 'Fuel';
+  document.getElementById('rmb-date').value = today;
+  document.getElementById('rmb-date').max = today;      // no future expenses
+  document.getElementById('rmb-desc').value = '';
+  document.getElementById('rmb-err').textContent = '';
+  _rmbPhoto = '';
+  const lbl = document.getElementById('rmb-photo-label');
+  if(lbl) lbl.textContent = '📷 Attach receipt photo (optional)';
+  const fi = document.getElementById('rmb-photo-input');
+  if(fi) fi.value = '';
+  document.getElementById('reimburse-modal').style.display = 'flex';
+}
+function closeReimburseModal(){
+  document.getElementById('reimburse-modal').style.display = 'none';
+}
+
+// Compress the receipt the same way as attendance selfies so uploads stay light
+function onRmbPhoto(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onerror = function(){ showToast('Could not read that photo','error'); };
+  reader.onload = function(e){
+    const img = new Image();
+    img.onerror = function(){ showToast('Photo looks corrupted — try again','error'); };
+    img.onload = function(){
+      const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width*scale); cv.height = Math.round(img.height*scale);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      _rmbPhoto = cv.toDataURL('image/jpeg', 0.7);
+      const lbl = document.getElementById('rmb-photo-label');
+      if(lbl) lbl.textContent = '✓ Receipt attached — tap to replace';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function submitReimbursement(){
+  const err = document.getElementById('rmb-err');
+  const btn = document.getElementById('rmb-save-btn');
+  err.textContent = '';
+  const amount = Number(document.getElementById('rmb-amount').value) || 0;
+  const desc   = document.getElementById('rmb-desc').value.trim();
+  const date   = document.getElementById('rmb-date').value;
+  if(amount <= 0){ err.textContent = 'Enter the amount you paid.'; return; }
+  if(!date){ err.textContent = 'Pick the date of the expense.'; return; }
+  if(!desc){ err.textContent = 'Describe what the expense was for.'; return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    const r = await api({ action:'submitReimbursement', requestedBy: _hrSubject(),
+      amount: amount, category: document.getElementById('rmb-category').value,
+      expenseDate: date, description: desc, receipt: _rmbPhoto });
+    if(r.status === 'ok'){
+      closeReimburseModal();
+      showToast('Reimbursement sent to Admin 🧾','success',4500);
       await _hrLoad();
     } else { err.textContent = 'Error: ' + (r.msg||'Could not send'); }
   }catch(e){ err.textContent = 'Network error: ' + e.message; }
@@ -369,7 +473,7 @@ async function submitLeaveRequest(){
   if(!reason){ err.textContent = 'Please give a reason.'; return; }
   btn.disabled = true; btn.textContent = 'Sending…';
   try{
-    const r = await api({ action:'submitLeaveRequest', requestedBy: currentUser.username,
+    const r = await api({ action:'submitLeaveRequest', requestedBy: _hrSubject(),
                           leaveType, startDate, endDate, reason });
     if(r.status === 'ok'){
       closeLeaveModal();

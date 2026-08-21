@@ -43,8 +43,9 @@ async function _hraLoad(){
       api({ action:'getHRRequests', role: currentUser.role, username: currentUser.username })
         .catch(function(){ return { status:'error' }; })
     ]);
-    _hraReqs = (rq && rq.status==='ok') ? { advances: rq.advances||[], leaves: rq.leaves||[] }
-                                        : { advances: [], leaves: [] };
+    _hraReqs = (rq && rq.status==='ok')
+      ? { advances: rq.advances||[], leaves: rq.leaves||[], reimbursements: rq.reimbursements||[] }
+      : { advances: [], leaves: [], reimbursements: [] };
     if(r.status === 'ok'){ _hraData = r; _hraRender(); }
     else if(body) body.innerHTML = '<div class="hr-empty">'+(r.msg||'Could not load payroll.')+'</div>';
   }catch(e){
@@ -197,17 +198,35 @@ async function releasePayAdj(adjustmentId, decision){
 
 // ── APPROVAL INBOX — cash advances & leave awaiting your decision ──
 function _hraRenderInbox(){
-  const adv = _hraReqs.advances || [], lv = _hraReqs.leaves || [];
+  const adv = _hraReqs.advances || [], lv = _hraReqs.leaves || [], rb = _hraReqs.reimbursements || [];
   const pendA = adv.filter(function(a){ return a.status==='Pending'; });
   const pendL = lv.filter(function(l){ return l.status==='Pending'; });
+  const pendR = rb.filter(function(x){ return x.status==='Pending'; });
   // Approved advances still waiting to be deducted from a payout
   const owing = adv.filter(function(a){ return a.status==='Approved' && !a.settled; });
-  if(!pendA.length && !pendL.length && !owing.length) return '';
+  if(!pendA.length && !pendL.length && !pendR.length && !owing.length) return '';
 
   let html = '';
-  if(pendA.length || pendL.length){
+  if(pendA.length || pendL.length || pendR.length){
     html += '<div class="hr-card">'
-      + '<div class="hr-card-title">📨 Pending requests ('+(pendA.length+pendL.length)+')</div>';
+      + '<div class="hr-card-title">📨 Pending requests ('+(pendA.length+pendL.length+pendR.length)+')</div>';
+
+    pendR.forEach(function(x){
+      html += '<div class="hra-req">'
+        + '<div class="hra-req-head"><span class="hra-req-type rmb">🧾 '+x.category.toUpperCase()+'</span>'
+          + '<span class="hra-req-amt">'+_hraPeso(x.amount)+'</span></div>'
+        + '<div class="hra-req-by"><strong>'+x.requestedBy+'</strong> · spent '
+          + (typeof phDate==='function'?phDate(x.expenseDate):x.expenseDate)
+          + (x.receipt && x.receipt.indexOf('http')===0
+              ? ' · <a href="'+x.receipt+'" target="_blank" rel="noopener">view receipt</a>'
+              : ' · <span style="color:#C0392B">no receipt attached</span>') + '</div>'
+        + '<div class="hra-req-reason">“'+x.description+'”</div>'
+        + '<div class="hra-req-note">If approved, this is added to '+x.requestedBy+'’s pay this cutoff.</div>'
+        + '<div class="mov-req-actions">'
+          + '<button class="mov-req-approve" onclick="resolveReimbursement(\''+x.requestId+'\',\'approve\')">✓ Approve</button>'
+          + '<button class="mov-req-reject" onclick="resolveReimbursement(\''+x.requestId+'\',\'reject\')">✕ Reject</button>'
+        + '</div></div>';
+    });
 
     pendA.forEach(function(a){
       html += '<div class="hra-req">'
@@ -271,6 +290,21 @@ async function resolveHRRequest(requestId, decision){
       showToast(decision==='approve' ? 'Approved ✓' : 'Request rejected','success',4000);
       await _hraLoad();
     } else alert('Error: '+(r.msg||'Could not resolve request'));
+  }catch(e){ alert('Network error: '+e.message); }
+}
+
+async function resolveReimbursement(requestId, decision){
+  const msg = decision==='approve'
+    ? 'Approve this reimbursement?\n\nIt will be added to their pay for this cutoff.'
+    : 'Reject this reimbursement? Nothing will be paid.';
+  if(!confirm(msg)) return;
+  try{
+    const r = await api({ action:'resolveReimbursement', requestId, decision,
+                          role: currentUser.role, by: currentUser.username });
+    if(r.status==='ok'){
+      showToast(decision==='approve' ? 'Reimbursement approved ✓' : 'Reimbursement rejected','success',4000);
+      await _hraLoad();
+    } else alert('Error: '+(r.msg||'Could not resolve'));
   }catch(e){ alert('Network error: '+e.message); }
 }
 
@@ -356,8 +390,12 @@ function _hraRender(){
 
     if(open){
       html += '<div class="hra-emp-detail">'
+        + '<button class="hra-viewas-btn" onclick="openHR(\''+e.username.replace(/'/g,"\\'")+'\')">'
+          + '👤 Open '+e.username+'’s HR — file or check on their behalf</button>'
         + '<div class="hra-detail-line"><span>Rate</span><span>'+_hraPeso(e.dailyRate)+'/day'
           + (hourly ? ' ('+_hraPeso(e.dailyRate/d.stdHours)+'/hr)' : '')+'</span></div>'
+        + (e.allowance > 0 ? '<div class="hra-detail-line add"><span>Allowance ('+e.daysWorked+' × '+_hraPeso(e.allowanceRate)+')</span><span>+ '+_hraPeso(e.allowance)+'</span></div>' : '')
+        + (e.reimbursement > 0 ? '<div class="hra-detail-line add"><span>Reimbursements</span><span>+ '+_hraPeso(e.reimbursement)+'</span></div>' : '')
         + '<div class="hra-detail-line"><span>'+(hourly?'Hours worked ('+e.hoursPaid+'h)':'Basic ('+e.daysWorked+' days)')+'</span><span>'+_hraPeso(e.gross)+'</span></div>'
         + (e.totalDeduction > 0 ? '<div class="hra-detail-line ded"><span>Deductions</span><span>− '+_hraPeso(e.totalDeduction)+'</span></div>' : '')
         + (e.cashAdvance   > 0 ? '<div class="hra-detail-line ded"><span>Cash advance'

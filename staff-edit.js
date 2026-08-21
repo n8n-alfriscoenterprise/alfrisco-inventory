@@ -52,6 +52,8 @@ function openEditStaff(idx){
   if(rateEl) rateEl.value = s.dailyRate ? Number(s.dailyRate) : '';
   const ptEl = document.getElementById('edit-pay-type');
   if(ptEl) ptEl.value = (s.payType === 'hourly') ? 'hourly' : 'daily';
+  const alwEl = document.getElementById('edit-allowance');
+  if(alwEl) alwEl.value = s.allowance ? Number(s.allowance) : '';
   _populateScheduleSelect(s.schedule || '');
   onEditPayTypeChange();
   onEditRoleChange();
@@ -240,6 +242,14 @@ async function saveStaffEdit(){
     if(ptEl2) payload.payType = ptEl2.value;
     const schEl = document.getElementById('edit-schedule');
     if(schEl) payload.schedule = schEl.value;   // '' = automatic by role
+    const alwRaw = (document.getElementById('edit-allowance')||{}).value;
+    if(alwRaw !== undefined && String(alwRaw).trim() !== ''){
+      if(isNaN(Number(alwRaw)) || Number(alwRaw) < 0){
+        errEl.textContent = 'Daily allowance must be a number (or left blank).';
+        btn.disabled = false; btn.textContent = '💾 Save Changes'; return;
+      }
+      payload.allowance = Number(alwRaw);
+    }
     const r = await api(payload);
 
     if(r.status === 'ok'){

@@ -1287,6 +1287,16 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .hra-adj-wait{font-size:10px;color:#C0392B;font-weight:600;margin-top:4px}
 .hr-adj-btn{margin-top:5px;padding:5px 10px;background:#4A148C;color:#fff;border:none;border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer}
 .hr-adj-reply{font-size:10.5px;color:#1B5E20;background:#E8F5E9;border-radius:6px;padding:5px 8px;margin-top:5px;line-height:1.45}
+/* ── reimbursements, allowance, view-as ── */
+.hr-req-btn.rmb{background:#00838F}
+.hr-pay-row.add span:last-child{color:#1B5E20;font-weight:700}
+.hra-detail-line.add span:last-child{color:#1B5E20;font-weight:700}
+.hra-req-type.rmb{background:#E0F7FA;color:#00838F}
+.rmb-photo-box{margin-top:10px;padding:14px;border:1.5px dashed #90CAF9;border-radius:10px;background:#F0F7FF;text-align:center;font-size:12px;color:#1565C0;cursor:pointer;font-weight:600}
+.rmb-photo-box:active{background:#E3F2FD}
+.hr-viewas{background:#4A148C;color:#fff;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hr-viewas-exit{margin-left:auto;padding:6px 11px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.hra-viewas-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#4A148C;border:1.5px solid #CE93D8;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
 /* ── INVOICE DETAIL ── */
 .invd-void{background:#FDEDEC;border:1.5px solid #E6B0AA;color:#C0392B;border-radius:9px;padding:9px 12px;font-size:13px;font-weight:800;text-align:center;margin-bottom:10px}
 .invd-void-sub{font-size:11px;font-weight:600;margin-top:3px;font-style:italic}
@@ -1861,6 +1871,50 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
     <div class="epm-btns">
       <button class="epm-cancel" onclick="closeRespondModal()">Cancel</button>
       <button class="epm-save" id="resp-save-btn" onclick="submitAdjResponse()">📨 Send Answer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REIMBURSEMENT REQUEST (employee) ══ -->
+<div class="modal-overlay" id="reimburse-modal" style="display:none">
+  <div class="modal-card">
+    <div class="epm-title">🧾 Request Reimbursement</div>
+    <div class="epm-sub">For money you paid out of pocket for work. If approved, it's added to your pay this cutoff.</div>
+
+    <div class="inv-field-row" style="margin-top:6px">
+      <div>
+        <label class="epm-label" style="margin-top:0">Amount paid (₱)</label>
+        <input class="epm-input" id="rmb-amount" type="number" min="1" step="0.01" placeholder="e.g. 350.00" inputmode="decimal">
+      </div>
+      <div>
+        <label class="epm-label" style="margin-top:0">Date of expense</label>
+        <input class="epm-input" id="rmb-date" type="date">
+      </div>
+    </div>
+
+    <label class="epm-label">Category</label>
+    <select class="epm-select" id="rmb-category">
+      <option value="Fuel">Fuel</option>
+      <option value="Parking/Toll">Parking / Toll</option>
+      <option value="Vehicle Repair">Vehicle Repair</option>
+      <option value="Supplies">Supplies</option>
+      <option value="Meals">Meals</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label class="epm-label">What was it for?</label>
+    <textarea id="rmb-desc" rows="2" placeholder="e.g. Diesel for Bajaj 1, Urdaneta run"
+      style="width:100%;padding:9px 11px;border:1.5px solid #d0d7dd;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+
+    <div class="rmb-photo-box" onclick="document.getElementById('rmb-photo-input').click()">
+      <input type="file" id="rmb-photo-input" accept="image/*" capture="environment" style="display:none" onchange="onRmbPhoto(this)">
+      <span id="rmb-photo-label">📷 Attach receipt photo (optional)</span>
+    </div>
+
+    <div class="modal-err" id="rmb-err" style="margin-top:8px;margin-bottom:8px"></div>
+    <div class="epm-btns">
+      <button class="epm-cancel" onclick="closeReimburseModal()">Cancel</button>
+      <button class="epm-save" id="rmb-save-btn" onclick="submitReimbursement()">📨 Submit Request</button>
     </div>
   </div>
 </div>
@@ -3235,6 +3289,11 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
           <span class="edit-field-label">Daily Rate (₱) — used for My HR pay estimates</span>
           <input class="edit-select" id="edit-daily-rate" type="number" min="0" step="0.01"
                  placeholder="e.g. 500.00" inputmode="decimal">
+        </div>
+        <div style="margin-top:10px">
+          <span class="edit-field-label">Daily Allowance (₱) — added for each day worked (drivers etc.)</span>
+          <input class="edit-select" id="edit-allowance" type="number" min="0" step="0.01"
+                 placeholder="0.00 = none" inputmode="decimal">
         </div>
         <div style="margin-top:10px">
           <span class="edit-field-label">Work Schedule — hours this person is judged against</span>
