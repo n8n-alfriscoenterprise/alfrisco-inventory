@@ -26,6 +26,12 @@
   const activeTab = document.getElementById('pl-tab-' + plTab);
   if(activeTab) activeTab.classList.add('active');
 
+  // Alignment audit is an admin tool
+  const aBtn = document.getElementById('pl-audit-btn');
+  if(aBtn) aBtn.style.display = (currentUser && currentUser.role==='admin') ? 'block' : 'none';
+  const aRes = document.getElementById('pl-audit-result');
+  if(aRes){ aRes.style.display = 'none'; aRes.innerHTML = ''; }
+
   // Instant paint from the session's last data, then refresh in the background —
   // the screen used to blank out for a full Apps Script round trip on every open
   if((plData.dist && plData.dist.length) || (plData.retail && plData.retail.length)){
@@ -39,6 +45,50 @@
     buildPLChips();
     renderPL();
   }
+}
+
+// ── SKU ALIGNMENT AUDIT (admin) ──────────────────────────────────
+// Answers "is my inventory actually aligned to the item master?" with evidence.
+async function runSKUAudit(){
+  const box = document.getElementById('pl-audit-result');
+  const btn = document.getElementById('pl-audit-btn');
+  if(!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<div style="padding:12px;color:#888;font-size:12px">Comparing stock against the SKU Masters…</div>';
+  btn.disabled = true;
+  try{
+    const r = await api({action:'auditSKUAlignment'});
+    if(r.status !== 'ok'){ box.innerHTML = '<div style="padding:12px;color:#C0392B;font-size:12px">'+(r.msg||'Audit failed')+'</div>'; btn.disabled=false; return; }
+    if(!r.totalIssues){
+      box.innerHTML = '<div style="padding:12px;background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:9px;color:#1B5E20;font-size:12.5px;font-weight:600">✓ Fully aligned — every item holding stock exists and is active in the SKU Master.</div>';
+      btn.disabled=false; return;
+    }
+    const sect = function(title, list, note, tone){
+      if(!list.length) return '';
+      return '<div style="margin-bottom:9px;padding:10px 12px;background:'+tone.bg+';border:1.5px solid '+tone.br+';border-radius:9px">'
+        + '<div style="font-size:12px;font-weight:800;color:'+tone.fg+'">'+title+' ('+list.length+')</div>'
+        + '<div style="font-size:11px;color:#666;margin:3px 0 6px;line-height:1.5">'+note+'</div>'
+        + list.slice(0,25).map(function(x){
+            return '<div style="font-size:11.5px;color:#333;padding:2px 0">• <strong>'+x.code+'</strong> '
+              + (x.name||'') + ' <span style="color:#888">('+x.type+(x.stock!==undefined?' · '+x.stock+' on hand':'')+')</span></div>';
+          }).join('')
+        + (list.length>25 ? '<div style="font-size:11px;color:#888;margin-top:4px">…and '+(list.length-25)+' more</div>' : '')
+        + '</div>';
+    };
+    box.innerHTML =
+        sect('⚠ Holding stock but NOT in the SKU Master', r.orphans,
+             'These hold inventory the app can’t show or count. Add them to the master, or zero them out.',
+             {bg:'#FDEDEC',br:'#E6B0AA',fg:'#C0392B'})
+      + sect('⏸ Inactive but still holding stock', r.inactiveWithStock,
+             'Deactivated items with stock left behind — that stock is stranded and invisible.',
+             {bg:'#FFF6E5',br:'#F0C36D',fg:'#8A5A00'})
+      + sect('◦ In the master but never counted', r.neverCounted,
+             'Active items with no stock record yet — normal for new SKUs, worth a look otherwise.',
+             {bg:'#F5F7F9',br:'#d0d7dd',fg:'#0D3349'});
+  }catch(e){
+    box.innerHTML = '<div style="padding:12px;color:#C0392B;font-size:12px">Network error: '+e.message+'</div>';
+  }
+  btn.disabled = false;
 }
 
 function closePL(){
