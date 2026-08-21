@@ -112,10 +112,12 @@ function _hrRender(d){
     + (hourly && d.otHours > 0
         ? '<div class="hr-note">Worked outside the duty window: <strong>'+d.otHours+' hour'+(d.otHours!==1?'s':'')
           +'</strong> (not automatically paid).</div>' : '')
-    + (d.lateMinutes > 0
-        ? '<div class="hr-note">Total time late this cutoff: <strong>'+d.lateMinutes+' minute'+(d.lateMinutes!==1?'s':'')+'</strong>'
-          + (hourly ? ' — deducted from your paid hours.' : '.') + '</div>'
+    + (!hourly && d.lateMinutes > 0
+        ? '<div class="hr-note">Total time late this cutoff: <strong>'+d.lateMinutes+' minute'+(d.lateMinutes!==1?'s':'')+'</strong>.</div>'
         : '')
+    + (hourly
+        ? '<div class="hr-note">You’re paid for the hours you actually clock, so there’s no late penalty — '
+          + 'pause any time you have no tasks and your paid time stops until you resume.</div>' : '')
     + '</div>';
 
   // ── Expected salary (only when a rate is on file) ──

@@ -8,6 +8,8 @@ let _clkPhoto   = '';     // compressed dataURL for the pending clock event
 let _clkGPS     = null;   // {lat, lng, accuracy} or null
 let _clkLast    = null;   // last event {timestamp, action, late}
 let _clkBusy    = false;
+let _clkPayType = 'daily';// hourly staff get Pause / Resume
+let _clkPunchesToday = 0; // photo only required on the first punch of the day
 
 function openClock(){
   showScreen('clock-screen');
@@ -42,6 +44,10 @@ async function _clkLoadAll(){
     const r = await api({ action:'getMyAttendance', username: currentUser.username });
     _clkLast = (r.status==='ok') ? (r.last || null) : null;
     days = (r.status==='ok') ? (r.days || []) : [];
+    if(r.status==='ok'){
+      _clkPayType      = r.payType || 'daily';
+      _clkPunchesToday = Number(r.punchesToday) || 0;
+    }
   }catch(e){
     _clkLast = null;
     if(body) body.innerHTML = '<div class="clk-att-empty">Could not load attendance.</div>';
@@ -83,6 +89,27 @@ function _clkRenderStatus(){
   const nextIsOut = _clkLast && _clkLast.action === 'IN';
   if(inBtn)  inBtn.className  = 'clk-btn clk-btn-in'  + (nextIsOut ? ' clk-btn-dim' : '');
   if(outBtn) outBtn.className = 'clk-btn clk-btn-out' + (nextIsOut ? '' : ' clk-btn-dim');
+
+  // ── Pause / Resume — hourly staff only ──
+  const pw   = document.getElementById('clk-pause-wrap');
+  const pBtn = document.getElementById('clk-pause-btn');
+  const pNote= document.getElementById('clk-pause-note');
+  if(pw){
+    const isHourly = _clkPayType === 'hourly';
+    // Only meaningful once they've started the day
+    pw.style.display = (isHourly && _clkPunchesToday > 0) ? 'block' : 'none';
+    if(isHourly && pBtn){
+      if(nextIsOut){
+        pBtn.textContent = '⏸ PAUSE — no tasks right now';
+        pBtn.className   = 'clk-btn clk-btn-pause';
+        if(pNote) pNote.textContent = 'Your paid time stops until you resume. Use TIME OUT when you’re done for the day.';
+      } else {
+        pBtn.textContent = '▶ RESUME — back on tasks';
+        pBtn.className   = 'clk-btn clk-btn-resume';
+        if(pNote) pNote.textContent = 'You’re paused — this time isn’t being paid. Tap to start again.';
+      }
+    }
+  }
 }
 
 // ── MY ATTENDANCE (render — data comes from _clkLoadAll) ──
@@ -178,23 +205,35 @@ function onClkPhoto(input){
   input.value = '';
 }
 
+// Pause writes a normal OUT, Resume a normal IN — the wording just matches the
+// hourly worker's mental model, and pay already follows worked sessions.
+function clockPause(){
+  const paused = !(_clkLast && _clkLast.action === 'IN');
+  clockNow(paused ? 'IN' : 'OUT', true);
+}
+
 // ── CLOCK ACTION ──────────────────────────────────────────
-async function clockNow(action){
+// `pauseMode` = the tap came from Pause/Resume. It still writes a normal
+// OUT/IN — the label just matches how hourly staff think about it.
+async function clockNow(action, pauseMode){
   if(_clkBusy) return;
-  if(!_clkPhoto){
+  // The selfie proves who showed up, so it's required on the day's FIRST punch
+  // only — otherwise pausing three times would mean six photos.
+  if(!_clkPhoto && _clkPunchesToday === 0){
     showToast('Photo is required — tap the camera box first', 'warning');
     const box = document.getElementById('clk-photo-box');
     if(box){ box.classList.add('clk-photo-req'); setTimeout(()=>box.classList.remove('clk-photo-req'), 1200); }
     return;
   }
   // Sanity nudge on double IN / OUT-without-IN (still allowed — honest mistakes happen)
-  if(_clkLast && _clkLast.action === action){
+  if(!pauseMode && _clkLast && _clkLast.action === action){
     const word = action === 'IN' ? 'clocked IN' : 'clocked OUT';
     if(!confirm('You are already ' + word + ' (last: ' + phDateTime(_clkLast.timestamp) + ').\n\nRecord another TIME ' + action + ' anyway?')) return;
   }
 
   _clkBusy = true;
-  const btn = document.getElementById(action==='IN' ? 'clk-in-btn' : 'clk-out-btn');
+  const btn = document.getElementById(
+    pauseMode ? 'clk-pause-btn' : (action==='IN' ? 'clk-in-btn' : 'clk-out-btn'));
   const orig = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Recording…'; }
 
@@ -225,6 +264,10 @@ async function clockNow(action){
       _clkLoadAll();   // refresh history (and confirm status) from server truth
       if(r.duplicate){
         showToast('Already recorded a moment ago ✓ ' + phDateTime(r.timestamp), 'info', 4500);
+      } else if(pauseMode){
+        showToast(action === 'OUT'
+          ? '⏸ Paused — your paid time stops here'
+          : '▶ Resumed — you’re back on the clock', 'success', 4500);
       } else if(action === 'IN' && r.late){
         showToast('TIME IN recorded — ' + r.late, 'warning', 6000);
       } else {

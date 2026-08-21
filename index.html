@@ -1331,6 +1331,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .clk-btn{flex:1;padding:20px 10px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;color:white;letter-spacing:.3px}
 .clk-btn-in{background:linear-gradient(135deg,#2E7D32,#43A047);box-shadow:0 3px 10px rgba(46,125,50,.3)}
 .clk-btn-out{background:linear-gradient(135deg,#B35C00,#D97706);box-shadow:0 3px 10px rgba(179,92,0,.3)}
+.clk-btn-pause{background:linear-gradient(135deg,#455A64,#607D8B);box-shadow:0 3px 10px rgba(69,90,100,.3);width:100%}
+.clk-btn-resume{background:linear-gradient(135deg,#00695C,#00897B);box-shadow:0 3px 10px rgba(0,105,92,.3);width:100%}
+.clk-pause-note{font-size:11px;color:#666;text-align:center;margin-top:7px;line-height:1.5}
 .clk-btn-dim{opacity:.45}
 .clk-btn:disabled{opacity:.55}
 .clk-note{font-size:10px;color:#aaa;text-align:center;line-height:1.5;padding:0 10px}
@@ -2071,6 +2074,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
     <div class="clk-btn-row">
       <button class="clk-btn clk-btn-in"  id="clk-in-btn"  onclick="clockNow('IN')">🕗 TIME IN</button>
       <button class="clk-btn clk-btn-out" id="clk-out-btn" onclick="clockNow('OUT')">🕔 TIME OUT</button>
+    </div>
+    <div id="clk-pause-wrap" style="display:none">
+      <button class="clk-btn clk-btn-pause" id="clk-pause-btn" onclick="clockPause()">⏸ PAUSE — no tasks right now</button>
+      <div class="clk-pause-note" id="clk-pause-note"></div>
     </div>
     <div class="clk-note">Time is recorded by the server (Manila time) when you tap — not by your phone's clock.</div>
 
