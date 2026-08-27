@@ -670,11 +670,16 @@ function renderPODetail(){
     body.appendChild(epmDiv);
   }
 
-  // ── EDIT LINE ITEMS (admin only — any active PO) ──
-  if(isAdmin && !['RECEIVED','CANCELLED'].includes(po.status)){
+  // ── EDIT LINE ITEMS ──
+  // Admin: any active PO. Approver: the PENDING PO they're being asked to decide —
+  // so a wrong quantity or price can be corrected on the spot instead of rejecting
+  // it and making the creator raise the whole thing again. Either way the backend
+  // stamps "Line items edited by <name>" into the PO's edit history.
+  if(canEditPOLines(po)){
     const eliDiv = document.createElement('div');
     eliDiv.className = 'po-action-row';
-    eliDiv.innerHTML = '<button class="po-btn po-btn-primary" onclick="openEditLineItemsModal()" style="background:#4A235A">✏️ Edit Line Items</button>';
+    eliDiv.innerHTML = '<button class="po-btn po-btn-primary" onclick="openEditLineItemsModal()" style="background:#4A235A">✏️ Edit Line Items</button>'
+      + (!isAdmin ? '<div class="po-edit-hint">You’re approving this PO — correct any wrong quantity or cost before you approve. Your name is recorded on the change.</div>' : '');
     body.appendChild(eliDiv);
   }
 
@@ -1083,6 +1088,14 @@ async function approvePO(){
           'info', 5000);
       } else {
         showToast(currentPO.poNumber+' approved'+(mode?' — '+mode:''),'success');
+      }
+      // Surface the delivery reminder so a silent Calendar failure is visible
+      if(r.deliveryNote){
+        const failed = String(r.deliveryNote).startsWith('ERROR');
+        showToast(failed
+          ? 'Calendar: could not add the delivery reminder — '+r.deliveryNote
+          : '📅 Delivery reminder added — '+r.deliveryNote.replace(/^(Created|Updated) delivery reminder for /,''),
+          failed ? 'error' : 'info', failed ? 7000 : 4500);
       }
       await openPODetail(currentPO.poNumber);
       await loadPOs();
@@ -1540,8 +1553,20 @@ async function savePaymentDetails(){
 // ── EDIT LINE ITEMS (admin only) ─────────────────────────────────────────────
 let _eliItems = [];
 
+// Single source of truth for who may edit a PO's line items, so the button and
+// the modal can never disagree: admin on any active PO, or an approver on the
+// PENDING PO they're being asked to decide.
+function canEditPOLines(po){
+  if(!po || !currentUser) return false;
+  if(['RECEIVED','CANCELLED'].includes(po.status)) return false;
+  if(currentUser.role === 'admin') return true;
+  const isApprover = (po.type==='DIST'   && currentUser.canApprovePODist===true)
+                  || (po.type==='RETAIL' && currentUser.canApprovePORetail===true);
+  return isApprover && po.status === 'PENDING';
+}
+
 function openEditLineItemsModal(){
-  if(!currentPO || currentUser.role !== 'admin') return;
+  if(!canEditPOLines(currentPO)) return;
   _eliItems = (currentPO.lineItems||[]).map(li=>({
     skuCode:      String(li.skuCode||''),
     itemName:     String(li.itemName||li.skuCode||''),
@@ -1697,7 +1722,7 @@ function _eliNewSelect(idx, sel){
 }
 
 async function saveEditedLineItems(){
-  if(!currentPO || currentUser.role !== 'admin') return;
+  if(!canEditPOLines(currentPO)) return;
   const active = _eliItems.filter(i=>!i.removed && i.skuCode);
   if(!active.length){
     document.getElementById('eli-err').textContent = 'At least one line item is required.';
