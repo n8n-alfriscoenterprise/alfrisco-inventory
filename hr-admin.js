@@ -56,6 +56,12 @@ async function _hraLoad(){
   if(nb2) nb2.disabled = (_hraOffset >= 0);
 }
 
+// Notes are free text typed by an admin, so they never go into HTML raw
+function _hraEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 function _hraPeso(n){
   return '₱' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
@@ -181,6 +187,85 @@ async function savePayAdj(){
     } else { err.textContent = r.msg || 'Could not save.'; }
   }catch(e){ err.textContent = 'Network error: '+e.message; }
   btn.disabled = false; btn.textContent = '💾 Apply';
+}
+
+// ── MANUAL ADDITIONAL PAY ──────────────────────────────────────────
+// Most cutoffs have none of these. Nothing shows anywhere until one exists.
+let _addPayEmp = null;
+
+function openAddPayModal(employee){
+  _addPayEmp = employee;
+  const s = (_hraData && _hraData.startDate) || '';
+  const e = (_hraData && _hraData.endDate)   || '';
+  document.getElementById('apay-who').textContent = employee;
+  document.getElementById('apay-type').value   = '';
+  document.getElementById('apay-amount').value = '';
+  document.getElementById('apay-note').value   = '';
+  // Default inside the cutoff being viewed, so the amount lands where he expects
+  const today = new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).split(' ')[0];
+  const dEl = document.getElementById('apay-date');
+  dEl.value = (today >= s && today <= e) ? today : e;
+  dEl.min = s; dEl.max = e;
+  document.getElementById('apay-cutoff').textContent =
+    'Goes into the ' + ((_hraData && _hraData.period) || (s + ' to ' + e)) + ' cutoff';
+  document.getElementById('apay-err').textContent = '';
+  _apayHint();
+  document.getElementById('addpay-modal').style.display = 'flex';
+}
+function closeAddPayModal(){
+  document.getElementById('addpay-modal').style.display = 'none';
+  _addPayEmp = null;
+}
+// Restate which cutoff the chosen date actually falls into — the date decides,
+// not the screen you happen to be looking at.
+function _apayHint(){
+  const el = document.getElementById('apay-cutoff');
+  if(!el || !_hraData) return;
+  const v = document.getElementById('apay-date').value;
+  const s = _hraData.startDate, e = _hraData.endDate;
+  if(v && (v < s || v > e)){
+    el.textContent = '⚠ ' + v + ' is outside the cutoff you are viewing — it will be paid in the cutoff that date belongs to, not this one.';
+    el.className = 'hr-note warn';
+  } else {
+    el.textContent = 'Goes into the ' + (_hraData.period || (s + ' to ' + e)) + ' cutoff';
+    el.className = 'hr-note';
+  }
+}
+
+async function saveAddPay(){
+  if(!_addPayEmp) return;
+  const err = document.getElementById('apay-err');
+  const btn = document.getElementById('apay-save-btn');
+  err.textContent = '';
+  const type = document.getElementById('apay-type').value;
+  const amt  = parseFloat(document.getElementById('apay-amount').value);
+  const date = document.getElementById('apay-date').value;
+  if(!type)                 { err.textContent = 'Pick the type of pay.'; return; }
+  if(!(amt > 0))            { err.textContent = 'Enter an amount greater than zero.'; return; }
+  if(!date)                 { err.textContent = 'Pick the date this applies to.'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const r = await api({ action:'addAdditionalPay', role: currentUser.role,
+      createdBy: currentUser.username, employee: _addPayEmp,
+      type: type, amount: amt, date: date,
+      note: document.getElementById('apay-note').value.trim() });
+    if(r.status==='ok'){
+      closeAddPayModal();
+      showToast(type+' of '+_hraPeso(amt)+' added to '+r.employee+' ✓','success',4500);
+      await _hraLoad();
+    } else { err.textContent = r.msg || 'Could not save.'; }
+  }catch(e){ err.textContent = 'Network error: '+e.message; }
+  btn.disabled = false; btn.textContent = '💾 Add to pay';
+}
+
+async function cancelAdditionalPay(id){
+  if(!confirm('Remove this additional pay entry?\n\nIt will be taken back out of their pay for this cutoff.')) return;
+  try{
+    const r = await api({ action:'cancelAdditionalPay', id: id,
+      role: currentUser.role, by: currentUser.username });
+    if(r.status==='ok'){ showToast('Entry removed ✓','success',3500); await _hraLoad(); }
+    else alert('Error: '+(r.msg||'Could not remove'));
+  }catch(e){ alert('Network error: '+e.message); }
 }
 
 async function releasePayAdj(adjustmentId, decision){
@@ -392,10 +477,20 @@ function _hraRender(){
       html += '<div class="hra-emp-detail">'
         + '<button class="hra-viewas-btn" onclick="openHR(\''+e.username.replace(/'/g,"\\'")+'\')">'
           + '👤 Open '+e.username+'’s HR — file or check on their behalf</button>'
+        + '<button class="hra-addpay-btn" onclick="openAddPayModal(\''+e.username.replace(/'/g,"\\'")+'\')">'
+          + '➕ Add pay (allowance, incentive…)</button>'
         + '<div class="hra-detail-line"><span>Rate</span><span>'+_hraPeso(e.dailyRate)+'/day'
           + (hourly ? ' ('+_hraPeso(e.dailyRate/d.stdHours)+'/hr)' : '')+'</span></div>'
         + (e.allowance > 0 ? '<div class="hra-detail-line add"><span>Allowance ('+e.daysWorked+' × '+_hraPeso(e.allowanceRate)+')</span><span>+ '+_hraPeso(e.allowance)+'</span></div>' : '')
         + (e.reimbursement > 0 ? '<div class="hra-detail-line add"><span>Reimbursements</span><span>+ '+_hraPeso(e.reimbursement)+'</span></div>' : '')
+        // Manual extras — one line each, and nothing at all when there are none
+        + ((e.additionalPayItems||[]).map(function(ap){
+            return '<div class="hra-detail-line add"><span>'+_hraEsc(ap.type)
+              + (ap.note ? ' <span class="hra-ap-note">· '+_hraEsc(ap.note)+'</span>' : '')
+              + ' <span class="hra-ap-date">'+ap.date+'</span>'
+              + '<button class="hra-ap-x" title="Remove this entry" onclick="cancelAdditionalPay(\''+ap.id+'\')">✕</button>'
+              + '</span><span>+ '+_hraPeso(ap.amount)+'</span></div>';
+          }).join(''))
         + '<div class="hra-detail-line"><span>'+(hourly?'Hours worked ('+e.hoursPaid+'h)':'Basic ('+e.daysWorked+' days)')+'</span><span>'+_hraPeso(e.gross)+'</span></div>'
         + (e.totalDeduction > 0 ? '<div class="hra-detail-line ded"><span>Deductions</span><span>− '+_hraPeso(e.totalDeduction)+'</span></div>' : '')
         + (e.cashAdvance   > 0 ? '<div class="hra-detail-line ded"><span>Cash advance'

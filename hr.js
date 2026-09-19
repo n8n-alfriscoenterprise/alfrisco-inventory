@@ -63,6 +63,12 @@ async function _hrLoad(){
   if(nb) nb.disabled = (_hrOffset >= 0);
 }
 
+// Admin-typed notes reach this screen as text, never as markup
+function _hrEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 function _hrPeso(n){
   return '₱' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
@@ -139,6 +145,13 @@ function _hrRender(d){
           ? '<div class="hr-pay-row add"><span>Allowance ('+d.daysWorked+' × '+_hrPeso(d.allowanceRate)+')</span><span>+ '+_hrPeso(d.allowance)+'</span></div>' : '')
       + (d.reimbursement > 0
           ? '<div class="hr-pay-row add"><span>Reimbursements</span><span>+ '+_hrPeso(d.reimbursement)+'</span></div>' : '')
+      // Extras added by admin — one line each, with the reason they gave.
+      // Nothing renders in the usual case where there are none.
+      + ((d.additionalPayItems||[]).map(function(ap){
+          return '<div class="hr-pay-row add"><span>'+_hrEsc(ap.type)
+            + (ap.note ? ' <span style="color:#6b7a86;font-weight:400">· '+_hrEsc(ap.note)+'</span>' : '')
+            + '</span><span>+ '+_hrPeso(ap.amount)+'</span></div>';
+        }).join(''))
       + (d.lateDeduction > 0
           ? '<div class="hr-pay-row ded"><span>Late deductions</span><span>− '+_hrPeso(d.lateDeduction)+'</span></div>' : '')
       + (d.undertimeDeduction > 0

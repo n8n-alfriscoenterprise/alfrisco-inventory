@@ -862,7 +862,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Aria
 .po-add-line-btn{width:100%;padding:9px;border:1.5px dashed #1A3A5C;background:transparent;color:#1A3A5C;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px}
 .po-totals-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:12px;color:#666}
 .po-grand-total{font-size:15px;font-weight:700;color:#1A3A5C}
-.po-action-row{display:flex;gap:8px;margin-bottom:12px}
+.po-action-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.po-edit-hint{flex-basis:100%;font-size:11px;color:#6A5300;background:#FFF9E8;border-radius:7px;padding:7px 10px;line-height:1.5}
 .po-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
 .po-btn-primary{background:#1A3A5C;color:white}
 .po-btn-secondary{background:#f0f2f5;color:#555;border:1px solid #e0e0e0}
@@ -1297,6 +1298,11 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .hr-viewas{background:#4A148C;color:#fff;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hr-viewas-exit{margin-left:auto;padding:6px 11px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
 .hra-viewas-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#4A148C;border:1.5px solid #CE93D8;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
+.hra-addpay-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#1B5E20;border:1.5px solid #A5D6A7;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
+.hra-ap-note{color:#6b7a86;font-weight:400}
+.hra-ap-date{color:#9aa7b2;font-size:10px;font-weight:400}
+.hra-ap-x{margin-left:6px;background:none;border:none;color:#C62828;font-size:12px;font-weight:700;cursor:pointer;padding:0 3px;line-height:1}
+.hr-note.warn{color:#8A5A00;background:#FFF6E5;border:1.5px solid #F0C36D;border-radius:8px;padding:8px 10px}
 /* ── INVOICE DETAIL ── */
 .invd-void{background:#FDEDEC;border:1.5px solid #E6B0AA;color:#C0392B;border-radius:9px;padding:9px 12px;font-size:13px;font-weight:800;text-align:center;margin-bottom:10px}
 .invd-void-sub{font-size:11px;font-weight:600;margin-top:3px;font-style:italic}
@@ -1855,6 +1861,43 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
     <div class="epm-btns">
       <button class="epm-cancel" onclick="closePayAdjModal()">Cancel</button>
       <button class="epm-save" id="padj-save-btn" onclick="savePayAdj()">💾 Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN ADDS MANUAL PAY (allowance, incentive, bonus…) ══ -->
+<div class="modal-overlay" id="addpay-modal" style="display:none">
+  <div class="modal-card">
+    <div class="epm-title">➕ Add Pay</div>
+    <div class="epm-sub" id="apay-who"></div>
+
+    <label class="epm-label">Type</label>
+    <select class="epm-select" id="apay-type">
+      <option value="">-- Select type --</option>
+      <option value="Allowance">Allowance</option>
+      <option value="Incentive">Incentive</option>
+      <option value="Bonus">Bonus</option>
+      <option value="Holiday Pay">Holiday Pay</option>
+      <option value="Overtime Pay">Overtime Pay</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label class="epm-label">Amount</label>
+    <input type="number" class="epm-select" id="apay-amount" min="0" step="0.01" placeholder="0.00"
+      inputmode="decimal">
+
+    <label class="epm-label">Date this applies to</label>
+    <input type="date" class="epm-select" id="apay-date" onchange="_apayHint()">
+    <div id="apay-cutoff" class="hr-note" style="margin-top:6px;margin-bottom:10px"></div>
+
+    <label class="epm-label">Note (optional) — the employee will see this</label>
+    <input type="text" class="epm-select" id="apay-note" maxlength="120"
+      placeholder="e.g. Hit August sales target">
+
+    <div class="modal-err" id="apay-err" style="margin-top:8px;margin-bottom:8px"></div>
+    <div class="epm-btns">
+      <button class="epm-cancel" onclick="closeAddPayModal()">Cancel</button>
+      <button class="epm-save" id="apay-save-btn" onclick="saveAddPay()">💾 Add to pay</button>
     </div>
   </div>
 </div>
