@@ -62,6 +62,51 @@ function _hraEsc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
+// Whole calendar days between a 'YYYY-MM-DD' date and today, both read in
+// Manila, compared as date-only so the clock time cannot skew the count.
+function _hraDaysSince(dateStr){
+  const d = String(dateStr||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const today = new Date().toLocaleString('sv-SE',{timeZone:'Asia/Manila'}).slice(0,10);
+  const utc = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10));
+  return Math.round((utc(today) - utc(d)) / 86400000);
+}
+
+// Which semi-monthly cutoff a date belongs to — mirrors the server's labelling
+function _hraCutoffLabel(dateStr){
+  const d = String(dateStr||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '';
+  const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8,10);
+  const last = new Date(y, m, 0).getDate();
+  const mon  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];
+  return mon+' '+(day<=15?'1–15':'16–'+last)+', '+y;
+}
+
+// One line per advance / reimbursement, with the date it was raised and a clear
+// flag when it was carried over from an earlier cutoff. A lump total with no
+// date made it impossible to tell an old unsettled item from a new one.
+function _hraItemLines(items, label, sign){
+  return (items||[]).map(function(it){
+    const when = it.requestedAt
+      ? (typeof phDate==='function' ? phDate(it.requestedAt.slice(0,10)) : it.requestedAt.slice(0,10))
+      : 'no date recorded';
+    const carried = it.carriedOver
+      ? '<span class="hra-carry" title="Requested in an earlier cutoff and still not settled">'
+        + '↪ from ' + _hraEsc(it.fromCutoff || 'an earlier cutoff') + '</span>'
+      : '';
+    const state = it.state === 'settled' ? ' <span class="hra-it-state">· deducted here</span>'
+                : it.state === 'paid'    ? ' <span class="hra-it-state">· paid here</span>'
+                                         : ' <span class="hra-it-state">· not yet settled</span>';
+    return '<div class="hra-detail-line ' + (sign === '+' ? 'add' : 'ded') + '">'
+      + '<span>' + label
+        + ' <span class="hra-it-date">' + (it.requestedAt ? when : '<em>' + when + '</em>') + '</span>'
+        + state
+        + (it.note ? ' <span class="hra-ap-note">· ' + _hraEsc(it.note) + '</span>' : '')
+        + carried
+      + '</span><span>' + sign + ' ' + _hraPeso(it.amount) + '</span></div>';
+  }).join('');
+}
+
 function _hraPeso(n){
   return '₱' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
@@ -350,8 +395,21 @@ function _hraRenderInbox(){
       + 'Once you\'ve actually taken one out of a payout, record it against that cutoff — '
       + 'it stays a deduction there and stops carrying forward.</div>';
     owing.forEach(function(a){
+      // When it was asked for, how long it has been outstanding, and which
+      // cutoff it came from — without these it is impossible to tell an advance
+      // from last week apart from one that has been rolling for two months.
+      const d    = String(a.requestedAt||'').slice(0,10);
+      const age  = _hraDaysSince(d);
+      const from = _hraCutoffLabel(d);
+      const stale = age !== null && age >= 15;
       html += '<div class="hra-owing">'
         + '<div><div class="hra-owing-name">'+a.requestedBy+' · <strong>'+_hraPeso(a.amount)+'</strong></div>'
+        + '<div class="hra-req-by">'
+          + (d ? '🕒 ' + (typeof phDate==='function'?phDate(d):d)
+                 + (age !== null ? ' · ' + (age===0?'today':age===1?'1 day ago':age+' days ago') : '')
+               : '🕒 no date recorded')
+          + (from ? ' <span class="hra-carry'+(stale?' stale':'')+'">↪ from '+_hraEsc(from)+'</span>' : '')
+          + '</div>'
         + '<div class="hra-req-by">approved by '+a.resolvedBy+'</div></div>'
         + '<button class="hra-settle-btn" onclick="settleAdvance(\''+a.requestId+'\')">Deducted from this cutoff</button>'
       + '</div>';
@@ -482,7 +540,9 @@ function _hraRender(){
         + '<div class="hra-detail-line"><span>Rate</span><span>'+_hraPeso(e.dailyRate)+'/day'
           + (hourly ? ' ('+_hraPeso(e.dailyRate/d.stdHours)+'/hr)' : '')+'</span></div>'
         + (e.allowance > 0 ? '<div class="hra-detail-line add"><span>Allowance ('+e.daysWorked+' × '+_hraPeso(e.allowanceRate)+')</span><span>+ '+_hraPeso(e.allowance)+'</span></div>' : '')
-        + (e.reimbursement > 0 ? '<div class="hra-detail-line add"><span>Reimbursements</span><span>+ '+_hraPeso(e.reimbursement)+'</span></div>' : '')
+        + ((e.reimbursementItems && e.reimbursementItems.length)
+            ? _hraItemLines(e.reimbursementItems, 'Reimbursement', '+')
+            : (e.reimbursement > 0 ? '<div class="hra-detail-line add"><span>Reimbursements</span><span>+ '+_hraPeso(e.reimbursement)+'</span></div>' : ''))
         // Manual extras — one line each, and nothing at all when there are none
         + ((e.additionalPayItems||[]).map(function(ap){
             return '<div class="hra-detail-line add"><span>'+_hraEsc(ap.type)
@@ -493,9 +553,11 @@ function _hraRender(){
           }).join(''))
         + '<div class="hra-detail-line"><span>'+(hourly?'Hours worked ('+e.hoursPaid+'h)':'Basic ('+e.daysWorked+' days)')+'</span><span>'+_hraPeso(e.gross)+'</span></div>'
         + (e.totalDeduction > 0 ? '<div class="hra-detail-line ded"><span>Deductions</span><span>− '+_hraPeso(e.totalDeduction)+'</span></div>' : '')
-        + (e.cashAdvance   > 0 ? '<div class="hra-detail-line ded"><span>Cash advance'
-            + (e.advanceSettled > 0 && !e.advanceOutstanding ? ' (already deducted)' : '')
-            + '</span><span>− '+_hraPeso(e.cashAdvance)+'</span></div>' : '')
+        + ((e.advanceItems && e.advanceItems.length)
+            ? _hraItemLines(e.advanceItems, 'Cash advance', '−')
+            : (e.cashAdvance > 0 ? '<div class="hra-detail-line ded"><span>Cash advance'
+                + (e.advanceSettled > 0 && !e.advanceOutstanding ? ' (already deducted)' : '')
+                + '</span><span>− '+_hraPeso(e.cashAdvance)+'</span></div>' : ''))
         + (e.otHours > 0 ? '<div class="hr-note">'+e.otHours+'h beyond the '+d.stdHours+'-hour duty (not auto-paid).</div>' : '')
         + '<table class="hr-day-table" style="margin-top:8px"><thead><tr>'
           + '<th>Date</th><th>In</th><th>Out</th><th>Status</th><th class="r">Pay</th>'

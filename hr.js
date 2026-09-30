@@ -69,6 +69,25 @@ function _hrEsc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
+// Each advance / reimbursement as its own row, dated. An employee seeing money
+// come off their pay should be able to tell exactly which request it was and
+// when they asked for it — especially when it was carried over from before.
+function _hrItemRows(items, label, sign){
+  return (items||[]).map(function(it){
+    const d = String(it.requestedAt||'').slice(0,10);
+    const when = d ? (typeof phDate==='function' ? phDate(d) : d) : 'no date recorded';
+    return '<div class="hr-pay-row ' + (sign === '+' ? 'add' : 'ded') + '">'
+      + '<span>' + label
+        + ' <span style="font-size:10px;color:#6b7a86;font-weight:600">' + when + '</span>'
+        + (it.carriedOver
+            ? ' <span class="hr-carry">↪ from ' + _hrEsc(it.fromCutoff || 'earlier') + '</span>'
+            : '')
+        + (it.note ? ' <span style="color:#8a949c;font-weight:400;font-size:10px">· '
+                     + _hrEsc(it.note) + '</span>' : '')
+      + '</span><span>' + sign + ' ' + _hrPeso(it.amount) + '</span></div>';
+  }).join('');
+}
+
 function _hrPeso(n){
   return '₱' + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2, maximumFractionDigits:2});
 }
@@ -143,8 +162,10 @@ function _hrRender(d){
           + '<div class="hr-pay-row"><span>Basic ('+d.daysWorked+' day'+(d.daysWorked!==1?'s':'')+' × rate)</span><span>'+_hrPeso(d.gross)+'</span></div>')
       + (d.allowance > 0
           ? '<div class="hr-pay-row add"><span>Allowance ('+d.daysWorked+' × '+_hrPeso(d.allowanceRate)+')</span><span>+ '+_hrPeso(d.allowance)+'</span></div>' : '')
-      + (d.reimbursement > 0
-          ? '<div class="hr-pay-row add"><span>Reimbursements</span><span>+ '+_hrPeso(d.reimbursement)+'</span></div>' : '')
+      + ((d.reimbursementItems && d.reimbursementItems.length)
+          ? _hrItemRows(d.reimbursementItems, 'Reimbursement', '+')
+          : (d.reimbursement > 0
+              ? '<div class="hr-pay-row add"><span>Reimbursements</span><span>+ '+_hrPeso(d.reimbursement)+'</span></div>' : ''))
       // Extras added by admin — one line each, with the reason they gave.
       // Nothing renders in the usual case where there are none.
       + ((d.additionalPayItems||[]).map(function(ap){
@@ -158,10 +179,12 @@ function _hrRender(d){
           ? '<div class="hr-pay-row ded"><span>Undertime ('+d.undertimeMinutes+' min)</span><span>− '+_hrPeso(d.undertimeDeduction)+'</span></div>' : '')
       + (d.halfDayDeduction > 0
           ? '<div class="hr-pay-row ded"><span>Half-day deductions</span><span>− '+_hrPeso(d.halfDayDeduction)+'</span></div>' : '')
-      + (d.cashAdvance > 0
-          ? '<div class="hr-pay-row ded"><span>Cash advance'
-            + (d.advanceSettled > 0 && !d.advanceOutstanding ? ' <span style="font-size:10px;color:#888">(deducted)</span>' : '')
-            + '</span><span>− '+_hrPeso(d.cashAdvance)+'</span></div>' : '')
+      + ((d.advanceItems && d.advanceItems.length)
+          ? _hrItemRows(d.advanceItems, 'Cash advance', '−')
+          : (d.cashAdvance > 0
+              ? '<div class="hr-pay-row ded"><span>Cash advance'
+                + (d.advanceSettled > 0 && !d.advanceOutstanding ? ' <span style="font-size:10px;color:#888">(deducted)</span>' : '')
+                + '</span><span>− '+_hrPeso(d.cashAdvance)+'</span></div>' : ''))
       + '<div class="hr-pay-total"><span>Expected pay</span><span>'+_hrPeso(d.expected)+'</span></div>'
       + '<div class="hr-note">Estimate only, based on time records so far this cutoff ('+d.startDate+' to '+d.endDate+'). '
       + 'Final pay is confirmed by Admin.</div>'

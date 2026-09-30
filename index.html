@@ -1269,7 +1269,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .hra-emp-toggle{font-size:10px;color:#7B1FA2;font-weight:700;margin-top:3px}
 .hra-emp-detail{padding:0 13px 13px;border-top:1px solid #f2f2f2}
 .hra-detail-line{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed #eee;font-size:12.5px;color:#333}
-.hra-detail-line.ded span:last-child{color:#C0392B;font-weight:700}
+.hra-detail-line.ded > span:last-child{color:#C0392B;font-weight:700}
 /* ── HR REQUESTS (employee side) ── */
 .hr-req-actions{display:flex;gap:8px;margin-bottom:10px}
 .hr-req-btn{flex:1;padding:11px 8px;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;color:#fff}
@@ -1312,7 +1312,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 /* ── reimbursements, allowance, view-as ── */
 .hr-req-btn.rmb{background:#00838F}
 .hr-pay-row.add span:last-child{color:#1B5E20;font-weight:700}
-.hra-detail-line.add span:last-child{color:#1B5E20;font-weight:700}
+.hra-detail-line.add > span:last-child{color:#1B5E20;font-weight:700}
+/* The amount must never split across lines from its + / − sign */
+.hra-detail-line > span:last-child{white-space:nowrap;padding-left:6px}
 .hra-req-type.rmb{background:#E0F7FA;color:#00838F}
 .rmb-photo-box{margin-top:10px;padding:14px;border:1.5px dashed #90CAF9;border-radius:10px;background:#F0F7FF;text-align:center;font-size:12px;color:#1565C0;cursor:pointer;font-weight:600}
 .rmb-photo-box:active{background:#E3F2FD}
@@ -1321,6 +1323,14 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .hra-viewas-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#4A148C;border:1.5px solid #CE93D8;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
 .hra-addpay-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#1B5E20;border:1.5px solid #A5D6A7;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
 .hra-ap-note{color:#6b7a86;font-weight:400}
+/* Dates and carry-over flags on advances / reimbursements */
+.hra-it-date{color:#5a6b78;font-weight:600;font-size:10.5px}
+.hra-it-state{color:#9aa7b2;font-weight:400;font-size:10px}
+.hra-carry{display:inline-block;margin-left:5px;font-size:9.5px;font-weight:700;
+  background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:9px;white-space:nowrap}
+.hra-carry.stale{background:#FCEBEB;color:#A32D2D}
+.hr-carry{display:inline-block;margin-left:4px;font-size:9.5px;font-weight:700;
+  background:#FFF3DC;color:#C07000;padding:1px 6px;border-radius:9px;white-space:nowrap}
 .hra-ap-date{color:#9aa7b2;font-size:10px;font-weight:400}
 .hra-ap-x{margin-left:6px;background:none;border:none;color:#C62828;font-size:12px;font-weight:700;cursor:pointer;padding:0 3px;line-height:1}
 .hr-note.warn{color:#8A5A00;background:#FFF6E5;border:1.5px solid #F0C36D;border-radius:8px;padding:8px 10px}
