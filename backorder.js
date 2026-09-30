@@ -491,6 +491,58 @@ function buildBoStatusChips() {
   });
 }
 
+// ── WHEN WAS THIS LOGGED, AND HOW LONG HAS IT SAT? ──────────────
+// Rows are written as 'YYYY-MM-DD HH:MM:SS' in Manila time. Older rows may
+// carry an ISO string or a raw JS date string, so both are handled.
+function _boParseTS(ts){
+  const s = String(ts == null ? '' : ts).trim();
+  if(!s) return null;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ]?(\d{2}:\d{2})?/);
+  if(m) return { date: m[1], time: m[2] || '' };
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return null;
+  const iso = d.toLocaleString('sv-SE', {timeZone:'Asia/Manila'});
+  return { date: iso.slice(0,10), time: iso.slice(11,16) };
+}
+
+// Whole calendar days between the log date and today, both read in Manila.
+// Compared as date-only UTC midnights so no clock time or offset can skew it.
+function _boDaysSince(dateStr){
+  const today = new Date().toLocaleString('sv-SE', {timeZone:'Asia/Manila'}).slice(0,10);
+  const utc = function(s){
+    return Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10));
+  };
+  return Math.round((utc(today) - utc(dateStr)) / 86400000);
+}
+
+// Age matters while a backorder is still owed; once it is closed it is history.
+function _boAge(item){
+  const p = _boParseTS(item.timestamp);
+  if(!p) return { known:false, text:'Date not recorded', chip:'—', cls:'bo-age-unknown' };
+  const n    = _boDaysSince(p.date);
+  const open = item.status === 'OPEN' || item.status === 'PARTIAL';
+  const cls  = !open  ? 'bo-age-closed'
+             : n >= 7 ? 'bo-age-hot'
+             : n >= 3 ? 'bo-age-warm'
+                      : 'bo-age-fresh';
+  const word = n < 0 ? 'Dated ahead'
+             : n === 0 ? 'Today'
+             : n === 1 ? '1 day'
+                       : n + ' days';
+  return {
+    known: true,
+    days:  n,
+    // House format spells the month out, so "09-05" can never be read two ways
+    when:  (typeof phDateTime === 'function' && p.time) ? phDateTime(item.timestamp)
+         : (typeof phDate === 'function') ? phDate(p.date)
+         : p.date + (p.time ? ' · ' + p.time : ''),
+    // Short form reads correctly whether or not the line wraps on a phone
+    text:  n < 0 ? '(dated ahead)' : n === 0 ? '(today)' : '(' + word + ' ago)',
+    chip:  word,
+    cls:   cls
+  };
+}
+
 function renderBoList() {
   const body  = document.getElementById('bo-list-body');
   const items = boListData[boListTab] || [];
@@ -532,6 +584,7 @@ function renderBoList() {
     row.className = 'bo-list-row' + (canEdit ? ' bo-list-row-tap' : '');
     if (canEdit && !isAdmin) row.onclick = () => openBoStatusModal(item);
 
+    const age         = _boAge(item);
     const promiseLine = item.promisedDate ? ' · Due: ' + item.promisedDate : '';
     const notesLine   = item.notes        ? ' · ' + item.notes             : '';
     const partialLine = item.status === 'PARTIAL' && item.qtyServed > 0
@@ -549,11 +602,17 @@ function renderBoList() {
         <div class="bo-list-item">${item.itemName}</div>
         <div class="bo-list-meta">${item.qty} ${item.unit}${promiseLine}${notesLine}</div>
         ${partialLine}
+        <div class="bo-list-logged ${age.cls}">
+          🕒 ${age.known
+                ? age.when + '<span class="bo-list-ageword">' + age.text + '</span>'
+                : 'Date not recorded'}
+        </div>
         <div class="bo-list-by">Logged by ${item.submittedBy}</div>
       </div>
       <div class="bo-list-right">
         <span class="bo-status-badge"
           style="background:${meta.bg};color:${meta.color}">${meta.label}</span>
+        <span class="bo-age-chip ${age.cls}" title="${age.known ? age.text : 'No timestamp on this record'}">${age.chip}</span>
         ${isAdmin
           ? `<div class="bo-admin-btns">
               <button class="bo-admin-btn bo-edit-btn" onclick="event.stopPropagation();openBoEditModal(boListData['${item.type}'].find(x=>x.rowIndex===${item.rowIndex}))">Edit</button>
@@ -646,6 +705,7 @@ async function deleteBoItem(item){
 // ── STATUS PICKER ─────────────────────────────────────
 function openBoStatusModal(item) {
   _boStatusTarget = item;
+  const _age = _boAge(item);
   const meta  = {
     OPEN:      { color:'#C07000', icon:'📋' },
     PARTIAL:   { color:'#1A6EBD', icon:'⏳' },
@@ -658,7 +718,17 @@ function openBoStatusModal(item) {
       <strong>${item.dealer}</strong> — ${item.itemName}
       <span style="color:#888"> (${item.qty} ${item.unit})</span>
     </div>
-    <div class="bo-status-sheet-current">Current status: <strong>${item.status}</strong></div>`;
+    <div class="bo-status-sheet-current">Current status: <strong>${item.status}</strong></div>
+    <div class="bo-status-sheet-age ${_age.cls}">
+      🕒 ${_age.known
+            ? 'Logged ' + _age.when + ' — <strong>'
+              + (_age.days < 0  ? 'dated ahead of today'
+               : _age.days === 0 ? 'today'
+               : _age.days === 1 ? '1 day ago'
+                                 : _age.days + ' days ago')
+              + '</strong>'
+            : 'No timestamp recorded on this backorder'}
+    </div>`;
 
   const opts = document.getElementById('bo-status-options');
   opts.innerHTML = '';
