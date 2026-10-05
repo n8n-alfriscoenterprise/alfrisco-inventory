@@ -1470,6 +1470,19 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .pl-search-bar{padding:10px 12px;background:white;border-bottom:1px solid #e8e8e8;flex-shrink:0}
 .pl-search-input{width:100%;padding:9px 14px 9px 38px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;outline:none;background:#fafafa;color:#222;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
 .pl-search-input:focus{border-color:#2E7D32}
+/* Backorder search — same control as the product list, in the BO accent */
+.bo-search-bar{position:relative;display:flex;align-items:center}
+.bo-search-input{padding-right:40px}
+.bo-search-input:focus{border-color:#E05252}
+.bo-search-clear{position:absolute;right:20px;background:none;border:none;
+  color:#999;font-size:14px;font-weight:700;cursor:pointer;
+  min-width:34px;min-height:34px;display:flex;align-items:center;justify-content:center}
+.bo-search-clear:hover{color:#C62828}
+.bo-search-count{padding:6px 14px;font-size:11px;color:#8a949c;font-weight:600;
+  background:#fff;border-bottom:1px solid #f0f0f0}
+.bo-search-count strong{color:#C62828}
+.bo-empty-clear{margin-top:10px;background:#fff;border:1.5px solid #E05252;color:#C62828;
+  font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;min-height:38px}
 .pl-subtabs{display:flex;background:#1B5E20;flex-shrink:0}
 .pl-subtab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;text-align:center;color:rgba(255,255,255,0.55);cursor:pointer;border-bottom:2.5px solid transparent}
 .pl-subtab.active{color:white;border-bottom-color:#A5D6A7}
@@ -3796,6 +3809,15 @@ button,.tnav,.logout-btn{max-width:100%}
          onclick="setBoListTab('dist',this)">📦 Dealer</div>
     <div class="bo-subtab" id="bo-tab-retail"
          onclick="setBoListTab('retail',this)">🛒 Retail</div>
+  </div>
+
+  <!-- SEARCH — dealer/customer name, item, SKU code, notes -->
+  <div class="pl-search-bar bo-search-bar">
+    <input type="text" class="pl-search-input bo-search-input" id="bo-search"
+           placeholder="Search dealer, item, or SKU code..."
+           autocomplete="off" oninput="filterBoList(this.value)">
+    <button class="bo-search-clear" id="bo-search-clear" title="Clear search"
+            onclick="clearBoSearch()" style="display:none">✕</button>
   </div>
 
   <!-- STATUS FILTER CHIPS -->

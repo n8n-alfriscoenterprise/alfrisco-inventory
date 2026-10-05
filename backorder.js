@@ -417,6 +417,13 @@ async function openBoScreen() {
   showScreen('bo-screen');
   updateFabVisibility();
 
+  // Start clean — a term left over from last visit would silently hide rows
+  boListSearch = '';
+  const _s = document.getElementById('bo-search');
+  if (_s) _s.value = '';
+  const _x = document.getElementById('bo-search-clear');
+  if (_x) _x.style.display = 'none';
+
   const isAdmin   = currentUser && currentUser.role === 'admin';
   const canDist   = isAdmin || (currentUser && currentUser.canBackorderDist !== false);
   const canRetail = isAdmin || (currentUser && currentUser.canBackorderRetail === true);
@@ -491,6 +498,40 @@ function buildBoStatusChips() {
   });
 }
 
+// ── SEARCH ───────────────────────────────────────────────────────
+let boListSearch = '';
+
+// The typed term is echoed back in the empty state, so it never goes in raw
+function _boEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function filterBoList(v){
+  boListSearch = String(v || '');
+  const x = document.getElementById('bo-search-clear');
+  if (x) x.style.display = boListSearch.trim() ? 'flex' : 'none';
+  renderBoList();
+}
+
+function clearBoSearch(){
+  const input = document.getElementById('bo-search');
+  if (input) input.value = '';
+  filterBoList('');
+  if (input) input.focus();
+}
+
+// Every word typed must appear somewhere in the row, so "dagupan pedigree"
+// finds that dealer's Pedigree lines without needing the words in order.
+function _boMatches(item, terms){
+  if (!terms.length) return true;
+  const hay = [item.dealer, item.itemName, item.skuCode, item.phone,
+               item.notes, item.submittedBy, item.status]
+    .join(' ').toLowerCase();
+  return terms.every(function(t){ return hay.indexOf(t) !== -1; });
+}
+
 // ── WHEN WAS THIS LOGGED, AND HOW LONG HAS IT SAT? ──────────────
 // Rows are written as 'YYYY-MM-DD HH:MM:SS' in Manila time. Older rows may
 // carry an ISO string or a raw JS date string, so both are handled.
@@ -555,8 +596,17 @@ function renderBoList() {
   let visible = boListFilter === 'All'
     ? items : items.filter(i => i.status === boListFilter);
 
+  // Search narrows whatever the status chips already left
+  const terms = boListSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const beforeSearch = visible.length;
+  if (terms.length) visible = visible.filter(i => _boMatches(i, terms));
+
   if (!visible.length) {
-    body.innerHTML = '<div class="pl-empty">No ' + boListFilter.toLowerCase() + ' backorders.</div>';
+    body.innerHTML = terms.length
+      ? '<div class="pl-empty">No backorders match “' + _boEsc(boListSearch.trim()) + '”'
+        + (boListFilter !== 'All' ? ' in ' + boListFilter.toLowerCase() : '')
+        + '.<br><button class="bo-empty-clear" onclick="clearBoSearch()">Clear search</button></div>'
+      : '<div class="pl-empty">No ' + boListFilter.toLowerCase() + ' backorders.</div>';
     return;
   }
 
@@ -577,6 +627,15 @@ function renderBoList() {
   };
 
   body.innerHTML = '';
+  // Say how much the search is hiding, so a short list is never mistaken
+  // for the whole list
+  if (terms.length) {
+    const c = document.createElement('div');
+    c.className = 'bo-search-count';
+    c.innerHTML = 'Showing <strong>' + visible.length + '</strong> of ' + beforeSearch
+      + ' — matching “' + _boEsc(boListSearch.trim()) + '”';
+    body.appendChild(c);
+  }
   visible.forEach(item => {
     const canEdit = isAdmin || item.submittedBy === currentUser.username;
     const meta    = statusMeta[item.status] || statusMeta.OPEN;
