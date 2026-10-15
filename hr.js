@@ -179,6 +179,15 @@ function _hrRender(d){
           ? '<div class="hr-pay-row ded"><span>Undertime ('+d.undertimeMinutes+' min)</span><span>− '+_hrPeso(d.undertimeDeduction)+'</span></div>' : '')
       + (d.halfDayDeduction > 0
           ? '<div class="hr-pay-row ded"><span>Half-day deductions</span><span>− '+_hrPeso(d.halfDayDeduction)+'</span></div>' : '')
+      // Deductions entered by admin — always with the reason they gave, so the
+      // employee can see exactly what was taken and why.
+      + ((d.manualDeductionItems||[]).map(function(dd){
+          return '<div class="hr-pay-row ded"><span>'+_hrEsc(dd.type)
+            + ' <span style="font-size:10px;color:#6b7a86;font-weight:600">'+dd.date+'</span>'
+            + (dd.note ? '<br><span style="color:#8a949c;font-weight:400;font-size:10.5px">'
+                         + _hrEsc(dd.note) + '</span>' : '')
+            + '</span><span>− '+_hrPeso(dd.amount)+'</span></div>';
+        }).join(''))
       + ((d.advanceItems && d.advanceItems.length)
           ? _hrItemRows(d.advanceItems, 'Cash advance', '−')
           : (d.cashAdvance > 0
@@ -186,6 +195,11 @@ function _hrRender(d){
                 + (d.advanceSettled > 0 && !d.advanceOutstanding ? ' <span style="font-size:10px;color:#888">(deducted)</span>' : '')
                 + '</span><span>− '+_hrPeso(d.cashAdvance)+'</span></div>' : ''))
       + '<div class="hr-pay-total"><span>Expected pay</span><span>'+_hrPeso(d.expected)+'</span></div>'
+      + (d.shortfall > 0
+          ? '<div class="hr-note warn">Deductions this cutoff came to '+_hrPeso(d.shortfall)
+            + ' more than your pay. Your pay shows as zero rather than a negative amount — '
+            + 'please speak with Admin about the balance.</div>'
+          : '')
       + '<div class="hr-note">Estimate only, based on time records so far this cutoff ('+d.startDate+' to '+d.endDate+'). '
       + 'Final pay is confirmed by Admin.</div>'
       + '</div>';

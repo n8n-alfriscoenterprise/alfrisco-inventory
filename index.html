@@ -1322,6 +1322,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .hr-viewas-exit{margin-left:auto;padding:6px 11px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
 .hra-viewas-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#4A148C;border:1.5px solid #CE93D8;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
 .hra-addpay-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#1B5E20;border:1.5px solid #A5D6A7;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
+.hra-deduct-btn{width:100%;padding:9px;margin-bottom:9px;background:#fff;color:#A32D2D;border:1.5px solid #EF9A9A;border-radius:9px;font-size:11.5px;font-weight:700;cursor:pointer}
+/* A deduction is destructive to someone's pay — its save button says so */
+.epm-save.ded{background:#C62828}
 .hra-ap-note{color:#6b7a86;font-weight:400}
 /* Dates and carry-over flags on advances / reimbursements */
 .hra-it-date{color:#5a6b78;font-weight:600;font-size:10.5px}
@@ -2011,6 +2014,44 @@ button,.tnav,.logout-btn{max-width:100%}
     <div class="epm-btns">
       <button class="epm-cancel" onclick="closeAddPayModal()">Cancel</button>
       <button class="epm-save" id="apay-save-btn" onclick="saveAddPay()">💾 Add to pay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN DEDUCTS FROM PAY (shortage, damage…) ══ -->
+<div class="modal-overlay" id="deduct-modal" style="display:none">
+  <div class="modal-card">
+    <div class="epm-title">➖ Deduct from Pay</div>
+    <div class="epm-sub" id="ded-who"></div>
+
+    <label class="epm-label">Type</label>
+    <select class="epm-select" id="ded-type">
+      <option value="">-- Select type --</option>
+      <option value="Collection Shortage">Collection Shortage</option>
+      <option value="Item Damage">Item Damage</option>
+      <option value="Asset Damage">Asset Damage</option>
+      <option value="Cash Shortage">Cash Shortage</option>
+      <option value="Lost / Unreturned Item">Lost / Unreturned Item</option>
+      <option value="Penalty">Penalty</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label class="epm-label">Amount</label>
+    <input type="number" class="epm-select" id="ded-amount" min="0" step="0.01" placeholder="0.00"
+      inputmode="decimal">
+
+    <label class="epm-label">Date this applies to</label>
+    <input type="date" class="epm-select" id="ded-date" onchange="_dedHint()">
+    <div id="ded-cutoff" class="hr-note" style="margin-top:6px;margin-bottom:10px"></div>
+
+    <label class="epm-label">Reason — required, the employee will see this</label>
+    <input type="text" class="epm-select" id="ded-note" maxlength="140"
+      placeholder="e.g. Short ₱300 on Dagupan collection, Oct 12">
+
+    <div class="modal-err" id="ded-err" style="margin-top:8px;margin-bottom:8px"></div>
+    <div class="epm-btns">
+      <button class="epm-cancel" onclick="closeDeductModal()">Cancel</button>
+      <button class="epm-save ded" id="ded-save-btn" onclick="saveDeduct()">💾 Deduct from pay</button>
     </div>
   </div>
 </div>
