@@ -12,7 +12,37 @@ const LS={
   get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
-function saveLocal(){LS.set('alf_csskus',csskus);LS.set('alf_log',accessLog.slice(0,100));}
+// Put the last known distribution list back before anything renders, so Count
+// and Movement show the real categories even when the SKU Master call fails.
+// DIST_CATS / DIST_SKUS are consts from config.js, so they are mutated in
+// place — the same way rebuildSKUData() refreshes them from the live master.
+// A cache that is missing or malformed leaves the config defaults untouched.
+function _restoreDistCache(){
+  try{
+    const cats = LS.get('alf_dist_cats');
+    const skus = LS.get('alf_dist_skus');
+    if(!Array.isArray(cats) || !cats.length) return;
+    if(!skus || typeof skus !== 'object' || Array.isArray(skus)) return;
+    DIST_CATS.length = 0;
+    cats.forEach(function(c){ if(typeof c === 'string' && c) DIST_CATS.push(c); });
+    Object.keys(DIST_SKUS).forEach(function(k){ delete DIST_SKUS[k]; });
+    Object.keys(skus).forEach(function(k){
+      if(Array.isArray(skus[k])) DIST_SKUS[k] = skus[k];
+    });
+  }catch(e){ /* keep the config defaults rather than leaving the app empty */ }
+}
+
+// Cache BOTH SKU lists, not just retail. The distribution categories used to
+// live only in memory, so when the SKU Master call failed (no signal, API
+// hiccup) Count and Movement fell back to the hardcoded list in config.js and
+// a newly added category simply vanished from those screens. Caching them
+// means the phone keeps the real list until the master answers again.
+function saveLocal(){
+  LS.set('alf_csskus',csskus);
+  LS.set('alf_dist_cats',DIST_CATS);
+  LS.set('alf_dist_skus',DIST_SKUS);
+  LS.set('alf_log',accessLog.slice(0,100));
+}
 
 // ── SESSION TIMEOUT (auto-logout after 8 hrs inactivity) ──────────────
 const _SESSION_TIMEOUT = 8 * 60 * 60 * 1000;

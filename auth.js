@@ -13,6 +13,7 @@
 // ── INIT ──
 async function init(){
   csskus   = LS.get('alf_csskus') || JSON.parse(JSON.stringify(CS_BASE));
+  _restoreDistCache();
   accessLog= LS.get('alf_log')    || [];
 
   // ── SESSION RESTORE ──

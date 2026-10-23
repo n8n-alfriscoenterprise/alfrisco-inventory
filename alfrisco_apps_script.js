@@ -62,7 +62,9 @@ function doPost(e) {
         canApprovePODist:    String(r[18]|| 'NO').toUpperCase() === 'YES',
         canApprovePORetail:  String(r[19]|| 'NO').toUpperCase() === 'YES',
         dailyRate:           Number(r[20]) || 0,  // U: basis for HR pay estimates
-        payType:             String(r[21]||'daily').toLowerCase()==='hourly' ? 'hourly' : 'daily' // V
+        payType:             String(r[21]||'daily').toLowerCase()==='hourly' ? 'hourly' : 'daily', // V
+        schedule:            String(r[22]||'').trim(),  // W: Work Schedule name
+        allowance:           Number(r[23]) || 0         // X: daily allowance
       }));
       return ok({ staff });
     }
@@ -143,6 +145,12 @@ function doPost(e) {
             sheet.getRange(i+1, 21).setValue(Number(data.dailyRate) || 0);
           if (data.payType !== undefined && data.payType !== null && data.payType !== '')
             sheet.getRange(i+1, 22).setValue(String(data.payType).toLowerCase()==='hourly' ? 'hourly' : 'daily');
+          if (data.schedule !== undefined && data.schedule !== null)
+            sheet.getRange(i+1, 23).setValue(String(data.schedule).trim());
+          if (data.allowance !== undefined && data.allowance !== null && data.allowance !== '')
+            sheet.getRange(i+1, 24).setValue(Number(data.allowance) || 0);
+          if (sheet.getRange(1, 23).getValue() === '') sheet.getRange(1, 23).setValue('Work Schedule');
+          if (sheet.getRange(1, 24).getValue() === '') sheet.getRange(1, 24).setValue('Daily Allowance');
           if (sheet.getRange(1, 18).getValue() === '') sheet.getRange(1, 18).setValue('CanViewCountHistory');
           if (sheet.getRange(1, 19).getValue() === '') sheet.getRange(1, 19).setValue('CanApprovePODist');
           if (sheet.getRange(1, 20).getValue() === '') sheet.getRange(1, 20).setValue('CanApprovePORetail');
@@ -204,24 +212,16 @@ function doPost(e) {
       ]);
       // Backfill the Role header on sheets created before that column existed
       if (aSheet.getRange(1, 9).getValue() === '') aSheet.getRange(1, 9).setValue('Role');
-      const setSheet = getOrCreateSheet(ss, 'Attendance Settings', ['Setting','Value']);
-      if (setSheet.getLastRow() < 2) {
-        setSheet.appendRow(['Official Start','07:45:00']);
-        setSheet.appendRow(['Staff Cutoff','07:46:00']);
-        setSheet.appendRow(['Half Day After','12:00:00']);
-      }
-      var officialStart = '07:45:00', staffCutoff = '07:46:00', halfDayAfter = '12:00:00';
-      setSheet.getDataRange().getValues().slice(1).forEach(function(r){
-        var key = String(r[0]).toLowerCase();
-        if (key.indexOf('official start') >= 0 && r[1]) officialStart = String(r[1]);
-        if (key.indexOf('staff cutoff') >= 0 && r[1])   staffCutoff  = String(r[1]);
-        if (key.indexOf('half day') >= 0 && r[1])       halfDayAfter = String(r[1]);
-      });
-      function _hmsToSec(s, def){
-        var m = String(s).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-        if (!m) return def;
-        return parseInt(m[1],10)*3600 + parseInt(m[2],10)*60 + (m[3] ? parseInt(m[3],10) : 0);
-      }
+      // Same Operating Hours the payroll engine uses — one source of truth, and
+      // hrHmsToSec() copes with Sheets storing "07:45:00" as a real time value.
+      // Lateness is judged against THIS employee's schedule (retail vs warehouse
+      // start differently), falling back to the global Operating Hours.
+      const opCfg = hrScheduleFor(ss, hrStaffPay(ss)[String(data.username||'').trim().toLowerCase()],
+                                  hrSettings(ss), hrCutoffRange(0).startDate);
+      var officialStart = hrSecToHms(opCfg.officialStart),
+          staffCutoff   = hrSecToHms(opCfg.staffCutoff),
+          halfDayAfter  = hrSecToHms(opCfg.halfDayAfter);
+      function _hmsToSec(s, def){ return hrHmsToSec(s, def); }
 
       // Hard-coded Manila time: attendance drives payroll penalties, so it must
       // never depend on the Apps Script project's timezone setting being correct
@@ -260,8 +260,13 @@ function doPost(e) {
       // admin are not flagged), on IN, second-accurate. HARD cutoff: hitting
       // 07:46:00 exactly is already LATE. Minutes late are measured from the
       // official 07:45:00 start so they match the Time Monitoring deduction basis.
+      // Hourly staff are never flagged late: they're paid only for hours actually
+      // clocked, so arriving late already costs them — a LATE flag would label the
+      // same lost time twice.
+      const payerRec = hrStaffPay(ss)[String(data.username||'').trim().toLowerCase()];
+      const isHourly = payerRec && payerRec.payType === 'hourly';
       var late = '';
-      if (act === 'IN' && String(data.role||'').toLowerCase().indexOf('staff') === 0) {
+      if (act === 'IN' && !isHourly && String(data.role||'').toLowerCase().indexOf('staff') === 0) {
         var inSec = Number(Utilities.formatDate(nowD, tz, 'H'))*3600
                   + Number(Utilities.formatDate(nowD, tz, 'm'))*60
                   + Number(Utilities.formatDate(nowD, tz, 's'));
@@ -347,7 +352,19 @@ function doPost(e) {
           : String(lr[0]);
         lastPunch = { timestamp: lts, action: String(lr[2]), late: String(lr[3]||'') };
       }
-      return ok({ days: days, last: lastPunch });
+      // Hourly staff get Pause/Resume on the clock; the selfie is only required
+      // on the day's FIRST punch so pausing repeatedly isn't a chore.
+      const meRec = hrStaffPay(ss)[uname];
+      const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+      let punchesToday = 0;
+      rows.forEach(function(r){
+        const t = r[0] instanceof Date
+          ? Utilities.formatDate(r[0], tz, 'yyyy-MM-dd') : String(r[0]).slice(0,10);
+        if (t === todayStr) punchesToday++;
+      });
+      return ok({ days: days, last: lastPunch,
+                  payType: meRec ? meRec.payType : 'daily',
+                  punchesToday: punchesToday });
     }
 
     // ── MY HR: attendance standing + expected salary for a pay cutoff ──
@@ -365,11 +382,29 @@ function doPost(e) {
 
       const who = hrStaffPay(ss)[unameL] || { dailyRate:0, payType:'daily', found:false };
       const grouped = hrGroupAttendance(ss, range.startDate, range.endDate);
-      const res = hrComputeDays(grouped[unameL] || {}, who.dailyRate, who.payType);
-      const cashAdvance = hrCashAdvances(ss)[unameL] || 0;
+      // Judge this person against THEIR schedule, not one company-wide window
+      const cfg = hrScheduleFor(ss, who, hrSettings(ss), range.startDate);
+      const res = hrComputeDays(grouped[unameL] || {}, who.dailyRate, who.payType, cfg,
+                                hrPayAdjustments(ss)[unameL]);
+      const isCur = (Number(data.offset)||0) === 0;
+      const adv = hrAdvanceForCutoff(hrCashAdvances(ss)[unameL], range, isCur);
+      const cashAdvance = adv.total;
+      // Additions: daily allowance for every day worked, plus approved reimbursements
+      const allowance = (who.allowance || 0) * res.daysWorked;
+      const rmb = hrReimburseForCutoff(hrReimbursements(ss)[unameL], range, isCur);
+      // Manual admin-entered extras, matched to this cutoff by their own date
+      const addp = hrAddPayForCutoff(hrAdditionalPay(ss)[unameL], range);
+      // Manual deductions (shortage, damage) — also matched by their own date
+      const ded = hrDeductForCutoff(hrDeductions(ss)[unameL], range);
 
       const r2 = function(n){ return Math.round(n*100)/100; };
-      const expected = Math.max(0, res.gross - res.totalDeduction - cashAdvance);
+      // Net can go below zero when deductions exceed what was earned. Pay is
+      // floored at zero, but the uncovered balance is reported rather than
+      // silently dropped, so nobody thinks the debt was written off.
+      const rawNet = res.gross + allowance + rmb.total + addp.total
+                   - res.totalDeduction - cashAdvance - ded.total;
+      const expected  = Math.max(0, rawNet);
+      const shortfall = rawNet < 0 ? -rawNet : 0;
 
       return ok({
         period:      range.label,
@@ -380,8 +415,18 @@ function doPost(e) {
         found:       who.found === true,
         payType:     who.payType,
         dailyRate:   who.dailyRate,
-        hourlyRate:  r2(who.dailyRate / HR_STD_HOURS),
-        stdHours:    HR_STD_HOURS,
+        hourlyRate:  r2(who.dailyRate / (cfg.dutyHours || HR_STD_HOURS)),
+        stdHours:    cfg.dutyHours || HR_STD_HOURS,
+        scheduleName:  cfg.name || 'Operating Hours',
+        scheduleStart: hrSecToHms(cfg.officialStart).slice(0,5),
+        scheduleEnd:   hrSecToHms(cfg.officialEnd).slice(0,5),
+        undertimeDays:      res.undertimeDays,
+        undertimeMinutes:   Math.round(res.undertimeMinutes),
+        undertimeDeduction: r2(res.undertimeDeduction),
+        heldDays:           res.heldDays,
+        voidedDays:         res.voidedDays,
+        heldDeduction:      r2(res.heldDeduction),
+        awaitingResponse:   res.awaitingResponse,
         hoursPaid:   r2(res.hoursPaid),
         otHours:     r2(res.otHours),
         fullDays:    res.fullDays,
@@ -395,9 +440,554 @@ function doPost(e) {
         halfDayDeduction: r2(res.halfDayDeduction),
         totalDeduction:   r2(res.totalDeduction),
         cashAdvance:      r2(cashAdvance),
+        advanceSettled:     r2(adv.settled),      // already taken out of this payout
+        advanceOutstanding: r2(adv.outstanding),  // still to be recovered
+        advanceItems:       adv.items,
+        reimbursementItems: rmb.items,
+        allowanceRate:      who.allowance || 0,
+        allowance:          r2(allowance),
+        reimbursement:      r2(rmb.total),
+        reimbursementPaid:  r2(rmb.paid),
+        additionalPay:      r2(addp.total),
+        additionalPayItems: addp.items,
+        manualDeduction:      r2(ded.total),
+        manualDeductionItems: ded.items,
+        shortfall:            r2(shortfall),
         expected:         r2(expected),
-        days: res.days
+        days: res.days,
+        // Leave policy so the request form can enforce the same rules up front
+        leavePolicy: {
+          types:      hrLeaveTypesFor(data.username),
+          isGeneric:  hrIsGenericAccount(data.username),
+          today:      Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd'),
+          vacationEarliest: hrAddDays(Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd'),
+                                      HR_VACATION_NOTICE_DAYS),
+          vacationNoticeDays: HR_VACATION_NOTICE_DAYS,
+          emergencyPerMonth:  HR_EMERGENCY_PER_MONTH
+        }
       });
+    }
+
+    // ── OPERATING HOURS (admin-editable basis for lateness & undertime) ──
+    if (data.action === 'getOperatingHours') {
+      const s = hrSettings(ss);
+      return ok({ officialStart: hrSecToHms(s.officialStart).slice(0,5),
+                  staffCutoff:   hrSecToHms(s.staffCutoff).slice(0,5),
+                  halfDayAfter:  hrSecToHms(s.halfDayAfter).slice(0,5),
+                  officialEnd:   hrSecToHms(s.officialEnd).slice(0,5),
+                  dutyHours:     s.dutyHours });
+    }
+
+    // ── PER-DAY PAY VOID / HOLD (admin) + employee response ───────────
+    if (data.action === 'setPayAdjustment') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const emp  = String(data.employee||'').trim();
+      const date = String(data.date||'').trim();
+      const type = String(data.type||'HOLD').toUpperCase() === 'VOID' ? 'VOID' : 'HOLD';
+      const reason = String(data.reason||'').trim();
+      if (!emp) return err('Employee is required');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err('A valid date is required');
+      if (!reason) return err('A reason is required — the employee will see and answer this');
+
+      const sh = getOrCreateSheet(ss, 'Pay Adjustments', [
+        'Adjustment ID','Created At','Created By','Employee','Date','Type','Reason',
+        'Status','Employee Response','Responded At','Resolved By','Resolved At'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const rows = sh.getDataRange().getValues();
+      // One active adjustment per employee-day — replace rather than stack
+      for (let i = 1; i < rows.length; i++) {
+        const d = rows[i][4] instanceof Date
+          ? Utilities.formatDate(rows[i][4], HR_TZ, 'yyyy-MM-dd') : String(rows[i][4]||'').slice(0,10);
+        if (String(rows[i][3]).trim().toLowerCase() === emp.toLowerCase()
+            && d === date && String(rows[i][7]||'') === 'Active') {
+          sh.getRange(i+1, 6).setValue(type);
+          sh.getRange(i+1, 7).setValue(reason);
+          return ok({ adjustmentId: String(rows[i][0]), updated: true });
+        }
+      }
+      const id = 'PA-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+               + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, String(data.by||'admin'), emp, date, type, reason,
+        'Active', '', '', '', '' ]);
+      return ok({ adjustmentId: id, updated: false });
+    }
+
+    // Employee answers the admin's reason
+    if (data.action === 'respondPayAdjustment') {
+      const resp = String(data.response||'').trim();
+      if (!resp) return err('Please write your answer');
+      const sh = ss.getSheetByName('Pay Adjustments');
+      if (!sh) return err('No adjustments found');
+      const rows = sh.getDataRange().getValues();
+      const me = String(data.by||'').trim().toLowerCase();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== String(data.adjustmentId||'')) continue;
+        // Only the affected employee may answer their own record
+        if (String(rows[i][3]).trim().toLowerCase() !== me) return err('This is not your record');
+        sh.getRange(i+1, 9).setValue(resp);
+        sh.getRange(i+1, 10).setValue(Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss'));
+        return ok({ responded: String(data.adjustmentId) });
+      }
+      return err('Record not found');
+    }
+
+    // Admin releases the hold (day pays again) or cancels the adjustment
+    if (data.action === 'releasePayAdjustment') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Pay Adjustments');
+      if (!sh) return err('No adjustments found');
+      const newStatus = String(data.decision||'release') === 'cancel' ? 'Cancelled' : 'Released';
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== String(data.adjustmentId||'')) continue;
+        if (String(rows[i][7]||'') !== 'Active') return err('This record is already ' + rows[i][7]);
+        sh.getRange(i+1, 8).setValue(newStatus);
+        sh.getRange(i+1, 11).setValue(String(data.by||'admin'));
+        sh.getRange(i+1, 12).setValue(Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss'));
+        return ok({ resolved: newStatus });
+      }
+      return err('Record not found');
+    }
+
+    // ── WORK SCHEDULES (named shift patterns, assigned per employee) ──
+    if (data.action === 'getWorkSchedules') {
+      const map = hrSchedules(ss);
+      const list = Object.keys(map).map(function(k){
+        const s = map[k];
+        return { name: s.name,
+                 start:   hrSecToHms(s.officialStart).slice(0,5),
+                 lateFrom:hrSecToHms(s.staffCutoff).slice(0,5),
+                 halfDay: hrSecToHms(s.halfDayAfter).slice(0,5),
+                 end:     hrSecToHms(s.officialEnd).slice(0,5),
+                 dutyHours: s.dutyHours };
+      });
+      return ok({ schedules: list });
+    }
+
+    if (data.action === 'saveWorkSchedule') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const name = String(data.name||'').trim();
+      if (!name) return err('Schedule name is required');
+      const toSec = function(v){
+        const m = String(v||'').trim().match(/^(\d{1,2}):(\d{2})$/);
+        return m ? Number(m[1])*3600 + Number(m[2])*60 : null;
+      };
+      const st = toSec(data.start), lf = toSec(data.lateFrom),
+            hd = toSec(data.halfDay), en = toSec(data.end);
+      const dh = Number(data.dutyHours);
+      if (st===null || lf===null || hd===null || en===null) return err('All times are required (HH:MM)');
+      if (!(dh > 0 && dh <= 24)) return err('Duty hours must be between 1 and 24');
+      if (lf < st)  return err('Late-from cannot be earlier than the start');
+      if (hd <= lf) return err('Half day must be later than late-from');
+      if (en <= st) return err('End must be later than the start');
+
+      const sh = getOrCreateSheet(ss, 'Work Schedules',
+        ['Schedule','Start','Late From','Half Day From','End','Duty Hours']);
+      const row = [name, hrSecToHms(st), hrSecToHms(lf), hrSecToHms(hd), hrSecToHms(en), dh];
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim().toLowerCase() === name.toLowerCase()) {
+          sh.getRange(i+1, 1, 1, 6).setValues([row]);
+          // Stamp it effective from the START of the current cutoff, so it
+          // applies to every log already recorded in this cutoff
+          const eff = hrRecordScheduleVersion(ss, { name:name, officialStart:st, staffCutoff:lf,
+            halfDayAfter:hd, officialEnd:en, dutyHours:dh }, data.by);
+          return ok({ saved: name, updated: true, effectiveFrom: eff });
+        }
+      }
+      sh.appendRow(row);
+      hrRecordScheduleVersion(ss, { name:name, officialStart:st, staffCutoff:lf,
+        halfDayAfter:hd, officialEnd:en, dutyHours:dh }, data.by);
+      return ok({ saved: name, updated: false, effectiveFrom: hrCutoffRange(0).startDate });
+    }
+
+    if (data.action === 'saveOperatingHours') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const toSecOrNull = function(v){
+        const m = String(v||'').trim().match(/^(\d{1,2}):(\d{2})$/);
+        return m ? Number(m[1])*3600 + Number(m[2])*60 : null;
+      };
+      const st = toSecOrNull(data.officialStart), cut = toSecOrNull(data.staffCutoff),
+            hd = toSecOrNull(data.halfDayAfter),  en  = toSecOrNull(data.officialEnd);
+      const dh = Number(data.dutyHours);
+      if (st===null || cut===null || hd===null || en===null) return err('All times are required (HH:MM)');
+      if (!(dh > 0 && dh <= 24)) return err('Duty hours must be between 1 and 24');
+      if (cut < st)  return err('The late cutoff cannot be earlier than the official start');
+      if (hd <= cut) return err('Half day must be later than the late cutoff');
+      if (en <= st)  return err('Official end must be later than the official start');
+
+      const sh = getOrCreateSheet(ss, 'Attendance Settings', ['Setting','Value']);
+      const want = { 'official start': hrSecToHms(st), 'staff cutoff': hrSecToHms(cut),
+                     'half day after': hrSecToHms(hd), 'official end': hrSecToHms(en),
+                     'duty hours': dh };
+      const rows = sh.getDataRange().getValues();
+      const seen = {};
+      for (let i = 1; i < rows.length; i++) {
+        const k = String(rows[i][0]||'').toLowerCase().trim();
+        Object.keys(want).forEach(function(w){
+          if (k.indexOf(w) >= 0 && !seen[w]) { sh.getRange(i+1,2).setValue(want[w]); seen[w] = true; }
+        });
+      }
+      // Append any setting the sheet didn't have yet (e.g. Official End on older sheets)
+      const label = { 'official start':'Official Start', 'staff cutoff':'Staff Cutoff',
+                      'half day after':'Half Day After', 'official end':'Official End',
+                      'duty hours':'Duty Hours' };
+      Object.keys(want).forEach(function(w){
+        if (!seen[w]) sh.appendRow([label[w], want[w]]);
+      });
+      // Version it against the current cutoff, same as named schedules
+      const effOH = hrRecordScheduleVersion(ss, { name:'Operating Hours', officialStart:st,
+        staffCutoff:cut, halfDayAfter:hd, officialEnd:en, dutyHours:dh }, data.by);
+      return ok({ saved: true, settings: want, effectiveFrom: effOH });
+    }
+
+    // ══ HR REQUESTS — cash advances & leave (staff submit, admin decides) ══
+    // Cash Advances cols: 0 ID · 1 RequestedAt · 2 RequestedBy · 3 Amount ·
+    //   4 Reason · 5 Status · 6 ResolvedBy · 7 ResolvedAt · 8 DeductedCutoff · 9 Settled
+    // (hrCashAdvances() reads 2/3/5/9 — keep those positions stable.)
+    if (data.action === 'submitCashAdvance') {
+      const amt = Number(data.amount) || 0;
+      if (amt <= 0) return err('Enter a valid amount');
+      if (!String(data.reason||'').trim()) return err('A reason is required');
+      const sh = getOrCreateSheet(ss, 'Cash Advances', [
+        'Request ID','Requested At','Requested By','Amount','Reason',
+        'Status','Resolved By','Resolved At','Deducted Cutoff','Settled'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const id  = 'CA-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+                + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, String(data.requestedBy||''), amt,
+        String(data.reason||'').trim(), 'Pending', '', '', '', '' ]);
+      return ok({ requestId: id });
+    }
+
+    // Leave Requests cols: 0 ID · 1 RequestedAt · 2 RequestedBy · 3 Type ·
+    //   4 Start · 5 End · 6 Days · 7 Reason · 8 Status · 9 ResolvedBy · 10 ResolvedAt
+    if (data.action === 'submitLeaveRequest') {
+      const start = String(data.startDate||'').trim(), end = String(data.endDate||'').trim();
+      const who   = String(data.requestedBy||'').trim();
+      const type  = String(data.leaveType||'').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end))
+        return err('Pick valid start and end dates');
+      if (end < start) return err('End date cannot be before the start date');
+      if (!String(data.reason||'').trim()) return err('A reason is required');
+
+      // ── POLICY ──────────────────────────────────────────────────────
+      // Shared accounts have no individual entitlement — unpaid leave only.
+      const allowed = hrLeaveTypesFor(who);
+      if (allowed.indexOf(type) < 0) {
+        return err(hrIsGenericAccount(who)
+          ? 'This is a shared account — it can only file Unpaid Leave. Named employees can file the other types.'
+          : 'Unknown leave type: ' + type);
+      }
+
+      const today = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd');
+
+      // Emergency: same-day filing only, and capped per calendar month
+      if (type === 'Emergency Leave') {
+        if (start !== today)
+          return err('Emergency Leave can only be filed for today (' + today + ').');
+        const lvPrev = ss.getSheetByName('Leave Requests');
+        if (lvPrev) {
+          const month = start.slice(0,7);   // yyyy-MM
+          let used = 0;
+          lvPrev.getDataRange().getValues().slice(1).forEach(function(r){
+            if (!r[0]) return;
+            if (String(r[2]||'').trim().toLowerCase() !== who.toLowerCase()) return;
+            if (String(r[3]||'') !== 'Emergency Leave') return;
+            if (String(r[8]||'') === 'Rejected') return;      // rejected doesn't count
+            const s = r[4] instanceof Date
+              ? Utilities.formatDate(r[4], HR_TZ, 'yyyy-MM-dd') : String(r[4]||'').slice(0,10);
+            if (s.slice(0,7) === month) used++;
+          });
+          if (used >= HR_EMERGENCY_PER_MONTH)
+            return err('You have already used your Emergency Leave for this month ('
+              + HR_EMERGENCY_PER_MONTH + ' per month). File Unpaid Leave instead if needed.');
+        }
+      }
+
+      // Vacation: must be filed at least two weeks ahead
+      if (type === 'Vacation Leave') {
+        const earliest = hrAddDays(today, HR_VACATION_NOTICE_DAYS);
+        if (start < earliest)
+          return err('Vacation Leave needs ' + HR_VACATION_NOTICE_DAYS
+            + ' days notice — the earliest you can start is ' + earliest + '.');
+      }
+
+      // Sick leave is auto-approved; the medical certificate is the follow-up
+      const autoApproved = (type === 'Sick Leave');
+
+      const days = Math.round((new Date(end+'T00:00:00') - new Date(start+'T00:00:00')) / 86400000) + 1;
+      const sh = getOrCreateSheet(ss, 'Leave Requests', [
+        'Request ID','Requested At','Requested By','Leave Type','Start Date','End Date',
+        'Days','Reason','Status','Resolved By','Resolved At'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const id  = 'LV-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+                + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, who, type, start, end, days,
+        String(data.reason||'').trim(),
+        autoApproved ? 'Approved' : 'Pending',
+        autoApproved ? 'Auto-approved' : '',
+        autoApproved ? now : '' ]);
+      return ok({ requestId: id, days: days, autoApproved: autoApproved,
+        note: autoApproved ? 'Approved automatically — please present your medical certificate.' : '' });
+    }
+
+    // ── MANUAL ADDITIONAL PAY (admin) ─────────────────────────────────
+    if (data.action === 'addAdditionalPay') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const amt = Number(data.amount) || 0;
+      if (amt <= 0)      return err('Enter an amount greater than zero');
+      if (amt > 100000)  return err('That amount looks wrong — please confirm and re-enter');
+      const emp = String(data.employee||'').trim();
+      if (!emp) return err('Pick the employee');
+      const payDate = String(data.date||'').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(payDate)) return err('Pick the date this applies to');
+      const type = String(data.type||'').trim();
+      if (!type) return err('Pick the type of pay');
+
+      const sh = getOrCreateSheet(ss, 'Additional Pay', [
+        'ID','Created At','Created By','Employee','Date','Type','Amount','Note','Status'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const id  = 'AP-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+                + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, String(data.createdBy||''), emp, payDate, type,
+                     amt, String(data.note||'').trim(), 'Active' ]);
+      return ok({ id: id, employee: emp, amount: amt, date: payDate, type: type });
+    }
+
+    // Cancel a mistyped entry — kept as a row so the trail survives
+    if (data.action === 'cancelAdditionalPay') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Additional Pay');
+      if (!sh) return err('No additional pay entries found');
+      const rows = sh.getDataRange().getValues();
+      const wantId = String(data.id||'').trim();
+      if (!wantId) return err('Missing entry id');
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() !== wantId) continue;
+        if (String(rows[i][8]||'').trim().toLowerCase() === 'cancelled')
+          return err('That entry was already cancelled');
+        sh.getRange(i+1, 9).setValue('Cancelled');
+        return ok({ id: wantId });
+      }
+      return err('Entry not found: ' + wantId);
+    }
+
+    // ── MANUAL DEDUCTIONS (admin) ─────────────────────────────────────
+    if (data.action === 'addDeduction') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const amt = Number(data.amount) || 0;
+      if (amt <= 0)      return err('Enter an amount greater than zero');
+      if (amt > 100000)  return err('That amount looks wrong — please confirm and re-enter');
+      const emp = String(data.employee||'').trim();
+      if (!emp) return err('Pick the employee');
+      const dedDate = String(data.date||'').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dedDate)) return err('Pick the date this applies to');
+      const type = String(data.type||'').trim();
+      if (!type) return err('Pick the type of deduction');
+      // A deduction takes money off someone's pay — the employee is entitled to
+      // know why, so a reason is required here even though extras allow a blank.
+      const note = String(data.note||'').trim();
+      if (!note) return err('A reason is required — the employee will see this');
+
+      const sh = getOrCreateSheet(ss, 'Pay Deductions', [
+        'ID','Created At','Created By','Employee','Date','Type','Amount','Note','Status'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const id  = 'DD-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+                + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, String(data.createdBy||''), emp, dedDate, type,
+                     amt, note, 'Active' ]);
+      return ok({ id: id, employee: emp, amount: amt, date: dedDate, type: type });
+    }
+
+    // Cancel a mistaken deduction — kept as a row so the trail survives
+    if (data.action === 'cancelDeduction') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Pay Deductions');
+      if (!sh) return err('No deduction entries found');
+      const rows = sh.getDataRange().getValues();
+      const wantId = String(data.id||'').trim();
+      if (!wantId) return err('Missing entry id');
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() !== wantId) continue;
+        if (String(rows[i][8]||'').trim().toLowerCase() === 'cancelled')
+          return err('That entry was already cancelled');
+        sh.getRange(i+1, 9).setValue('Cancelled');
+        return ok({ id: wantId });
+      }
+      return err('Entry not found: ' + wantId);
+    }
+
+    // ── REIMBURSEMENT REQUESTS ────────────────────────────────────────
+    if (data.action === 'submitReimbursement') {
+      const amt = Number(data.amount) || 0;
+      if (amt <= 0) return err('Enter the amount you paid');
+      if (!String(data.description||'').trim()) return err('Describe what the expense was for');
+      const expDate = String(data.expenseDate||'').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(expDate)) return err('Pick the date of the expense');
+
+      // Optional receipt photo → Drive, same pattern as attendance selfies
+      let receipt = '';
+      if (data.receipt) {
+        try {
+          const pm   = String(data.receipt).match(/^data:(image\/\w+);base64,(.+)$/);
+          const blob = Utilities.newBlob(Utilities.base64Decode(pm ? pm[2] : String(data.receipt)),
+            pm ? pm[1] : 'image/jpeg',
+            'RCPT_' + String(data.requestedBy||'user') + '_' + expDate + '.jpg');
+          const fIt  = DriveApp.getFoldersByName('AE-ON Receipts');
+          const fold = fIt.hasNext() ? fIt.next() : DriveApp.createFolder('AE-ON Receipts');
+          receipt = fold.createFile(blob).getUrl();
+        } catch(rerr) { receipt = '(receipt save failed)'; }
+      }
+
+      const sh = getOrCreateSheet(ss, 'Reimbursements', [
+        'Request ID','Requested At','Requested By','Amount','Category','Expense Date',
+        'Description','Receipt','Status','Resolved By','Resolved At','Paid Cutoff','Paid'
+      ]);
+      const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+      const id  = 'RB-' + Utilities.formatDate(new Date(), HR_TZ, 'yyyyMMddHHmmss')
+                + '-' + Math.floor(Math.random()*900+100);
+      sh.appendRow([ id, now, String(data.requestedBy||''), amt,
+        String(data.category||'Other'), expDate, String(data.description||'').trim(),
+        receipt, 'Pending', '', '', '', '' ]);
+      return ok({ requestId: id, receiptSaved: receipt && receipt.indexOf('failed') < 0 });
+    }
+
+    if (data.action === 'resolveReimbursement') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Reimbursements');
+      if (!sh) return err('No reimbursements found');
+      const approve = String(data.decision) === 'approve';
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== String(data.requestId||'')) continue;
+        if (String(rows[i][8]||'') !== 'Pending')
+          return err('Already ' + String(rows[i][8]).toLowerCase());
+        const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+        sh.getRange(i+1, 9).setValue(approve ? 'Approved' : 'Rejected');
+        sh.getRange(i+1, 10).setValue(String(data.by||'admin'));
+        sh.getRange(i+1, 11).setValue(now);
+        return ok({ resolved: approve ? 'Approved' : 'Rejected' });
+      }
+      return err('Request not found');
+    }
+
+    // Mark a reimbursement as actually paid out in a cutoff
+    if (data.action === 'settleReimbursement') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Reimbursements');
+      if (!sh) return err('No reimbursements found');
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== String(data.requestId||'')) continue;
+        if (String(rows[i][8]||'') !== 'Approved') return err('Only approved items can be paid');
+        sh.getRange(i+1, 12).setValue(String(data.cutoffStart||'') || hrCutoffRange(0).startDate);
+        sh.getRange(i+1, 13).setValue('YES');
+        return ok({ settled: String(data.requestId) });
+      }
+      return err('Request not found');
+    }
+
+    // One reader for both request types. Employees get their own; admin gets all.
+    if (data.action === 'getHRRequests') {
+      const isAdmin = String(data.role||'').toLowerCase() === 'admin';
+      const meL = String(data.username||'').trim().toLowerCase();
+      const fmt = function(v){
+        return v instanceof Date ? Utilities.formatDate(v, HR_TZ, 'yyyy-MM-dd HH:mm:ss') : String(v||'');
+      };
+      const advances = [], leaves = [];
+
+      const ca = ss.getSheetByName('Cash Advances');
+      if (ca) ca.getDataRange().getValues().slice(1).forEach(function(r){
+        if (!r[0]) return;
+        const by = String(r[2]||'');
+        if (!isAdmin && by.trim().toLowerCase() !== meL) return;
+        advances.push({ requestId:String(r[0]), requestedAt:fmt(r[1]), requestedBy:by,
+          amount:Number(r[3])||0, reason:String(r[4]||''), status:String(r[5]||'Pending'),
+          resolvedBy:String(r[6]||''), resolvedAt:fmt(r[7]),
+          deductedCutoff:String(r[8]||''), settled:String(r[9]||'').toUpperCase()==='YES' });
+      });
+
+      const lv = ss.getSheetByName('Leave Requests');
+      if (lv) lv.getDataRange().getValues().slice(1).forEach(function(r){
+        if (!r[0]) return;
+        const by = String(r[2]||'');
+        if (!isAdmin && by.trim().toLowerCase() !== meL) return;
+        const d = function(v){ return v instanceof Date
+          ? Utilities.formatDate(v, HR_TZ, 'yyyy-MM-dd') : String(v||'').slice(0,10); };
+        leaves.push({ requestId:String(r[0]), requestedAt:fmt(r[1]), requestedBy:by,
+          leaveType:String(r[3]||'Leave'), startDate:d(r[4]), endDate:d(r[5]),
+          days:Number(r[6])||0, reason:String(r[7]||''), status:String(r[8]||'Pending'),
+          resolvedBy:String(r[9]||''), resolvedAt:fmt(r[10]) });
+      });
+
+      const reimbursements = [];
+      const rb = ss.getSheetByName('Reimbursements');
+      if (rb) rb.getDataRange().getValues().slice(1).forEach(function(r){
+        if (!r[0]) return;
+        const by = String(r[2]||'');
+        if (!isAdmin && by.trim().toLowerCase() !== meL) return;
+        const d = function(v){ return v instanceof Date
+          ? Utilities.formatDate(v, HR_TZ, 'yyyy-MM-dd') : String(v||'').slice(0,10); };
+        reimbursements.push({ requestId:String(r[0]), requestedAt:fmt(r[1]), requestedBy:by,
+          amount:Number(r[3])||0, category:String(r[4]||'Other'), expenseDate:d(r[5]),
+          description:String(r[6]||''), receipt:String(r[7]||''), status:String(r[8]||'Pending'),
+          resolvedBy:String(r[9]||''), resolvedAt:fmt(r[10]),
+          paid:String(r[12]||'').toUpperCase()==='YES' });
+      });
+
+      advances.reverse(); leaves.reverse(); reimbursements.reverse();   // newest first
+      return ok({ advances: advances.slice(0,100), leaves: leaves.slice(0,100),
+                  reimbursements: reimbursements.slice(0,100) });
+    }
+
+    // Approve / reject either type. Approving an advance leaves it unsettled so
+    // hrCashAdvances() deducts it from the next cutoff's expected pay.
+    if (data.action === 'resolveHRRequest') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const approve = String(data.decision) === 'approve';
+      const id = String(data.requestId||'');
+      const isLeave = id.indexOf('LV-') === 0;
+      const sh = ss.getSheetByName(isLeave ? 'Leave Requests' : 'Cash Advances');
+      if (!sh) return err('Request sheet not found');
+      const rows = sh.getDataRange().getValues();
+      const statusCol = isLeave ? 9 : 6;   // 1-based col of Status
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== id) continue;
+        const cur = String(isLeave ? rows[i][8] : rows[i][5] || 'Pending');
+        if (cur !== 'Pending') return err('This request was already ' + cur.toLowerCase());
+        const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+        sh.getRange(i+1, statusCol).setValue(approve ? 'Approved' : 'Rejected');
+        sh.getRange(i+1, statusCol+1).setValue(String(data.by||'admin'));
+        sh.getRange(i+1, statusCol+2).setValue(now);
+        return ok({ resolved: approve ? 'Approved' : 'Rejected', type: isLeave ? 'leave' : 'advance' });
+      }
+      return err('Request not found');
+    }
+
+    // Mark an approved advance as deducted/settled once it's been taken from a payout
+    if (data.action === 'settleCashAdvance') {
+      if (String(data.role||'').toLowerCase() !== 'admin') return err('Admin only');
+      const sh = ss.getSheetByName('Cash Advances');
+      if (!sh) return err('Cash Advances sheet not found');
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) !== String(data.requestId||'')) continue;
+        if (String(rows[i][5]||'') !== 'Approved') return err('Only approved advances can be settled');
+        // Store the cutoff START DATE (yyyy-MM-dd) — a stable key, unlike a display
+        // label. The advance keeps showing as a deduction in THAT cutoff forever, so
+        // the historical record always matches what the employee actually received.
+        const cutStart = String(data.cutoffStart||'') || hrCutoffRange(0).startDate;
+        sh.getRange(i+1, 9).setValue(cutStart);   // Deducted Cutoff
+        sh.getRange(i+1, 10).setValue('YES');     // Settled
+        return ok({ settled: String(data.requestId) });
+      }
+      return err('Request not found');
     }
 
     // ── HR SUMMARY (admin) — every employee for one cutoff, one payload ──
@@ -414,13 +1004,32 @@ function doPost(e) {
       const employees = [];
       let totalPayroll = 0, totalAdvances = 0, totalDeductions = 0, flagged = 0;
 
+      const isCurrent = (Number(data.offset)||0) === 0;
+      const cfgAll    = hrSettings(ss);
+      const adjAll    = hrPayAdjustments(ss);
+      const rmbAll    = hrReimbursements(ss);
+      const addAll    = hrAdditionalPay(ss);
+      const dedAll    = hrDeductions(ss);
       Object.keys(payMap).forEach(function(uL){
         const who = payMap[uL];
-        const res = hrComputeDays(grouped[uL] || {}, who.dailyRate, who.payType);
-        const adv = advMap[uL] || 0;
-        const expected = Math.max(0, res.gross - res.totalDeduction - adv);
-        // Skip people with no activity AND no rate — keeps the list meaningful
-        if (res.daysWorked === 0 && res.incompleteDays === 0 && who.dailyRate === 0) return;
+        const cfgWho = hrScheduleFor(ss, who, cfgAll, range.startDate);   // per-employee, per-cutoff
+        const res = hrComputeDays(grouped[uL] || {}, who.dailyRate, who.payType, cfgWho,
+                                  adjAll[uL]);
+        const advInfo = hrAdvanceForCutoff(advMap[uL], range, isCurrent);
+        const adv = advInfo.total;
+        const allowW = (who.allowance || 0) * res.daysWorked;
+        const rmbW   = hrReimburseForCutoff(rmbAll[uL], range, isCurrent);
+        const addW   = hrAddPayForCutoff(addAll[uL], range);
+        const dedW   = hrDeductForCutoff(dedAll[uL], range);
+        const rawNetW = res.gross + allowW + rmbW.total + addW.total
+                      - res.totalDeduction - adv - dedW.total;
+        const expected  = Math.max(0, rawNetW);
+        const shortfallW = rawNetW < 0 ? -rawNetW : 0;
+        // Skip people with no activity AND no rate — keeps the list meaningful.
+        // An extra or a deduction posted against them is real money, so either
+        // one keeps them in the list.
+        if (res.daysWorked === 0 && res.incompleteDays === 0 && who.dailyRate === 0
+            && addW.total === 0 && dedW.total === 0) return;
         if (res.incompleteDays > 0 || who.dailyRate === 0) flagged++;
         totalPayroll    += expected;
         totalAdvances   += adv;
@@ -429,12 +1038,22 @@ function doPost(e) {
           username:   who.username,
           role:       who.role,
           payType:    who.payType,
+          schedule:      cfgWho.name || 'Operating Hours',
+          scheduleStart: hrSecToHms(cfgWho.officialStart).slice(0,5),
+          scheduleEnd:   hrSecToHms(cfgWho.officialEnd).slice(0,5),
           dailyRate:  who.dailyRate,
           rateSet:    who.dailyRate > 0,
           daysWorked: res.daysWorked,
           lateDays:   res.lateDays,
           halfDays:   res.halfDays,
           lateMinutes:Math.round(res.lateMinutes),
+          undertimeDays:      res.undertimeDays,
+          undertimeMinutes:   Math.round(res.undertimeMinutes),
+          undertimeDeduction: r2(res.undertimeDeduction),
+          heldDays:           res.heldDays,
+          voidedDays:         res.voidedDays,
+          heldDeduction:      r2(res.heldDeduction),
+          awaitingResponse:   res.awaitingResponse,
           hoursPaid:  r2(res.hoursPaid),
           otHours:    r2(res.otHours),
           fullDays:   res.fullDays,
@@ -442,6 +1061,18 @@ function doPost(e) {
           gross:          r2(res.gross),
           totalDeduction: r2(res.totalDeduction),
           cashAdvance:    r2(adv),
+          advanceSettled:     r2(advInfo.settled),
+          advanceOutstanding: r2(advInfo.outstanding),
+          advanceItems:       advInfo.items,
+          reimbursementItems: rmbW.items,
+          allowanceRate:  who.allowance || 0,
+          allowance:      r2(allowW),
+          reimbursement:  r2(rmbW.total),
+          additionalPay:      r2(addW.total),
+          additionalPayItems: addW.items,
+          manualDeduction:      r2(dedW.total),
+          manualDeductionItems: dedW.items,
+          shortfall:            r2(shortfallW),
           expected:       r2(expected),
           days: res.days
         });
@@ -503,6 +1134,45 @@ function doPost(e) {
       }
       skus.sort((a,b)=>a.order-b.order);
       return ok({skus});
+    }
+
+    // ── SKU ALIGNMENT AUDIT ────────────────────────────────────────────
+    // Compares what's holding stock against what the SKU Masters actually list,
+    // so nothing can quietly hold inventory while being invisible in the app.
+    if (data.action === 'auditSKUAlignment') {
+      const report = { orphans: [], neverCounted: [], inactiveWithStock: [] };
+      const scan = function(masterName, cntName, activeCol, type){
+        const ms = ss.getSheetByName(masterName), cs = ss.getSheetByName(cntName);
+        const master = {};       // code → {name, active}
+        if (ms) ms.getDataRange().getValues().slice(4).forEach(function(r){
+          if (!r[0]) return;
+          master[String(r[0]).trim().toLowerCase()] = {
+            code: String(r[0]).trim(), name: String(r[1]||'').trim(),
+            active: String(r[activeCol]).toUpperCase() === 'YES' };
+        });
+        const stock = {};        // latest qty per code (last row wins)
+        if (cs) cs.getDataRange().getValues().slice(1).forEach(function(r){
+          if (!r[0] || !r[3]) return;
+          stock[String(r[3]).trim().toLowerCase()] =
+            { code: String(r[3]).trim(), name: String(r[4]||''), qty: Number(r[5]) || 0 };
+        });
+        Object.keys(stock).forEach(function(k){
+          const m = master[k], s = stock[k];
+          if (!m) report.orphans.push({ type:type, code:s.code, name:s.name, stock:s.qty });
+          else if (!m.active && s.qty !== 0)
+            report.inactiveWithStock.push({ type:type, code:m.code, name:m.name, stock:s.qty });
+        });
+        Object.keys(master).forEach(function(k){
+          if (master[k].active && !stock[k])
+            report.neverCounted.push({ type:type, code:master[k].code, name:master[k].name });
+        });
+      };
+      scan('SKU Master',          'Stock Counts - Distribution', 5, 'DIST');
+      scan('SKU Master - Retail', 'Stock Counts - Retail',       7, 'RETAIL');
+      return ok({ orphans: report.orphans, neverCounted: report.neverCounted,
+                  inactiveWithStock: report.inactiveWithStock,
+                  totalIssues: report.orphans.length + report.neverCounted.length
+                             + report.inactiveWithStock.length });
     }
 
     // ── GET SKU MASTER (fallback) ──────────────────────────────────────
@@ -619,10 +1289,20 @@ function doPost(e) {
 
       // Known DIST SKU codes — flag codes that won't map to the load form
       const knownSku = {};
+      // SKU code → category (col C), so the load list can be grouped by
+      // category. Only active SKUs have one; anything else is uncategorised.
+      const skuCategory = {};
       const skuSheet = ss.getSheetByName('SKU Master');
       if (skuSheet) {
+        // Active SKUs only — same filter every other reader uses, so a
+        // deactivated item is flagged as unknown here too instead of silently
+        // passing as loadable.
         skuSheet.getDataRange().getValues().slice(4).forEach(function(r){
-          if (r[0]) knownSku[String(r[0]).trim().toLowerCase()] = true;
+          if (r[0] && String(r[5]).toUpperCase() === 'YES') {
+            const code = String(r[0]).trim().toLowerCase();
+            knownSku[code] = true;
+            skuCategory[code] = String(r[2] || '').trim();
+          }
         });
       }
 
@@ -678,6 +1358,7 @@ function doPost(e) {
         if (!bySku[sku]) bySku[sku] = {
           skuCode:  sku,
           itemName: String(r[5] || sku),
+          category: skuCategory[sku.toLowerCase()] || '',
           totalQty: 0,
           known:    knownSku.hasOwnProperty(sku.toLowerCase()),
           lines:    []
@@ -1046,7 +1727,34 @@ function doPost(e) {
           chequeNotified = false; // never fail the approval over a notification
         }
       }
-      return ok({ chequeNotified: chequeNotified });
+      // ── DELIVERY REMINDER ──────────────────────────────────────────
+      // Approved goods are now on order — put the expected delivery on the
+      // calendar so nothing ordered is quietly forgotten. It's cleared
+      // automatically the moment the goods are received.
+      var deliveryNote = '';
+      try {
+        var delDate = null;
+        if (data.deliveryDate && /^\d{4}-\d{2}-\d{2}/.test(String(data.deliveryDate))) {
+          delDate = new Date(String(data.deliveryDate).slice(0,10) + 'T00:00:00');
+        }
+        if (!delDate || isNaN(delDate.getTime())) {   // no date given → nudge in a week
+          delDate = new Date(); delDate.setDate(delDate.getDate() + 7);
+        }
+        const delTitle = 'Delivery Expected — ' + data.poNumber + ' · ' + poSupplier
+          + ' · ₱' + Number(poTotal).toLocaleString('en-PH',{minimumFractionDigits:2});
+        deliveryNote = poUpsertCalEvent(data.poNumber, 'DEL', delTitle, delDate, [
+          'PO: ' + data.poNumber,
+          'Supplier: ' + poSupplier,
+          'Amount: ₱' + Number(poTotal).toLocaleString('en-PH',{minimumFractionDigits:2}),
+          'Approved by: ' + (data.approvedBy || ''),
+          data.deliveryDate ? '' : '(No delivery date set — reminder placed 7 days out)',
+          'Clears automatically once the goods are received.'
+        ]);
+      } catch (delErr) {
+        deliveryNote = 'ERROR: ' + delErr.toString();   // never fail an approval over a reminder
+      }
+
+      return ok({ chequeNotified: chequeNotified, deliveryNote: deliveryNote });
     }
 
     // ── REJECT PO ─────────────────────────────────────────────────────
@@ -1309,29 +2017,61 @@ function doPost(e) {
             + (chequeRef ? ' — Cheque: ' + chequeRef : '')
             + (docRef    ? ' — Ref: '    + docRef    : '');
 
-          const desc = [
+          const descLines = [
             'PO: '           + data.poNumber,
             'Supplier: '     + supplier,
             'Amount: ₱' + amount.toLocaleString('en-PH',{minimumFractionDigits:2}),
             'Payment Mode: ' + (paymentMode || 'N/A'),
             'Terms: '        + (termsDays > 0 ? termsDays+' days from receipt' : 'Upon Delivery'),
-            'Receipt Date: ' + Utilities.formatDate(receiptDate, Session.getScriptTimeZone(), 'MMM d, yyyy'),
+            'Status: '       + newStatus,
+            'Last receipt: ' + Utilities.formatDate(receiptDate, Session.getScriptTimeZone(), 'MMM d, yyyy'),
             'Due Date: '     + Utilities.formatDate(dueDate, Session.getScriptTimeZone(), 'MMM d, yyyy'),
             chequeRef ? 'Cheque Ref: ' + chequeRef : '',
             docRef    ? 'Doc Ref: '    + docRef    : '',
             'Received By: '  + (data.receivedBy || '')
-          ].filter(Boolean).join('\n');
+          ];
 
-          const cal   = CalendarApp.getDefaultCalendar();
-          const event = cal.createAllDayEvent(title, dueDate, { description: desc });
+          // Split / Installment POs carry their own schedule (col 23) with a due
+          // date and amount per instalment. One lump reminder for the full total
+          // would be wrong on every count, so give each unpaid instalment its own.
+          var schedule = [];
+          try { schedule = JSON.parse(String(poRowData[22] || '[]')) || []; } catch(e) { schedule = []; }
 
-          // Add popup reminders — only if due date is far enough away
-          const msLeft = dueDate.getTime() - new Date().getTime();
-          if(msLeft > 7*24*60*60000) event.addPopupReminder(7*24*60);
-          if(msLeft > 3*24*60*60000) event.addPopupReminder(3*24*60);
-          if(msLeft > 1*24*60*60000) event.addPopupReminder(1*24*60);
+          if (Array.isArray(schedule) && schedule.length) {
+            var made = 0;
+            schedule.forEach(function(inst){
+              const kind = 'PAY' + (inst.num || 0);
+              if (String(inst.status || '') === 'Paid') {
+                poClearCalEvent(data.poNumber, kind, receiptDate);   // already settled
+                return;
+              }
+              var iDue = new Date(String(inst.dueDate || '').slice(0,10) + 'T00:00:00');
+              if (isNaN(iDue.getTime())) iDue = new Date(dueDate);
+              const iTitle = 'Payment Due (' + (inst.label || ('Instalment ' + inst.num)) + ') — '
+                + data.poNumber + ' · ' + supplier
+                + ' · ₱' + Number(inst.amount||0).toLocaleString('en-PH',{minimumFractionDigits:2});
+              poUpsertCalEvent(data.poNumber, kind, iTitle, iDue, [
+                'PO: ' + data.poNumber,
+                'Supplier: ' + supplier,
+                'Instalment ' + (inst.num||'') + ' of ' + schedule.length + ': ' + (inst.label||''),
+                'Amount: ₱' + Number(inst.amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}),
+                'PO total: ₱' + amount.toLocaleString('en-PH',{minimumFractionDigits:2}),
+                'Payment Mode: ' + (paymentMode || 'Split / Installment'),
+                chequeRef ? 'Cheque Ref: ' + chequeRef : '',
+                'Received By: ' + (data.receivedBy || '')
+              ]);
+              made++;
+            });
+            // A split PO must not also carry a full-total reminder
+            poClearCalEvent(data.poNumber, 'PAY', receiptDate);
+            calendarNote = made + ' instalment reminder' + (made!==1?'s':'') + ' set';
+          } else {
+            // Single payment — one reminder, updated on each partial delivery
+            calendarNote = poUpsertCalEvent(data.poNumber, 'PAY', title, dueDate, descLines);
+          }
 
-          calendarNote = 'Event created for ' + Utilities.formatDate(dueDate, Session.getScriptTimeZone(), 'MMM d, yyyy');
+          // Goods have arrived, so the "delivery expected" nudge is done
+          poClearCalEvent(data.poNumber, 'DEL', receiptDate);
         } else {
           calendarNote = 'PO row not found in poRows — no event created';
         }
@@ -2759,6 +3499,55 @@ function doPost(e) {
     }
 
     // ── VOID INVOICE (admin only) ─────────────────────────────────────────
+    // ── INVOICE DETAIL — full record for review / reprint ──────────────
+    if (data.action === 'getInvoiceDetail') {
+      const invNum = String(data.invoiceNumber||'').trim();
+      if (!invNum) return err('Invoice number required');
+      const invSheet = ss.getSheetByName('Sales Invoices');
+      if (!invSheet) return err('Sales Invoices sheet not found');
+      const tzD = Session.getScriptTimeZone();
+      const dOf = function(v){ return v instanceof Date
+        ? Utilities.formatDate(v, tzD, 'yyyy-MM-dd') : String(v||'').slice(0,10); };
+
+      let head = null;
+      invSheet.getDataRange().getValues().slice(1).forEach(function(r){
+        if (!r[0] || String(r[0]).trim() !== invNum) return;
+        head = {
+          invoiceNumber: String(r[0]), contactName: String(r[1]), dealerId: String(r[2]),
+          reference: String(r[3]), invoiceDate: dOf(r[4]), dueDate: dOf(r[5]),
+          paymentTerms: String(r[6]), subtotal: Number(r[7])||0, total: Number(r[8])||0,
+          status: String(r[9]), createdBy: String(r[10]), createdAt: String(r[11]),
+          paymentType: String(r[12]||'Cash'), checkRef: String(r[13]||''),
+          signature: String(r[14]||''),
+          voidReason: String(r[16]||''), voidedBy: String(r[17]||''), voidedAt: String(r[18]||'')
+        };
+      });
+      if (!head) return err('Invoice not found: ' + invNum);
+
+      // Line items: 0 InvoiceNo · 1 SKU · 2 Code · 3 Description · 4 Qty · 5 Price · 6 Disc · 7 LineTotal
+      const lines = [];
+      const lnSheet = ss.getSheetByName('Sales Invoice Lines');
+      if (lnSheet) {
+        lnSheet.getDataRange().getValues().slice(1).forEach(function(r){
+          if (!r[0] || String(r[0]).trim() !== invNum) return;
+          lines.push({ skuCode: String(r[2]||r[1]||''), description: String(r[3]||''),
+            qty: Number(r[4])||0, unitPrice: Number(r[5])||0,
+            discount: Number(r[6])||0, lineTotal: Number(r[7])||0 });
+        });
+      }
+
+      // Dealer snapshot for the receipt header
+      let dealer = null;
+      const dirD = ss.getSheetByName('Dealer Directory');
+      if (dirD) dirD.getDataRange().getValues().slice(1).forEach(function(r){
+        if (String(r[0]) === head.dealerId) dealer = { storeName:String(r[1]||''),
+          ownerName:String(r[2]||''), phone1:String(r[3]||''), phone2:String(r[4]||''),
+          area:String(r[5]||''), address:String(r[6]||'') };
+      });
+
+      return ok({ invoice: head, lines: lines, dealer: dealer });
+    }
+
     if (data.action === 'voidInvoice') {
       const invSheet = ss.getSheetByName('Sales Invoices');
       if (!invSheet) return err('Sales Invoices sheet not found');
@@ -3196,6 +3985,13 @@ function doPost(e) {
       }
 
       if (!found) return err('PO not found: ' + data.poNumber);
+
+      // Settled instalment — pull its reminder off the calendar so only what is
+      // still owed keeps showing up.
+      try {
+        poClearCalEvent(data.poNumber, 'PAY' + (Number(data.installmentIndex) + 1), new Date());
+      } catch(e) { /* calendar is best-effort, never block the payment record */ }
+
       return ok({ poNumber: data.poNumber, installment: Number(data.installmentIndex) + 1, updatedAt: now });
     }
 
@@ -4240,6 +5036,167 @@ function doPost(e) {
 const HR_TZ = 'Asia/Manila';   // payroll-critical — never trust the project tz
 const HR_STD_HOURS = 10;
 
+// ── LEAVE POLICY ──────────────────────────────────────────────────
+// Shared/generic logins (not one identifiable person) can only file UNPAID
+// leave — there's no individual entitlement behind them. Add usernames here
+// as new shared accounts are created.
+const HR_GENERIC_ACCOUNTS = ['warehouse','bajaj1','bajaj2','temp'];
+const HR_VACATION_NOTICE_DAYS  = 14;   // vacation must be filed this far ahead
+const HR_EMERGENCY_PER_MONTH   = 1;    // emergency leave allowance per calendar month
+
+function hrIsGenericAccount(username) {
+  return HR_GENERIC_ACCOUNTS.indexOf(String(username||'').trim().toLowerCase()) >= 0;
+}
+function hrLeaveTypesFor(username) {
+  return hrIsGenericAccount(username)
+    ? ['Unpaid Leave']
+    : ['Sick Leave','Vacation Leave','Emergency Leave','Unpaid Leave'];
+}
+// ── OPERATING HOURS ───────────────────────────────────────────────
+// One source of truth for attendance + payroll, editable by admin in-app.
+//   Official Start  → when duty begins (basis for lateness)
+//   Staff Cutoff    → arrive at/after this = LATE
+//   Half Day After  → arrive at/after this = HALF DAY
+//   Official End    → when duty ends (basis for UNDERTIME)
+//   Duty Hours      → hours that make one full day (hourly rate = daily ÷ this)
+function hrHmsToSec(v, fallback) {
+  const hms = (v instanceof Date) ? Utilities.formatDate(v, HR_TZ, 'HH:mm:ss')
+                                  : String(v||'').trim();
+  const m = hms.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return fallback;
+  return Number(m[1])*3600 + Number(m[2])*60 + (Number(m[3])||0);
+}
+function hrSecToHms(s) {
+  const p2 = function(n){ return ('0'+n).slice(-2); };
+  return p2(Math.floor(s/3600)) + ':' + p2(Math.floor((s%3600)/60)) + ':' + p2(s%60);
+}
+// ── WORK SCHEDULES ────────────────────────────────────────────────
+// Named schedules (Retail, Warehouse/Driver…) so each employee is judged
+// against their own hours instead of one company-wide window.
+// Sheet: Name · Start · Late From · Half Day From · End · Duty Hours
+function hrSchedules(ss) {
+  const sh = getOrCreateSheet(ss, 'Work Schedules',
+    ['Schedule','Start','Late From','Half Day From','End','Duty Hours']);
+  if (sh.getLastRow() < 2) {
+    sh.appendRow(['Retail',           '07:45:00','07:46:00','12:00:00','18:30:00',10]);
+    sh.appendRow(['Warehouse/Driver', '07:30:00','07:31:00','12:00:00','17:30:00',10]);
+  }
+  const map = {};
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0]) return;
+    map[String(r[0]).trim().toLowerCase()] = {
+      name:          String(r[0]).trim(),
+      officialStart: hrHmsToSec(r[1], 7*3600+45*60),
+      staffCutoff:   hrHmsToSec(r[2], 7*3600+46*60),
+      halfDayAfter:  hrHmsToSec(r[3], 12*3600),
+      officialEnd:   hrHmsToSec(r[4], 18*3600+30*60),
+      dutyHours:     Number(r[5]) || HR_STD_HOURS
+    };
+  });
+  return map;
+}
+
+// ── SCHEDULE HISTORY ──────────────────────────────────────────────
+// Hours are versioned PER CUTOFF. Saving a change stamps it effective from the
+// START of the current cutoff, so it applies to every log already recorded in
+// that cutoff — while closed cutoffs keep the hours that were in force then.
+// Sheet: Effective From (cutoff start) · Schedule · Start · Late From ·
+//        Half Day From · End · Duty Hours · Changed By · Changed At
+function hrScheduleHistory(ss, cutoffStart) {
+  const sh = ss.getSheetByName('Schedule History');
+  if (!sh || !cutoffStart) return {};
+  const best = {};   // scheduleNameLower → {version, effectiveFrom}
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0] || !r[1]) return;
+    const eff = r[0] instanceof Date
+      ? Utilities.formatDate(r[0], HR_TZ, 'yyyy-MM-dd') : String(r[0]).slice(0,10);
+    if (eff > cutoffStart) return;             // change came after this cutoff began
+    const key = String(r[1]).trim().toLowerCase();
+    if (best[key] && best[key].eff > eff) return;   // keep the latest applicable
+    best[key] = { eff: eff, cfg: {
+      name:          String(r[1]).trim(),
+      officialStart: hrHmsToSec(r[2], 7*3600+45*60),
+      staffCutoff:   hrHmsToSec(r[3], 7*3600+46*60),
+      halfDayAfter:  hrHmsToSec(r[4], 12*3600),
+      officialEnd:   hrHmsToSec(r[5], 18*3600+30*60),
+      dutyHours:     Number(r[6]) || HR_STD_HOURS
+    }};
+  });
+  const out = {};
+  Object.keys(best).forEach(function(k){ out[k] = best[k].cfg; });
+  return out;
+}
+
+// Record the hours a schedule takes effect with, from the current cutoff's start
+function hrRecordScheduleVersion(ss, cfg, changedBy) {
+  const sh = getOrCreateSheet(ss, 'Schedule History', [
+    'Effective From','Schedule','Start','Late From','Half Day From','End','Duty Hours',
+    'Changed By','Changed At'
+  ]);
+  const eff = hrCutoffRange(0).startDate;
+  const now = Utilities.formatDate(new Date(), HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+  const row = [ eff, cfg.name, hrSecToHms(cfg.officialStart), hrSecToHms(cfg.staffCutoff),
+                hrSecToHms(cfg.halfDayAfter), hrSecToHms(cfg.officialEnd), cfg.dutyHours,
+                String(changedBy||'admin'), now ];
+  // One version per schedule per cutoff — a later edit in the same cutoff replaces it
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const e = rows[i][0] instanceof Date
+      ? Utilities.formatDate(rows[i][0], HR_TZ, 'yyyy-MM-dd') : String(rows[i][0]).slice(0,10);
+    if (e === eff && String(rows[i][1]).trim().toLowerCase() === String(cfg.name).trim().toLowerCase()) {
+      sh.getRange(i+1, 1, 1, 9).setValues([row]);
+      return eff;
+    }
+  }
+  sh.appendRow(row);
+  return eff;
+}
+
+// The schedule that applies to one person FOR A GIVEN CUTOFF: the version in
+// force for that cutoff if one was recorded, else their current assignment.
+function hrScheduleFor(ss, staffRec, fallback, cutoffStart) {
+  const current = hrSchedules(ss);
+  const historic = cutoffStart ? hrScheduleHistory(ss, cutoffStart) : {};
+  const pick = function(key){ return historic[key] || current[key]; };
+
+  const named = String((staffRec && staffRec.schedule) || '').trim().toLowerCase();
+  if (named && pick(named)) return pick(named);
+  const role = String((staffRec && staffRec.role) || '').toLowerCase();
+  if (role.indexOf('retail') >= 0 && pick('retail')) return pick('retail');
+  if ((role.indexOf('driver') >= 0 || role.indexOf('staff') >= 0) && pick('warehouse/driver'))
+    return pick('warehouse/driver');
+  // Global Operating Hours are versioned too, so an old cutoff keeps its own
+  return historic['operating hours'] || fallback;
+}
+
+function hrSettings(ss) {
+  const sh = getOrCreateSheet(ss, 'Attendance Settings', ['Setting','Value']);
+  if (sh.getLastRow() < 2) {
+    sh.appendRow(['Official Start','07:45:00']);
+    sh.appendRow(['Staff Cutoff','07:46:00']);
+    sh.appendRow(['Half Day After','12:00:00']);
+  }
+  const s = { officialStart: 7*3600+45*60, staffCutoff: 7*3600+46*60,
+              halfDayAfter: 12*3600, officialEnd: 18*3600+30*60, dutyHours: HR_STD_HOURS };
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    const k = String(r[0]||'').toLowerCase();
+    if (r[1] === '' || r[1] == null) return;
+    if (k.indexOf('official start') >= 0) s.officialStart = hrHmsToSec(r[1], s.officialStart);
+    else if (k.indexOf('staff cutoff') >= 0) s.staffCutoff  = hrHmsToSec(r[1], s.staffCutoff);
+    else if (k.indexOf('half day')    >= 0) s.halfDayAfter = hrHmsToSec(r[1], s.halfDayAfter);
+    else if (k.indexOf('official end') >= 0) s.officialEnd  = hrHmsToSec(r[1], s.officialEnd);
+    else if (k.indexOf('duty hours')   >= 0) s.dutyHours    = Number(r[1]) || s.dutyHours;
+  });
+  return s;
+}
+
+function hrAddDays(isoDate, n) {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  const p2 = function(x){ return ('0'+x).slice(-2); };
+  return d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate());
+}
+
 // Semi-monthly cutoff (1–15, 16–end). offset 0 = current, -1 = previous, …
 function hrCutoffRange(offset) {
   const pad2 = function(n){ return ('0'+n).slice(-2); };
@@ -4273,6 +5230,8 @@ function hrStaffPay(ss) {
       role:      String(r[2]||'').trim(),
       dailyRate: Number(r[20]) || 0,
       payType:   String(r[21]||'daily').toLowerCase() === 'hourly' ? 'hourly' : 'daily',
+      schedule:  String(r[22]||'').trim(),   // W: assigned Work Schedule (blank = by role)
+      allowance: Number(r[23]) || 0,         // X: daily allowance (drivers etc.)
       found:     true
     };
   });
@@ -4293,8 +5252,11 @@ function hrGroupAttendance(ss, startDate, endDate) {
     if (date < startDate || date > endDate) return;
     const uL = String(r[1]).trim().toLowerCase();
     if (!out[uL]) out[uL] = {};
-    if (!out[uL][date]) out[uL][date] = { date:date, timeIn:'', timeOut:'', late:'' };
+    if (!out[uL][date]) out[uL][date] = { date:date, timeIn:'', timeOut:'', late:'', punches:[] };
     const time = ts.slice(11,19), act = String(r[2]).toUpperCase();
+    // Keep EVERY punch — hourly staff may clock out when idle and back in when
+    // work returns, and each worked session is paid separately.
+    out[uL][date].punches.push({ time: time, act: act });
     if (act === 'IN') {
       if (!out[uL][date].timeIn) { out[uL][date].timeIn = time; out[uL][date].late = String(r[3]||''); }
     } else if (act === 'OUT') { out[uL][date].timeOut = time; }
@@ -4302,7 +5264,8 @@ function hrGroupAttendance(ss, startDate, endDate) {
   return out;
 }
 
-// Approved-but-unsettled cash advances per employee (Phase 2 fills this sheet)
+// Approved cash advances per employee, with their settlement state.
+// Returns {usernameLower: [{amount, settled, cutoff}]}
 function hrCashAdvances(ss) {
   const map = {};
   const sh = ss.getSheetByName('Cash Advances');
@@ -4310,9 +5273,259 @@ function hrCashAdvances(ss) {
   sh.getDataRange().getValues().slice(1).forEach(function(r){
     if (!r[0] || !r[2]) return;
     if (String(r[5]||'').trim().toLowerCase() !== 'approved') return;
-    if (String(r[9]||'').trim().toUpperCase() === 'YES') return;   // settled already
     const uL = String(r[2]).trim().toLowerCase();
-    map[uL] = (map[uL] || 0) + (Number(r[3]) || 0);
+    const dc = r[8] instanceof Date
+      ? Utilities.formatDate(r[8], HR_TZ, 'yyyy-MM-dd') : String(r[8]||'').trim();
+    if (!map[uL]) map[uL] = [];
+    map[uL].push({
+      id:      String(r[0]),
+      amount:  Number(r[3]) || 0,
+      reason:  String(r[4]||''),
+      settled: String(r[9]||'').trim().toUpperCase() === 'YES',
+      cutoff:  dc,                     // which cutoff it was deducted from
+      // Dates were being read off the sheet and thrown away, so the dashboard
+      // could only ever show a lump sum with no idea when it came from.
+      requestedAt: hrCellDate(r[1]),
+      approvedAt:  hrCellDate(r[7])
+    });
+  });
+  return map;
+}
+
+// Sheet cells come back as either a Date object or a string depending on how
+// the row was written. Normalise to 'yyyy-MM-dd HH:mm:ss' (or '' if empty).
+function hrCellDate(v) {
+  if (!v) return '';
+  if (v instanceof Date) return Utilities.formatDate(v, HR_TZ, 'yyyy-MM-dd HH:mm:ss');
+  return String(v).trim();
+}
+
+// How much of an employee's advances belongs to the cutoff being viewed.
+//   settled   → only in the cutoff it was actually deducted from, so the
+//               historical record keeps showing what they really received.
+//   unsettled → against the CURRENT cutoff, since that's where it will land.
+// (Older rows stored the period label instead of the start date — accept both.)
+function hrAdvanceForCutoff(list, range, isCurrent) {
+  let total = 0, settled = 0, outstanding = 0;
+  const items = [];
+  (list || []).forEach(function(a){
+    if (a.settled) {
+      if (a.cutoff && (a.cutoff === range.startDate || a.cutoff === range.label)) {
+        total += a.amount; settled += a.amount;
+        items.push(hrLineItem(a, range, 'settled'));
+      }
+    } else if (isCurrent) {
+      total += a.amount; outstanding += a.amount;
+      items.push(hrLineItem(a, range, 'outstanding'));
+    }
+  });
+  items.sort(hrByDate);
+  return { total: total, settled: settled, outstanding: outstanding, items: items };
+}
+
+// One displayable line for an advance or reimbursement, carrying the dates the
+// dashboard needs and — crucially — whether it was raised BEFORE the cutoff it
+// is being charged to. An unsettled item always lands on the current cutoff,
+// which is correct, but without saying so a July request looks like a new one.
+function hrLineItem(x, range, state) {
+  const asked = String(x.requestedAt || '').slice(0,10);
+  return {
+    id:          x.id || '',
+    amount:      x.amount,
+    state:       state,
+    requestedAt: x.requestedAt || '',
+    approvedAt:  x.approvedAt  || '',
+    note:        x.reason || x.description || x.category || '',
+    // Carried over means "still unsettled and older than this cutoff" — that
+    // is the case that confuses. A settled item sits in the cutoff it was
+    // actually deducted from, so it is history, not something rolling forward.
+    carriedOver: state === 'outstanding' && !!(asked && asked < range.startDate),
+    fromCutoff:  hrCutoffLabelFor(asked)
+  };
+}
+// Oldest first, so the longest-outstanding item is top of the list.
+// Rows with no date go last rather than masquerading as the oldest.
+function hrByDate(a, b) {
+  const x = String(a.requestedAt||''), y = String(b.requestedAt||'');
+  if (!x && !y) return 0;
+  if (!x) return 1;
+  if (!y) return -1;
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+// Which semi-monthly cutoff a given date belongs to, as a readable label.
+function hrCutoffLabelFor(dateStr) {
+  const d = String(dateStr || '').slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '';
+  const y = Number(d.slice(0,4)), m = Number(d.slice(5,7)), day = Number(d.slice(8,10));
+  const last = new Date(y, m, 0).getDate();
+  const mon  = Utilities.formatDate(new Date(y, m-1, 1), HR_TZ, 'MMM');
+  return mon + ' ' + (day <= 15 ? '1–15' : '16–' + last) + ', ' + y;
+}
+
+// ── REIMBURSEMENTS (expenses the employee paid for, added back to pay) ──
+// Sheet cols: 0 ID · 1 Requested At · 2 Requested By · 3 Amount · 4 Category ·
+//   5 Expense Date · 6 Description · 7 Receipt · 8 Status · 9 Resolved By ·
+//   10 Resolved At · 11 Paid Cutoff · 12 Paid
+function hrReimbursements(ss) {
+  const map = {};
+  const sh = ss.getSheetByName('Reimbursements');
+  if (!sh) return map;
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0] || !r[2]) return;
+    if (String(r[8]||'').trim().toLowerCase() !== 'approved') return;
+    const uL = String(r[2]).trim().toLowerCase();
+    const pc = r[11] instanceof Date
+      ? Utilities.formatDate(r[11], HR_TZ, 'yyyy-MM-dd') : String(r[11]||'').trim();
+    if (!map[uL]) map[uL] = [];
+    map[uL].push({ id:     String(r[0]),
+                   amount: Number(r[3]) || 0,
+                   category: String(r[4]||''),
+                   description: String(r[6]||''),
+                   paid:   String(r[12]||'').trim().toUpperCase() === 'YES',
+                   cutoff: pc,
+                   requestedAt: hrCellDate(r[1]),
+                   approvedAt:  hrCellDate(r[10]) });
+  });
+  return map;
+}
+
+// Same cutoff rule as advances, but it ADDS: an approved-unpaid reimbursement
+// lands on the current cutoff; once paid it stays on the cutoff it was paid in.
+function hrReimburseForCutoff(list, range, isCurrent) {
+  let total = 0, paid = 0, outstanding = 0;
+  const items = [];
+  (list || []).forEach(function(x){
+    if (x.paid) {
+      if (x.cutoff && (x.cutoff === range.startDate || x.cutoff === range.label)) {
+        total += x.amount; paid += x.amount;
+        items.push(hrLineItem(x, range, 'paid'));
+      }
+    } else if (isCurrent) {
+      total += x.amount; outstanding += x.amount;
+      items.push(hrLineItem(x, range, 'outstanding'));
+    }
+  });
+  items.sort(hrByDate);
+  return { total: total, paid: paid, outstanding: outstanding, items: items };
+}
+
+// ── MANUAL ADDITIONAL PAY (admin-entered allowance / incentive / bonus) ──
+// Sheet cols: 0 ID · 1 Created At · 2 Created By · 3 Employee · 4 Date ·
+//   5 Type · 6 Amount · 7 Note · 8 Status (Active|Cancelled)
+// Distinct from the Staff daily-allowance field, which auto-pays per day worked.
+// These are one-off amounts and in most cutoffs there will be none at all.
+function hrAdditionalPay(ss) {
+  const map = {};
+  const sh = ss.getSheetByName('Additional Pay');
+  if (!sh) return map;
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0] || !r[3] || !r[4]) return;
+    if (String(r[8]||'Active').trim().toLowerCase() === 'cancelled') return;
+    const amt = Number(r[6]) || 0;
+    if (!amt) return;
+    const uL = String(r[3]).trim().toLowerCase();
+    const d  = r[4] instanceof Date
+      ? Utilities.formatDate(r[4], HR_TZ, 'yyyy-MM-dd') : String(r[4]).slice(0,10);
+    if (!map[uL]) map[uL] = [];
+    map[uL].push({
+      id:     String(r[0]),
+      date:   d,
+      type:   String(r[5]||'Other').trim(),
+      amount: amt,
+      note:   String(r[7]||''),
+      createdBy: String(r[2]||'')
+    });
+  });
+  return map;
+}
+
+// An entry belongs to the cutoff its DATE falls in — not the cutoff it was typed
+// in. So a back-dated incentive lands in the cutoff being closed, and once that
+// cutoff passes the entry stays put instead of drifting onto the next payout.
+function hrAddPayForCutoff(list, range) {
+  const items = [];
+  let total = 0;
+  (list || []).forEach(function(x){
+    if (x.date >= range.startDate && x.date <= range.endDate) {
+      items.push(x);
+      total += x.amount;
+    }
+  });
+  items.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return { total: total, items: items };
+}
+
+// ── MANUAL DEDUCTIONS (collection shortage, damage, penalties) ──
+// Sheet cols: 0 ID · 1 Created At · 2 Created By · 3 Employee · 4 Date ·
+//   5 Type · 6 Amount · 7 Note · 8 Status (Active|Cancelled)
+// Exact mirror of Additional Pay, but it subtracts. Separate from the
+// automatic lateness/undertime deductions, which the pay engine works out
+// from the time records — these are things an admin decides and must justify.
+function hrDeductions(ss) {
+  const map = {};
+  const sh = ss.getSheetByName('Pay Deductions');
+  if (!sh) return map;
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0] || !r[3] || !r[4]) return;
+    if (String(r[8]||'Active').trim().toLowerCase() === 'cancelled') return;
+    const amt = Number(r[6]) || 0;
+    if (!amt) return;
+    const uL = String(r[3]).trim().toLowerCase();
+    const d  = r[4] instanceof Date
+      ? Utilities.formatDate(r[4], HR_TZ, 'yyyy-MM-dd') : String(r[4]).slice(0,10);
+    if (!map[uL]) map[uL] = [];
+    map[uL].push({
+      id:     String(r[0]),
+      date:   d,
+      type:   String(r[5]||'Other').trim(),
+      amount: amt,
+      note:   String(r[7]||''),
+      createdBy: String(r[2]||'')
+    });
+  });
+  return map;
+}
+
+// Same cutoff rule as additional pay: the entry's own DATE decides which
+// cutoff it lands in, so a back-dated shortage hits the period it happened in.
+function hrDeductForCutoff(list, range) {
+  const items = [];
+  let total = 0;
+  (list || []).forEach(function(x){
+    if (x.date >= range.startDate && x.date <= range.endDate) {
+      items.push(x);
+      total += x.amount;
+    }
+  });
+  items.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return { total: total, items: items };
+}
+
+// ── PER-DAY PAY ADJUSTMENTS (admin void / hold, with employee reply) ──
+// Sheet cols: 0 ID · 1 Created At · 2 Created By · 3 Employee · 4 Date ·
+//   5 Type (VOID|HOLD) · 6 Reason · 7 Status (Active|Released|Cancelled) ·
+//   8 Employee Response · 9 Responded At · 10 Resolved By · 11 Resolved At
+function hrPayAdjustments(ss) {
+  const map = {};
+  const sh = ss.getSheetByName('Pay Adjustments');
+  if (!sh) return map;
+  sh.getDataRange().getValues().slice(1).forEach(function(r){
+    if (!r[0] || !r[3] || !r[4]) return;
+    const uL = String(r[3]).trim().toLowerCase();
+    const d  = r[4] instanceof Date
+      ? Utilities.formatDate(r[4], HR_TZ, 'yyyy-MM-dd') : String(r[4]).slice(0,10);
+    if (!map[uL]) map[uL] = {};
+    map[uL][d] = {
+      id:       String(r[0]),
+      type:     String(r[5]||'HOLD').toUpperCase() === 'VOID' ? 'VOID' : 'HOLD',
+      reason:   String(r[6]||''),
+      status:   String(r[7]||'Active'),
+      response: String(r[8]||''),
+      respondedAt: r[9] instanceof Date
+        ? Utilities.formatDate(r[9], HR_TZ, 'yyyy-MM-dd HH:mm:ss') : String(r[9]||''),
+      createdBy: String(r[2]||'')
+    };
   });
   return map;
 }
@@ -4322,13 +5535,22 @@ function hrCashAdvances(ss) {
 //            No late/half-day deduction: arriving late already shortens the
 //            hours, so deducting again would charge the same lost time twice.
 //   DAILY  → full rate, minus (rate ÷ 10) per hour late, or rate ÷ 2 for half day.
-function hrComputeDays(byDay, dailyRate, payType) {
-  const hourlyRate = dailyRate / HR_STD_HOURS;
+function hrComputeDays(byDay, dailyRate, payType, cfg, adjustments) {
+  const ADJ = adjustments || {};
+  const S = cfg || { officialStart: 7*3600+45*60, officialEnd: 18*3600+30*60,
+                     dutyHours: HR_STD_HOURS };
+  const dutyHours  = S.dutyHours || HR_STD_HOURS;
+  const hourlyRate = dailyRate / dutyHours;
+  // Hourly duty window: official start → +duty hours. Only time inside is paid.
+  const winStart = S.officialStart;
+  const winEnd   = winStart + dutyHours*3600;
   const toSec = function(t){
     const p = String(t||'').split(':');
     if (p.length < 2) return NaN;
     return Number(p[0])*3600 + Number(p[1])*60 + (Number(p[2])||0);
   };
+  // Lateness comes from the flag stamped at clock-in — that IS the audit record
+  // in the Attendance sheet, so payroll and the sheet always agree.
   const lateMinsOf = function(flag){
     const m = flag.match(/(\d+)\s*m/), s = flag.match(/(\d+)\s*s/);
     return (m ? Number(m[1]) : 0) + (s ? Number(s[1])/60 : 0);
@@ -4337,6 +5559,7 @@ function hrComputeDays(byDay, dailyRate, payType) {
   let daysWorked = 0, lateDays = 0, halfDays = 0, lateMinutes = 0;
   let gross = 0, lateDeduction = 0, halfDayDeduction = 0;
   let hoursPaid = 0, otHours = 0, fullDays = 0, incompleteDays = 0;
+  let undertimeDays = 0, undertimeMinutes = 0, undertimeDeduction = 0;
 
   const days = Object.keys(byDay).sort().map(function(d){
     const rec  = byDay[d];
@@ -4347,30 +5570,60 @@ function hrComputeDays(byDay, dailyRate, payType) {
         return { date:rec.date, timeIn:'', timeOut:rec.timeOut, status:'No time-in',
                  hours:0, ot:0, deduction:0, pay:0, incomplete:true };
       }
-      const inS = toSec(rec.timeIn), outS = toSec(rec.timeOut);
-      if (!rec.timeOut || isNaN(outS) || outS <= inS) {
+      // Pair the day's punches into worked SESSIONS. Hourly staff clock out when
+      // they run out of tasks and back in when work returns — each IN→OUT block
+      // is paid, and the idle gaps between them are not.
+      const punches = (rec.punches && rec.punches.length)
+        ? rec.punches.slice().sort(function(a,b){ return a.time < b.time ? -1 : 1; })
+        : [{time:rec.timeIn,act:'IN'}].concat(rec.timeOut ? [{time:rec.timeOut,act:'OUT'}] : []);
+      const sessions = [];
+      let openIn = null, unclosed = false;
+      punches.forEach(function(p){
+        if (p.act === 'IN') { if (openIn === null) openIn = toSec(p.time); }
+        else if (p.act === 'OUT' && openIn !== null) {
+          const e = toSec(p.time);
+          if (!isNaN(e) && e > openIn) sessions.push({ s: openIn, e: e });
+          openIn = null;
+        }
+      });
+      if (openIn !== null) unclosed = true;    // clocked in and never back out
+
+      if (!sessions.length) {
         incompleteDays++;
-        if (/late/i.test(flag)) lateDays++;
         return { date:rec.date, timeIn:rec.timeIn, timeOut:rec.timeOut,
                  status: rec.timeOut ? 'Check times' : 'No time-out',
-                 hours:0, ot:0, deduction:0, pay:0, incomplete:true };
+                 hours:0, ot:0, sessions:0, deduction:0, pay:0, incomplete:true };
       }
       daysWorked++;
-      const rawHrs  = (outS - inS) / 3600;
-      const paidHrs = Math.min(rawHrs, HR_STD_HOURS);
-      const ot      = Math.max(0, rawHrs - HR_STD_HOURS);
+      // Paid = the part of each session INSIDE the duty window. A late arrival
+      // permanently loses the front of the window; time past the window end is
+      // overtime, and idle time between sessions is simply never counted.
+      let paidSec = 0, rawSec = 0;
+      sessions.forEach(function(x){
+        rawSec  += (x.e - x.s);
+        paidSec += Math.max(0, Math.min(x.e, winEnd) - Math.max(x.s, winStart));
+      });
+      const rawHrs  = rawSec / 3600;
+      const paidHrs = paidSec / 3600;
+      const ot      = Math.max(0, rawHrs - paidHrs);   // worked outside the window
+      const lostHrs = dutyHours - paidHrs;             // window time not covered
       const pay     = paidHrs * hourlyRate;
       hoursPaid += paidHrs; otHours += ot; gross += pay;
-      if (rawHrs >= HR_STD_HOURS) fullDays++;
-      if (/late/i.test(flag)) { lateDays++; lateMinutes += lateMinsOf(flag); }
+      if (paidHrs >= dutyHours - 0.0001) fullDays++;
+      if (unclosed) incompleteDays++;
+      // No lateness tracking for hourly — unpaid time IS the consequence
       const hStr = Math.floor(paidHrs) + 'h ' + Math.round((paidHrs % 1) * 60) + 'm';
+      const sesNote = sessions.length > 1 ? ' · ' + sessions.length + ' sessions' : '';
       return { date:rec.date, timeIn:rec.timeIn, timeOut:rec.timeOut,
-               status: rawHrs >= HR_STD_HOURS ? 'Full day (' + hStr + ')' : hStr,
+               status: (paidHrs >= dutyHours - 0.0001 ? 'Full day (' + hStr + ')' : hStr)
+                       + sesNote + (unclosed ? ' · ⚠ still clocked in' : ''),
                hours: Math.round(paidHrs*100)/100, ot: Math.round(ot*100)/100,
-               deduction:0, pay: Math.round(pay*100)/100, incomplete:false };
+               sessions: sessions.length,
+               deduction: Math.round(Math.max(0,lostHrs) * hourlyRate * 100)/100,
+               pay: Math.round(pay*100)/100, incomplete: unclosed };
     }
 
-    // DAILY
+    // DAILY — full rate, minus lateness and/or undertime (or half day)
     let status = 'On time', pay = dailyRate, ded = 0;
     if (!rec.timeIn) {
       status = 'No time-in'; pay = 0;
@@ -4378,28 +5631,137 @@ function hrComputeDays(byDay, dailyRate, payType) {
       daysWorked++;
       gross += dailyRate;
       if (/half\s*day/i.test(flag)) {
+        // Half day already halves the pay — no extra late/undertime on top
         halfDays++; status = 'Half day';
         ded = dailyRate / 2; halfDayDeduction += ded;
-      } else if (/late/i.test(flag)) {
-        lateDays++; status = flag;
-        const mins = lateMinsOf(flag);
-        lateMinutes += mins;
-        ded = (dailyRate / HR_STD_HOURS) * (mins / 60);
-        lateDeduction += ded;
+      } else {
+        const parts = [];
+        const inSec = toSec(rec.timeIn), oS = toSec(rec.timeOut);
+
+        if (/late/i.test(flag)) {
+          lateDays++;
+          const mins = lateMinsOf(flag);
+          lateMinutes += mins;
+          const ld = (dailyRate / dutyHours) * (mins / 60);
+          lateDeduction += ld; ded += ld;
+          parts.push(flag);
+        }
+
+        if (!rec.timeOut) {
+          // Never clocked out — they clearly worked, but there's no proof of
+          // when they left. Half day, clearly flagged. (Previously this paid in
+          // FULL, so forgetting to clock out beat clocking out early.)
+          incompleteDays++;
+          const nd = dailyRate / 2;
+          halfDayDeduction += nd; ded += nd;
+          parts.push('⚠ NO TIME-OUT · half day');
+        } else if (isNaN(oS) || oS <= inSec) {
+          // Out before in — impossible data (a stray punch). Flag it; never
+          // invent a huge undertime from it.
+          incompleteDays++;
+          parts.push('⚠ CHECK TIMES — needs correction');
+        } else if (oS < S.officialEnd) {
+          const uMins = (S.officialEnd - oS) / 60;
+          undertimeDays++; undertimeMinutes += uMins;
+          const ud = (dailyRate / dutyHours) * (uMins / 60);
+          undertimeDeduction += ud; ded += ud;
+          parts.push('UNDERTIME −' + Math.floor(uMins/60) + 'h ' + Math.round(uMins%60) + 'm');
+        }
+        if (parts.length) status = parts.join(' · ');
       }
-      pay = dailyRate - ded;
+      pay = Math.max(0, dailyRate - ded);   // never negative
     }
     return { date:rec.date, timeIn:rec.timeIn, timeOut:rec.timeOut, status:status,
              hours:0, ot:0, deduction:Math.round(ded*100)/100,
              pay:Math.round(pay*100)/100, incomplete:false };
   });
 
+  // ── Apply admin VOID / HOLD on specific days ──────────────────────
+  // Runs after normal pay is computed: whatever the day would have paid becomes
+  // a deduction, so the payslip still shows the day worked and the amount held.
+  let heldDays = 0, heldDeduction = 0, voidedDays = 0, heldPending = 0;
+  days.forEach(function(d){
+    const a = ADJ[d.date];
+    if (!a || a.status !== 'Active') return;
+    if (d.pay > 0) { heldDeduction += d.pay; d.deduction = Math.round((d.deduction + d.pay)*100)/100; }
+    d.pay = 0;
+    d.adjustment = { id:a.id, type:a.type, reason:a.reason,
+                     response:a.response, respondedAt:a.respondedAt, createdBy:a.createdBy };
+    d.status = (a.type === 'VOID' ? '⛔ VOID — ' : '⏸ HELD — ') + a.reason;
+    if (a.type === 'VOID') voidedDays++; else heldDays++;
+    if (!a.response) heldPending++;      // employee hasn't answered yet
+  });
+
   return { daysWorked:daysWorked, lateDays:lateDays, halfDays:halfDays,
+           heldDays:heldDays, voidedDays:voidedDays, heldDeduction:heldDeduction,
+           awaitingResponse:heldPending,
            lateMinutes:lateMinutes, gross:gross,
            lateDeduction:lateDeduction, halfDayDeduction:halfDayDeduction,
-           totalDeduction: lateDeduction + halfDayDeduction,
+           undertimeDays:undertimeDays, undertimeMinutes:undertimeMinutes,
+           undertimeDeduction:undertimeDeduction,
+           totalDeduction: lateDeduction + halfDayDeduction + undertimeDeduction + heldDeduction,
            hoursPaid:hoursPaid, otHours:otHours, fullDays:fullDays,
            incompleteDays:incompleteDays, days:days };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PO CALENDAR REMINDERS
+// One entry per PO per purpose, found by its tag in the description so a
+// partial delivery updates the existing reminder instead of adding another.
+//   DELIVERY — created on approval, cleared once goods arrive
+//   PAYMENT  — created on first receipt, updated on every later receipt
+// ══════════════════════════════════════════════════════════════════
+function poCalTag(poNumber, kind) {
+  return '[AEON:' + kind + ':' + String(poNumber).trim() + ']';
+}
+
+// Find an existing reminder for this PO by scanning a window around the date
+function poFindCalEvent(cal, poNumber, kind, aroundDate) {
+  const from = new Date(aroundDate); from.setDate(from.getDate() - 120);
+  const to   = new Date(aroundDate); to.setDate(to.getDate() + 400);
+  const tag  = poCalTag(poNumber, kind);
+  const hits = cal.getEvents(from, to, { search: String(poNumber).trim() });
+  for (var i = 0; i < hits.length; i++) {
+    if (String(hits[i].getDescription() || '').indexOf(tag) >= 0) return hits[i];
+  }
+  return null;
+}
+
+// Create or update a PO reminder. Returns a short note for the API response.
+function poUpsertCalEvent(poNumber, kind, title, dueDate, descLines) {
+  try {
+    const cal = CalendarApp.getDefaultCalendar();
+    if (!cal) return 'No default calendar';
+    const desc  = descLines.filter(Boolean).join('\n') + '\n\n' + poCalTag(poNumber, kind);
+    const found = poFindCalEvent(cal, poNumber, kind, dueDate);
+    if (found) {
+      found.setTitle(title);
+      found.setDescription(desc);
+      found.setAllDayDate(dueDate);
+      return 'Updated ' + kind.toLowerCase() + ' reminder for '
+        + Utilities.formatDate(dueDate, Session.getScriptTimeZone(), 'MMM d, yyyy');
+    }
+    const ev = cal.createAllDayEvent(title, dueDate, { description: desc });
+    const msLeft = dueDate.getTime() - new Date().getTime();
+    if (msLeft > 7*24*60*60000) ev.addPopupReminder(7*24*60);
+    if (msLeft > 3*24*60*60000) ev.addPopupReminder(3*24*60);
+    if (msLeft > 1*24*60*60000) ev.addPopupReminder(1*24*60);
+    return 'Created ' + kind.toLowerCase() + ' reminder for '
+      + Utilities.formatDate(dueDate, Session.getScriptTimeZone(), 'MMM d, yyyy');
+  } catch (e) {
+    return 'ERROR: ' + e.toString();
+  }
+}
+
+// Once goods arrive the "delivery expected" nudge has done its job
+function poClearCalEvent(poNumber, kind, aroundDate) {
+  try {
+    const cal = CalendarApp.getDefaultCalendar();
+    if (!cal) return false;
+    const ev = poFindCalEvent(cal, poNumber, kind, aroundDate);
+    if (ev) { ev.deleteEvent(); return true; }
+  } catch (e) {}
+  return false;
 }
 
 function getOrCreateSheet(ss, name, headers) {

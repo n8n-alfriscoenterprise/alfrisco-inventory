@@ -55,12 +55,45 @@ function _llAggregate(){
     it.lines.forEach(function(l){
       const veh = _llLineVehicle(it.skuCode, l) || LL_UNASSIGNED;
       if(!agg[veh]) agg[veh] = {};
-      if(!agg[veh][it.skuCode]) agg[veh][it.skuCode] = {skuCode:it.skuCode, itemName:it.itemName, known:it.known, qty:0, lines:[]};
+      if(!agg[veh][it.skuCode]) agg[veh][it.skuCode] = {skuCode:it.skuCode, itemName:it.itemName, category:it.category||'', known:it.known, qty:0, lines:[]};
       agg[veh][it.skuCode].qty += l.qty;
       agg[veh][it.skuCode].lines.push(l);
     });
   });
   return agg;
+}
+
+// Group items into categories: category names A–Z, and inside each one the
+// biggest quantity first so the heaviest stacks get loaded first. Items with
+// no category (unknown or deactivated SKUs) collect in one group at the end.
+// Shared by the screen and the printout so the two can never drift apart.
+const LL_NOCAT = '⚠ Uncategorised';
+
+function _llGroupByCategory(items){
+  // Keyed case-insensitively: the master sheet is maintained by hand, so
+  // "Dog Food" and "dog food" are the same category and must not split into
+  // two headings. The first spelling seen becomes the label.
+  const byCat = {};
+  (items||[]).forEach(function(it){
+    const raw = (it.category && it.category.trim()) ? it.category.trim() : LL_NOCAT;
+    const key = raw.toLowerCase();
+    if(!byCat[key]) byCat[key] = { label: raw, items: [] };
+    byCat[key].items.push(it);
+  });
+  const keys = Object.keys(byCat).sort(function(a,b){
+    const an = byCat[a].label === LL_NOCAT, bn = byCat[b].label === LL_NOCAT;
+    if(an) return 1;                      // uncategorised always last
+    if(bn) return -1;
+    return byCat[a].label.localeCompare(byCat[b].label, undefined, {sensitivity:'base'});
+  });
+  return keys.map(function(k){
+    const list = byCat[k].items.slice().sort(function(x,y){
+      if(y.qty !== x.qty) return y.qty - x.qty;              // most to load first
+      return x.itemName.localeCompare(y.itemName);           // tie → A–Z, stable
+    });
+    return { category: byCat[k].label, items: list,
+             qty: list.reduce(function(s,i){ return s + i.qty; }, 0) };
+  });
 }
 
 function _llVehLabel(id){
@@ -119,7 +152,7 @@ function renderLoadList(){
     Object.keys(agg).forEach(function(veh){
       Object.keys(agg[veh]).forEach(function(sku){
         const e=agg[veh][sku];
-        if(!merged[sku]) merged[sku]={skuCode:sku,itemName:e.itemName,known:e.known,qty:0,lines:[]};
+        if(!merged[sku]) merged[sku]={skuCode:sku,itemName:e.itemName,category:e.category||'',known:e.known,qty:0,lines:[]};
         merged[sku].qty+=e.qty;
         e.lines.forEach(function(l){ merged[sku].lines.push(l); });
       });
@@ -151,7 +184,13 @@ function renderLoadList(){
   }
 
   html+='<div class="ll-list">';
-  viewItems.forEach(function(it){
+  _llGroupByCategory(viewItems).forEach(function(grp){
+  html+='<div class="ll-cat-head'+(grp.category===LL_NOCAT?' ll-cat-nocat':'')+'">'
+    +'<span class="ll-cat-name">'+grp.category+'</span>'
+    +'<span class="ll-cat-qty">'+grp.qty+' bag'+(grp.qty!==1?'s':'')
+      +' · '+grp.items.length+' item'+(grp.items.length!==1?'s':'')+'</span>'
+    +'</div>';
+  grp.items.forEach(function(it){
     const ck=active+'|'+it.skuCode;
     const checked=!!_llChecked[ck];
     const expanded=!!_llExpanded[ck];
@@ -181,6 +220,7 @@ function renderLoadList(){
       }).join('')+'</div>';
     }
     html+='</div>';
+  });
   });
   html+='</div>';
 
@@ -336,23 +376,27 @@ function llPrintLoadList(){
   if(active===LL_ALL){
     const merged={};
     Object.keys(agg).forEach(function(veh){ Object.keys(agg[veh]).forEach(function(sku){
-      if(!merged[sku]) merged[sku]={skuCode:sku,itemName:agg[veh][sku].itemName,qty:0};
+      if(!merged[sku]) merged[sku]={skuCode:sku,itemName:agg[veh][sku].itemName,category:agg[veh][sku].category||'',qty:0};
       merged[sku].qty+=agg[veh][sku].qty;
     }); });
     items=Object.keys(merged).map(function(k){return merged[k];});
   } else {
     const t=agg[active]||{};
-    items=Object.keys(t).map(function(k){return {skuCode:k,itemName:t[k].itemName,qty:t[k].qty};});
+    items=Object.keys(t).map(function(k){return {skuCode:k,itemName:t[k].itemName,category:t[k].category||'',qty:t[k].qty};});
   }
-  items.sort(function(a,b){return a.itemName.localeCompare(b.itemName);});
   if(!items.length){ alert('Nothing to load on '+_llVehLabel(active)+' for this date.'); return; }
 
   const pv=document.getElementById('inv-print-view');
   if(!pv){ alert('Printer view not available on this screen.'); return; }
-  const rows=items.map(function(it){
-    return '<div class="rcp-row" style="align-items:flex-start;gap:8px">'
-      +'<span style="flex:1">☐ '+it.itemName+'<br><span class="rcp-sku">'+it.skuCode+'</span></span>'
-      +'<span style="font-weight:700;font-size:14px;white-space:nowrap">'+it.qty+'</span></div>';
+  // Same grouping as the screen, so the paper matches what was ticked off
+  const rows=_llGroupByCategory(items).map(function(grp){
+    return '<div class="rcp-cat-head">'+grp.category.toUpperCase()
+      +' — '+grp.qty+'</div>'
+      + grp.items.map(function(it){
+        return '<div class="rcp-row" style="align-items:flex-start;gap:8px">'
+          +'<span style="flex:1">☐ '+it.itemName+'<br><span class="rcp-sku">'+it.skuCode+'</span></span>'
+          +'<span style="font-weight:700;font-size:14px;white-space:nowrap">'+it.qty+'</span></div>';
+      }).join('');
   }).join('');
   const logo=(typeof LOGO_SMALL!=='undefined'&&LOGO_SMALL)
     ?'<img src="'+LOGO_SMALL+'" style="display:block;margin:0 auto 4px;height:48px;width:48px;object-fit:contain;border-radius:6px">':'';
