@@ -77,6 +77,7 @@ function openEditStaff(idx){
     ['edit-can-bo-retail',   isAdmin || s.canBackorderRetail === true],
     ['edit-can-dealers',     isAdmin || s.canManageDealers === true],
     ['edit-can-invoice',     isAdmin || s.canCreateInvoice === true],
+    ['edit-can-saleslog',    isAdmin || s.canEditSalesLog === true],
   ];
   perms.forEach(([id, val]) => {
     const el = document.getElementById(id);
@@ -207,6 +208,7 @@ async function saveStaffEdit(){
     { key:'canStockAdjust',    id:'edit-can-sa'           },
     { key:'canManageDealers',  id:'edit-can-dealers'      },
     { key:'canCreateInvoice',  id:'edit-can-invoice'      },
+    { key:'canEditSalesLog',   id:'edit-can-saleslog'     },
   ];
 
   // Collect all permission values from checkboxes

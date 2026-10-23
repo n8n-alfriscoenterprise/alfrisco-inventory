@@ -1592,6 +1592,32 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .xi-mode-desc{font-size:11px;color:#666;line-height:1.4}
 /* reversal tool */
 .xi-reversal-btn{width:100%;padding:11px;background:#fff;color:#C0392B;border:1.5px solid #E6B0AA;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+/* Sales Log corrections tool */
+.xi-saleslog-btn{width:100%;padding:11px;background:#fff;color:#1F4E78;border:1.5px solid #AEC6DC;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;min-height:38px}
+.sl-search-row{display:flex;gap:8px;margin-top:4px}
+.sl-search-row input{flex:1;min-width:0}
+.sl-find-btn{background:#1F4E78;color:#fff;border:none;border-radius:9px;padding:0 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-height:38px;flex-shrink:0}
+.sl-results{max-height:46vh;overflow-y:auto;margin-top:10px}
+.sl-hint{font-size:11.5px;color:#8a949c;padding:12px 2px;text-align:center}
+.sl-inv{border:1.5px solid #e0e0e0;border-radius:10px;padding:9px 10px;margin-bottom:8px;background:#fff}
+.sl-inv-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sl-inv-pick{display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;min-height:34px}
+.sl-inv-pick input{width:20px;height:20px;accent-color:#1F4E78;cursor:pointer}
+.sl-inv-meta{font-size:10.5px;color:#8a949c;font-weight:600;white-space:nowrap}
+.sl-inv-sub{font-size:10.5px;color:#6b7a86;margin:2px 0 4px;word-break:break-all}
+.sl-inv-warn{font-size:10.5px;font-weight:700;color:#8A5A00;background:#FFF6E5;border:1px solid #F0C36D;border-radius:7px;padding:6px 8px;margin-bottom:5px;line-height:1.45}
+.sl-line{display:flex;align-items:center;gap:8px;padding:7px 4px;border-top:1px dashed #eee;cursor:pointer;min-height:38px}
+.sl-line input{width:20px;height:20px;accent-color:#C0392B;cursor:pointer;flex-shrink:0}
+.sl-line-main{flex:1;min-width:0;font-size:12px;font-weight:600;color:#222}
+.sl-line-sku{display:block;font-size:9.5px;color:#9aa7b2;font-weight:400}
+.sl-line-loc{font-size:9.5px;color:#6b7a86;white-space:nowrap}
+.sl-line-qty{font-size:13px;font-weight:800;color:#1F4E78;min-width:26px;text-align:right}
+.sl-actions{margin-top:10px;padding-top:10px;border-top:1.5px solid #eee}
+.sl-sel-count{font-size:11.5px;font-weight:700;color:#1F4E78;margin-bottom:7px}
+.sl-act-row{display:flex;gap:8px;margin-bottom:8px}
+.sl-act-row select{flex:1;min-width:0}
+.sl-apply-btn{background:#0A5C46;color:#fff;border:none;border-radius:9px;padding:0 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-height:38px;flex-shrink:0}
+.sl-del-btn{width:100%;background:#C62828;color:#fff;border:none;border-radius:9px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;min-height:38px}
 .xi-reversal-btn:active{background:#FDEDEC}
 .xi-reversal-hint{font-size:11px;color:#888;text-align:center;margin-top:6px;line-height:1.4}
 .xi-rev-loading{padding:18px;text-align:center;color:#888;font-size:13px}
@@ -2053,6 +2079,40 @@ button,.tnav,.logout-btn{max-width:100%}
     <div class="epm-btns">
       <button class="epm-cancel" onclick="closeAddPayModal()">Cancel</button>
       <button class="epm-save" id="apay-save-btn" onclick="saveAddPay()">💾 Add to pay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CORRECT THE SALES LOG — delete duplicates, set pull location ══ -->
+<div class="modal-overlay" id="saleslog-modal" style="display:none">
+  <div class="modal-card" style="max-width:520px;width:94%">
+    <div class="epm-title">🧹 Correct the Sales Log</div>
+    <div class="epm-sub">Find lines by invoice number, dealer, or SKU. Deleting removes them from the load list and sales records.</div>
+
+    <div class="sl-search-row">
+      <input type="text" class="epm-select" id="sl-query" placeholder="e.g. INV-2930, ILAGAN, SP-GREEN"
+             autocomplete="off" onkeydown="if(event.key==='Enter')searchSalesLog()">
+      <button class="sl-find-btn" onclick="searchSalesLog()">Find</button>
+    </div>
+
+    <div id="sl-results" class="sl-results"></div>
+
+    <div id="sl-actions" class="sl-actions" style="display:none">
+      <div class="sl-sel-count" id="sl-sel-count"></div>
+      <div class="sl-act-row">
+        <select class="epm-select" id="sl-set-loc">
+          <option value="">Set pull location to…</option>
+          <option value="Distribution WH">🏭 Warehouse</option>
+          <option value="Retail Store">🏪 Retail Store</option>
+        </select>
+        <button class="sl-apply-btn" onclick="applySalesLogLocation()">Apply</button>
+      </div>
+      <button class="sl-del-btn" onclick="deleteSalesLogSelection()">🗑 Delete selected lines</button>
+    </div>
+
+    <div class="modal-err" id="sl-err" style="margin-top:8px;margin-bottom:8px"></div>
+    <div class="epm-btns">
+      <button class="epm-cancel" onclick="closeSalesLogEditor()">Close</button>
     </div>
   </div>
 </div>
@@ -3775,6 +3835,16 @@ button,.tnav,.logout-btn{max-width:100%}
               <span class="edit-toggle-slider"></span>
             </label>
           </div>
+          <div class="edit-perm-row">
+            <div>
+              <div class="edit-perm-label">🧹 Edit Sales Log</div>
+              <div class="edit-perm-sub">Can delete duplicated invoice lines and set pull locations. Deletions are logged.</div>
+            </div>
+            <label class="edit-toggle">
+              <input type="checkbox" id="edit-can-saleslog">
+              <span class="edit-toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -4111,6 +4181,10 @@ button,.tnav,.logout-btn{max-width:100%}
     <div id="xi-reversal-tool" style="display:none;margin-top:14px;padding-top:12px;border-top:1px dashed #d0d7dd">
       <button class="xi-reversal-btn" onclick="openXeroReversal()">🩹 Fix past Xero over-deductions</button>
       <div class="xi-reversal-hint">Reverses warehouse stock that old Xero imports wrongly removed. Review before applying.</div>
+    </div>
+    <div id="xi-saleslog-tool" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #d0d7dd">
+      <button class="xi-saleslog-btn" onclick="openSalesLogEditor()">🧹 Correct the Sales Log</button>
+      <div class="xi-reversal-hint">Remove duplicated invoice lines, or set the pull location on invoices imported before location tracking.</div>
     </div>
     <div style="height:8px"></div>
   </div>

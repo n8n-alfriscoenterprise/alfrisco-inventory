@@ -42,6 +42,10 @@ function resetXiTab(){
   // Reversal tool is admin-only, and always available on this tab (no file needed)
   const rt = document.getElementById('xi-reversal-tool');
   if(rt) rt.style.display = (currentUser && currentUser.role==='admin') ? 'block' : 'none';
+  // Sales Log corrections — admin, or anyone granted "Can Edit Sales Log"
+  const st = document.getElementById('xi-saleslog-tool');
+  if(st) st.style.display = (currentUser && (currentUser.role==='admin'
+      || currentUser.canEditSalesLog===true)) ? 'block' : 'none';
   setXiStatus('','');
 }
 
@@ -874,4 +878,157 @@ function parseSiLine(line){
   }
   result.push(current.trim());
   return result;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SALES LOG CORRECTIONS — remove duplicated invoice lines, or set the
+// pull location on rows imported before location tracking existed.
+// Gated on admin OR the per-user "Can Edit Sales Log" permission; the
+// server re-checks, so hiding the button is convenience, not security.
+// ══════════════════════════════════════════════════════════════════
+let _slLines = [];        // last search result
+let _slPicked = {};       // rowIndex → true
+
+function _slMayEdit(){
+  return !!currentUser && (currentUser.role === 'admin' || currentUser.canEditSalesLog === true);
+}
+
+function openSalesLogEditor(){
+  if(!_slMayEdit()){ alert('You do not have permission to edit the Sales Log.'); return; }
+  _slLines = []; _slPicked = {};
+  document.getElementById('sl-query').value = '';
+  document.getElementById('sl-results').innerHTML =
+    '<div class="sl-hint">Search by invoice number, dealer name, or SKU code.</div>';
+  document.getElementById('sl-actions').style.display = 'none';
+  document.getElementById('sl-err').textContent = '';
+  document.getElementById('saleslog-modal').style.display = 'flex';
+  setTimeout(function(){ const q=document.getElementById('sl-query'); if(q) q.focus(); }, 60);
+}
+function closeSalesLogEditor(){
+  document.getElementById('saleslog-modal').style.display = 'none';
+  _slLines = []; _slPicked = {};
+}
+
+async function searchSalesLog(){
+  const q = document.getElementById('sl-query').value.trim();
+  const box = document.getElementById('sl-results');
+  const err = document.getElementById('sl-err');
+  err.textContent = '';
+  if(!q){ box.innerHTML = '<div class="sl-hint">Type something to search for.</div>'; return; }
+  box.innerHTML = '<div class="sl-hint">Searching…</div>';
+  document.getElementById('sl-actions').style.display = 'none';
+  try{
+    const r = await api({ action:'findSalesLogLines', query:q,
+      role: currentUser.role, canEditSalesLog: currentUser.canEditSalesLog === true });
+    if(r.status !== 'ok'){ box.innerHTML=''; err.textContent = r.msg || 'Search failed.'; return; }
+    _slLines = r.lines || []; _slPicked = {};
+    _slRender();
+  }catch(e){ box.innerHTML=''; err.textContent = 'Network error: '+e.message; }
+}
+
+function _slRender(){
+  const box = document.getElementById('sl-results');
+  if(!_slLines.length){
+    box.innerHTML = '<div class="sl-hint">No matching lines found.</div>';
+    document.getElementById('sl-actions').style.display = 'none';
+    return;
+  }
+  // Group by invoice so a duplicated invoice is obvious at a glance
+  const byInv = {};
+  _slLines.forEach(function(l){ (byInv[l.invoice] = byInv[l.invoice] || []).push(l); });
+  box.innerHTML = Object.keys(byInv).sort().map(function(inv){
+    const ls = byInv[inv];
+    const bags = ls.reduce(function(s,l){ return s + l.qty; }, 0);
+    const warn = ls.some(function(l){ return l.stockMode === 'warehouse'; });
+    const invJs = inv.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div class="sl-inv">'
+      + '<div class="sl-inv-head">'
+        + '<label class="sl-inv-pick"><input type="checkbox" onchange="slPickInvoice(&quot;'
+          + _xiEsc(invJs) + '&quot;, this.checked)"> <strong>' + _xiEsc(inv) + '</strong></label>'
+        + '<span class="sl-inv-meta">' + ls.length + ' line' + (ls.length!==1?'s':'')
+          + ' · ' + bags + ' bags</span>'
+      + '</div>'
+      + '<div class="sl-inv-sub">' + _xiEsc(ls[0].dealer || '—') + ' · ' + _xiEsc(ls[0].date || '')
+        + (ls[0].sourceFile ? ' · from ' + _xiEsc(ls[0].sourceFile) : '')
+        + '</div>'
+      + (warn ? '<div class="sl-inv-warn">⚠ Imported in Warehouse mode — deleting will add the stock back.</div>' : '')
+      + ls.map(function(l){
+          return '<label class="sl-line">'
+            + '<input type="checkbox" data-row="' + l.rowIndex + '" '
+              + (_slPicked[l.rowIndex] ? 'checked ' : '')
+              + 'onchange="slPickLine(' + l.rowIndex + ', this.checked)">'
+            + '<span class="sl-line-main">' + _xiEsc(l.description || l.skuCode)
+              + '<span class="sl-line-sku">' + _xiEsc(l.skuCode) + '</span></span>'
+            + '<span class="sl-line-loc">' + (l.location ? _xiEsc(l.location) : '⚠ no location') + '</span>'
+            + '<span class="sl-line-qty">' + l.qty + '</span>'
+          + '</label>';
+        }).join('')
+    + '</div>';
+  }).join('');
+  _slUpdateCount();
+}
+
+function slPickLine(rowIndex, on){
+  if(on) _slPicked[rowIndex] = true; else delete _slPicked[rowIndex];
+  _slUpdateCount();
+}
+function slPickInvoice(inv, on){
+  _slLines.filter(function(l){ return l.invoice === inv; })
+    .forEach(function(l){ if(on) _slPicked[l.rowIndex] = true; else delete _slPicked[l.rowIndex]; });
+  _slRender();
+}
+function _slUpdateCount(){
+  const n = Object.keys(_slPicked).length;
+  const act = document.getElementById('sl-actions');
+  act.style.display = n ? 'block' : 'none';
+  const picked = _slLines.filter(function(l){ return _slPicked[l.rowIndex]; });
+  const bags = picked.reduce(function(s,l){ return s + l.qty; }, 0);
+  document.getElementById('sl-sel-count').textContent =
+    n + ' line' + (n!==1?'s':'') + ' selected · ' + bags + ' bags';
+}
+
+async function applySalesLogLocation(){
+  const loc = document.getElementById('sl-set-loc').value;
+  const err = document.getElementById('sl-err');
+  err.textContent = '';
+  if(!loc){ err.textContent = 'Pick a location first.'; return; }
+  const rows = Object.keys(_slPicked).map(Number);
+  if(!rows.length){ err.textContent = 'Select at least one line.'; return; }
+  try{
+    const r = await api({ action:'setSalesLogLocation', rowIndexes: rows, location: loc,
+      role: currentUser.role, canEditSalesLog: currentUser.canEditSalesLog === true,
+      by: currentUser.username });
+    if(r.status==='ok'){
+      showToast(r.updated + ' line' + (r.updated!==1?'s':'') + ' set to ' + loc, 'success', 4000);
+      await searchSalesLog();
+    } else err.textContent = r.msg || 'Could not update.';
+  }catch(e){ err.textContent = 'Network error: '+e.message; }
+}
+
+async function deleteSalesLogSelection(){
+  const err = document.getElementById('sl-err');
+  err.textContent = '';
+  const rows = Object.keys(_slPicked).map(Number);
+  if(!rows.length){ err.textContent = 'Select at least one line.'; return; }
+  const picked = _slLines.filter(function(l){ return _slPicked[l.rowIndex]; });
+  const bags = picked.reduce(function(s,l){ return s + l.qty; }, 0);
+  const whs  = picked.filter(function(l){ return l.stockMode === 'warehouse'; });
+  const invs = Array.from(new Set(picked.map(function(l){ return l.invoice; })));
+  const reason = prompt('DELETE ' + rows.length + ' line' + (rows.length!==1?'s':'')
+    + ' (' + bags + ' bags) from ' + invs.join(', ') + '?\n\n'
+    + (whs.length ? whs.length + ' of them deducted warehouse stock — that stock will be ADDED BACK.\n\n' : '')
+    + 'This cannot be undone. Type a short reason for the record:');
+  if(reason === null) return;                      // cancelled
+  if(!String(reason).trim()){ err.textContent = 'A reason is required for the audit trail.'; return; }
+  try{
+    const r = await api({ action:'deleteSalesLogLines', rowIndexes: rows,
+      role: currentUser.role, canEditSalesLog: currentUser.canEditSalesLog === true,
+      by: currentUser.username, reason: String(reason).trim() });
+    if(r.status==='ok'){
+      showToast(r.deleted + ' line' + (r.deleted!==1?'s':'') + ' deleted'
+        + (r.stockRestoredSkus ? ' · stock restored for ' + r.stockRestoredSkus + ' SKU'
+            + (r.stockRestoredSkus!==1?'s':'') : ''), 'success', 5000);
+      await searchSalesLog();
+    } else err.textContent = r.msg || 'Could not delete.';
+  }catch(e){ err.textContent = 'Network error: '+e.message; }
 }
