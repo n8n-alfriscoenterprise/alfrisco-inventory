@@ -31,7 +31,7 @@ function setSiTab(tab){
 let xiRows = [];
 
 function resetXiTab(){
-  xiRows = [];
+  xiRows = []; xiFileName = ''; xiOverlap = null;
   const fi = document.getElementById('xi-file-input'); if(fi) fi.value='';
   const pa = document.getElementById('xi-preview-area'); if(pa) pa.innerHTML='';
   const cb = document.getElementById('xi-confirm-btn'); if(cb) cb.style.display='none';
@@ -55,8 +55,14 @@ function onXiDrop(e){
   if(e.dataTransfer.files[0]) readXiFile(e.dataTransfer.files[0]);
 }
 
+// The file name is kept so an overwrite can say WHICH file is being replaced
+// by WHICH — a bare "3 invoices updated" gives no way to tell whether the right
+// file went in, and uploads happen several times a day as invoices accumulate.
+let xiFileName = '';
+
 function readXiFile(file){
   if(!file.name.toLowerCase().endsWith('.csv')){ setXiStatus('Please select a CSV file exported from Xero.','error'); return; }
+  xiFileName = file.name;
   setXiStatus('Reading file…','ok');
   const reader = new FileReader();
   reader.onload = e => parseXiCSV(e.target.result);
@@ -79,28 +85,19 @@ function parseXiCSV(text){
   };
   Object.entries(needed).forEach(([k,v])=>{ col[k]=headers.indexOf(v); });
 
-  // Xero writes tracking categories as pairs: TrackingName1/TrackingOption1,
-  // TrackingName2/TrackingOption2. WHICH slot holds "Location" and which holds
-  // "Division" is not guaranteed — it depends on how the categories were set up
-  // — so resolve them by reading the Name values out of the data rather than
-  // assuming a position. A third category added later is simply ignored here,
-  // not mistaken for one of these two.
-  col.division = -1; col.location = -1;
-  (function(){
-    const firstData = lines.slice(1).find(l => l.trim());
-    const dr = firstData ? parseSiLine(firstData) : [];
-    for(let n = 1; n <= 4; n++){
-      const ni = headers.indexOf('TrackingName'+n);
-      const oi = headers.indexOf('TrackingOption'+n);
-      if(ni < 0 || oi < 0) continue;
-      const name = String(dr[ni] || '').trim().toLowerCase();
-      if(name === 'location')  col.location = oi;
-      if(name === 'division')  col.division = oi;
-    }
-    // Older exports with no TrackingName values: fall back to the previous
-    // behaviour so existing files keep importing exactly as before.
-    if(col.division < 0 && col.location < 0) col.division = headers.indexOf('TrackingOption2');
-  })();
+  // Xero's tracking categories land in fixed slots on the Sales Invoice export:
+  //   TrackingOption1 = column AL = Location      (Warehouse / Retail Store)
+  //   TrackingOption2 = column AN = Division      (Wholesale-Bajaj1/2 → routes the van)
+  // Read them by header name, falling back to the known column positions if a
+  // header is renamed or missing. An earlier version worked out the mapping from
+  // the TrackingName values in the FIRST data row, which silently captured no
+  // Location at all whenever that one row happened to have a blank name.
+  const LOC_COL_AL = 37;   // column AL, 0-based
+  const DIV_COL_AN = 39;   // column AN, 0-based
+  col.location = headers.indexOf('TrackingOption1');
+  col.division = headers.indexOf('TrackingOption2');
+  if(col.location < 0 && headers.length > LOC_COL_AL) col.location = LOC_COL_AL;
+  if(col.division < 0 && headers.length > DIV_COL_AN) col.division = DIV_COL_AN;
 
   if(col.invoiceNum<0||col.skuCode<0){
     setXiStatus('This doesn\'t look like a Xero Sales Invoice export. Export from Accounts → Sales Invoices and try again.','error');
@@ -175,7 +172,9 @@ function renderXiPreview(){
       <div class="si-stat"><div class="si-stat-val">${dealers.length}</div><div class="si-stat-label">Dealers</div></div>
       <div class="si-stat"><div class="si-stat-val si-green">₱${revenue.toLocaleString('en-PH',{minimumFractionDigits:2})}</div><div class="si-stat-label">Revenue</div></div>
     </div>
-    <div class="si-date-range">📅 &nbsp;${dr}</div>`;
+    <div class="si-date-range">📅 &nbsp;${dr}</div>
+    ${xiFileName ? `<div class="xi-filename">📄 ${_xiEsc(xiFileName)}</div>` : ''}
+    <div id="xi-overlap-area"><div class="xi-overlap-checking">Checking what this file would replace…</div></div>`;
 
   // ── Xero SKU mismatch warning banner ──────────────────────────
   if(unknownXiSkus.length){
@@ -240,6 +239,62 @@ function renderXiPreview(){
   document.getElementById('xi-confirm-btn').style.display='block';
   onXiModeChange();   // set confirm-button label to match the selected mode
   setXiStatus(`✓ ${xiRows.length} line items across ${invoices.length} invoices ready to import.`,'ok');
+  _xiCheckOverlap(invoices);   // fills #xi-overlap-area once the server answers
+}
+
+// ── WHAT WILL THIS FILE REPLACE? ──────────────────────────────────────
+// Asks the sheet which of these invoices are already imported, and from which
+// file, so an overwrite is visible BEFORE anything is written. Read-only.
+let xiOverlap = null;   // {byFile:[…], newInvoices:[…]} or null if not checked
+
+async function _xiCheckOverlap(invoices){
+  xiOverlap = null;
+  const box = document.getElementById('xi-overlap-area');
+  if(!box) return;
+  try{
+    const r = await api({ action:'checkXeroOverlap', invoiceNumbers: invoices });
+    if(r.status!=='ok'){ box.innerHTML=''; return; }
+    xiOverlap = r;
+    const files = r.byFile || [];
+    const fresh = (r.newInvoices || []).length;
+    if(!files.length){
+      box.innerHTML = '<div class="xi-overlap-new">✓ All '+fresh+' invoice'
+        + (fresh!==1?'s are':' is') + ' new — nothing will be overwritten.</div>';
+      return;
+    }
+    box.innerHTML = '<div class="xi-overlap-warn">'
+      + '<div class="xi-overlap-title">⚠ This upload will REPLACE invoices already imported</div>'
+      + files.map(function(f){
+          const invs = f.invoices.slice(0,8).join(', ')
+            + (f.invoices.length>8 ? ' +'+(f.invoices.length-8)+' more' : '');
+          return '<div class="xi-overlap-file">'
+            + '<div class="xi-ov-row"><span class="xi-ov-k">Was imported from</span>'
+              + '<span class="xi-ov-v">'+_xiEsc(f.file||'(file name not recorded)')+'</span></div>'
+            + (f.importedAt ? '<div class="xi-ov-row"><span class="xi-ov-k">On</span>'
+              + '<span class="xi-ov-v">'+_xiEsc(f.importedAt)+'</span></div>' : '')
+            + '<div class="xi-ov-row"><span class="xi-ov-k">Will be replaced by</span>'
+              + '<span class="xi-ov-v xi-ov-new">'+_xiEsc(xiFileName||'this file')+'</span></div>'
+            + '<div class="xi-ov-invs">'+f.invoices.length+' invoice'
+              + (f.invoices.length!==1?'s':'')+': '+_xiEsc(invs)+'</div>'
+          + '</div>';
+        }).join('')
+      + (fresh ? '<div class="xi-overlap-new">✓ Plus '+fresh+' new invoice'
+          + (fresh!==1?'s':'')+' that will be added: '
+          + _xiEsc((r.newInvoices||[]).slice(0,8).join(', '))
+          + ((r.newInvoices||[]).length>8 ? ' +'+((r.newInvoices||[]).length-8)+' more' : '')
+          + '</div>' : '')
+      + '</div>';
+  }catch(e){
+    // Never block the import just because the look-ahead failed
+    box.innerHTML = '<div class="xi-overlap-checking">Could not check for existing '
+      + 'invoices — you will still be asked to confirm before anything is replaced.</div>';
+  }
+}
+
+function _xiEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
 }
 
 // Reflect the chosen upload mode on the confirm button so intent is unmistakable
@@ -381,19 +436,49 @@ async function xiSaveNewDealer(uid, originalName){
 async function confirmXiImport(){
   if(!xiRows.length) return;
   const mode = (document.querySelector('input[name="xi-mode"]:checked')||{}).value || 'load';
+
+  // Nothing gets overwritten without an explicit yes. The look-ahead already
+  // showed this in the preview; this is the last gate before data is replaced.
+  const files = (xiOverlap && xiOverlap.byFile) || [];
+  if(files.length){
+    const totalInv = files.reduce(function(s,f){ return s + f.invoices.length; }, 0);
+    const detail = files.map(function(f){
+      return '  • ' + (f.file || '(file name not recorded)')
+        + (f.importedAt ? '  [' + f.importedAt + ']' : '')
+        + '\n    ' + f.invoices.length + ' invoice' + (f.invoices.length!==1?'s':'')
+        + ': ' + f.invoices.slice(0,6).join(', ')
+        + (f.invoices.length>6 ? ' +'+(f.invoices.length-6)+' more' : '');
+    }).join('\n');
+    const fresh = (xiOverlap.newInvoices||[]).length;
+    const msg = 'REPLACE ' + totalInv + ' invoice' + (totalInv!==1?'s':'') + ' already imported?\n\n'
+      + 'Being replaced:\n' + detail + '\n\n'
+      + 'Replaced by:\n  • ' + (xiFileName || 'this file') + '\n\n'
+      + (fresh ? 'Also adding ' + fresh + ' new invoice' + (fresh!==1?'s':'') + '.\n\n' : '')
+      + 'The old lines for those invoices will be deleted and rewritten from this file.';
+    if(!confirm(msg)) { setXiStatus('Import cancelled — nothing was changed.','ok'); return; }
+  }
+
   const btn = document.getElementById('xi-confirm-btn');
   const label = btn.textContent;
   btn.disabled=true; btn.textContent='Importing…';
   setXiStatus('Sending to Google Sheets…','ok');
   try{
-    const r = await api({action:'importXeroSales', rows:xiRows, importedBy:currentUser.username, stockMode:mode});
+    const r = await api({action:'importXeroSales', rows:xiRows, importedBy:currentUser.username,
+                         stockMode:mode, fileName:xiFileName});
     if(r.status==='ok'){
       const stockNote = r.stockUpdated > 0
         ? ` Warehouse stock deducted for ${r.stockUpdated} SKU${r.stockUpdated!==1?'s':''}.`
         : (mode==='load' ? ' Load list ready — no stock deducted (deducts when the van is loaded).' : '');
-      const replNote  = r.replaced > 0 ? ` ${r.replaced} existing invoice${r.replaced!==1?'s':''} updated.` : '';
+      // Name what was displaced, not just how much — "3 invoices updated" gives
+      // no way to tell whether the intended file actually went in.
+      const from = (r.replacedFrom||[]).map(f=>f.file||'(file name not recorded)');
+      const replNote = r.replaced > 0
+        ? ` ${r.replaced} invoice${r.replaced!==1?'s':''} replaced`
+          + (from.length ? ` (was: ${from.join(', ')} → now: ${r.fileName||xiFileName||'this file'})` : '')
+          + '.'
+        : '';
       setXiStatus(`✅ Done — ${r.imported} line${r.imported!==1?'s':''} imported.${replNote}${stockNote}`,'ok');
-      btn.style.display='none'; xiRows=[];
+      btn.style.display='none'; xiRows=[]; xiFileName=''; xiOverlap=null;
       document.getElementById('xi-file-input').value='';
       document.getElementById('xi-preview-area').innerHTML='';
       const mw = document.getElementById('xi-mode-wrap'); if(mw) mw.style.display='none';

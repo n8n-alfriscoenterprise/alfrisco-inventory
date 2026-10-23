@@ -1269,6 +1269,22 @@ function doPost(e) {
         const d = new Date(s);
         return isNaN(d.getTime()) ? s : Utilities.formatDate(d, tz, 'yyyy-MM-dd');
       }
+      // Xero's Location tag → the location names the rest of AE-ON already uses
+      // ('Distribution WH' / 'Retail Store'). Matched loosely because the Xero
+      // wording is typed by hand ("Warehouse", "WAREHOUSE", "Main Warehouse").
+      // An unrecognised value is passed through untouched rather than forced
+      // into one of the two buckets, so a location added later shows up as
+      // itself instead of being silently mislabelled.
+      function llNormLocation(v){
+        const s = String(v == null ? '' : v).trim();
+        if (!s) return '';                                  // untagged
+        const l = s.toLowerCase();
+        if (l.indexOf('retail') >= 0 || l.indexOf('store') >= 0) return 'Retail Store';
+        if (l.indexOf('warehouse') >= 0 || l.indexOf('wh') >= 0
+            || l.indexOf('distribution') >= 0) return 'Distribution WH';
+        return s;
+      }
+
       const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
       if (!llSheet) {
         return ok({ date: data.date || today, items: [], invoiceCount: 0,
@@ -1364,7 +1380,11 @@ function doPost(e) {
           lines:    []
         };
         bySku[sku].totalQty += qty;
-        bySku[sku].lines.push({ dealer: dealer, invoiceNumber: inv, qty: qty, vehicle: vehicle });
+        // Location rides on the LINE, not the SKU: the same product can be sold
+        // from the warehouse on one invoice and off the retail shelf on another,
+        // and the load list has to show both sources separately.
+        bySku[sku].lines.push({ dealer: dealer, invoiceNumber: inv, qty: qty,
+                                vehicle: vehicle, location: llNormLocation(r[17]) });
       });
 
       const items = Object.keys(bySku).map(function(k){ return bySku[k]; })
@@ -2655,6 +2675,49 @@ function doPost(e) {
     // Upsert by invoice: re-uploading a corrected/completed export REPLACES the
     // existing rows of any invoice it contains (it does not stack on top of the
     // old upload). Inventory is adjusted by the NET difference only, so a re-upload
+    // ── WHAT WOULD THIS UPLOAD OVERWRITE? ─────────────────────────────
+    // Read-only look-ahead for the import preview: which of the invoices in the
+    // pending file are already on the sheet, and which upload put them there.
+    // Writes nothing, so it is safe to call every time a file is picked.
+    if (data.action === 'checkXeroOverlap') {
+      const sheet = ss.getSheetByName('Sales Log - Distribution');
+      const want = {};
+      (data.invoiceNumbers || []).forEach(function(n){
+        const s = String(n||'').trim(); if (s) want[s] = true;
+      });
+      if (!sheet || !Object.keys(want).length) {
+        return ok({ existing: [], newInvoices: Object.keys(want) });
+      }
+      const rows = sheet.getDataRange().getValues();
+      const hit = {};                       // invoice → {file, importedAt, lines}
+      for (let i = 1; i < rows.length; i++) {
+        const inv = String(rows[i][0]||'').trim();
+        if (!inv || !want[inv]) continue;
+        if (!hit[inv]) hit[inv] = {
+          invoice: inv,
+          file:       String(rows[i][18]||'').trim(),
+          importedAt: String(rows[i][13]||'').trim(),
+          lines: 0
+        };
+        hit[inv].lines++;
+      }
+      const existing = Object.keys(hit).map(function(k){ return hit[k]; });
+      const newInvoices = Object.keys(want).filter(function(n){ return !hit[n]; });
+      // Collapse to one entry per source file for display
+      const byFile = {};
+      existing.forEach(function(e){
+        const f = e.file || '(file name not recorded)';
+        if (!byFile[f]) byFile[f] = { file: f, importedAt: e.importedAt, invoices: [], lines: 0 };
+        byFile[f].invoices.push(e.invoice);
+        byFile[f].lines += e.lines;
+      });
+      return ok({
+        existing: existing,
+        newInvoices: newInvoices,
+        byFile: Object.keys(byFile).map(function(f){ return byFile[f]; })
+      });
+    }
+
     // never double-deducts stock — edited quantities flow through as a delta.
     if (data.action === 'importXeroSales') {
       const xlock = LockService.getScriptLock();
@@ -2664,11 +2727,18 @@ function doPost(e) {
           'Invoice Number','Invoice Date','Due Date','Dealer',
           'SKU Code','Description','Qty','Unit Price (₱)','Line Amount (₱)',
           'Invoice Total (₱)','Amount Paid (₱)','Amount Due (₱)',
-          'Status','Imported At','Imported By','Division','Stock Mode'
+          'Status','Imported At','Imported By','Division','Stock Mode','Location','Source File'
         ]);
         if (sheet.getRange(1,16).getValue() === '') sheet.getRange(1,16).setValue('Division');
         // Backfill the Stock Mode header on sheets created before this column
         if (sheet.getRange(1,17).getValue() === '') sheet.getRange(1,17).setValue('Stock Mode');
+        // Location = the Xero tracking category saying which stock point the
+        // line was sold from (Warehouse / Retail Store). Backfilled the same way
+        // so sheets created before this column pick it up without a migration.
+        if (sheet.getRange(1,18).getValue() === '') sheet.getRange(1,18).setValue('Location');
+        // Which upload a row came from, so a replacement can name the file it
+        // is displacing instead of reporting a bare count.
+        if (sheet.getRange(1,19).getValue() === '') sheet.getRange(1,19).setValue('Source File');
 
         const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
@@ -2688,15 +2758,24 @@ function doPost(e) {
         // Read existing rows. Keep the ones NOT being replaced; tally the OLD
         // quantities of the replaced invoices for the inventory net-delta.
         const all = sheet.getDataRange().getValues();
-        const width = Math.max(17, (all[0]||[]).length);
+        const width = Math.max(19, (all[0]||[]).length);   // 19th col = Source File
         const kept = [];
         const oldQtyBySku = {};
         const replacedInv = {};
+        const replacedFiles = {};   // sourceFile → { invoices:{}, importedAt }
         for (let i = 1; i < all.length; i++) {
           const inv = String(all[i][0]||'').trim();
           if (!inv) continue;
           if (uploadInvoices[inv]) {
             replacedInv[inv] = true;
+            // Remember which upload these displaced rows came from. Replacement
+            // is per invoice, so the overwritten lines may span several files.
+            const srcF = String(all[i][18]||'').trim();
+            const srcAt = String(all[i][13]||'').trim();
+            if (!replacedFiles[srcF || '(file name not recorded)']) {
+              replacedFiles[srcF || '(file name not recorded)'] = { invoices: {}, importedAt: srcAt };
+            }
+            replacedFiles[srcF || '(file name not recorded)'].invoices[inv] = true;
             const sku = String(all[i][4]||'').trim();
             // Only rows that ACTUALLY deducted before (stored mode 'warehouse')
             // count toward the reversal delta — so re-uploading a previously
@@ -2735,7 +2814,8 @@ function doPost(e) {
           const row = [r.invoiceNumber, xISO(r.invoiceDate), xISO(r.dueDate), r.contactName,
             r.skuCode, r.description, r.quantity, r.unitAmount, r.lineAmount,
             r.invoiceTotal, r.amountPaid, r.amountDue,
-            r.status, now, data.importedBy||'', r.division||'', modeVal];
+            r.status, now, data.importedBy||'', r.division||'', modeVal, r.location||'',
+            String(data.fileName||'')];
           while (row.length < width) row.push('');
           return row;
         });
@@ -2782,7 +2862,13 @@ function doPost(e) {
           distCntSheet.getRange(distCntSheet.getLastRow()+1, 1, deltaRows.length, 9).setValues(deltaRows);
         }
 
-        return ok({ imported: newRows.length, replaced: Object.keys(replacedInv).length, stockUpdated: stockUpdated, mode: modeVal });
+        return ok({ imported: newRows.length, replaced: Object.keys(replacedInv).length,
+          stockUpdated: stockUpdated, mode: modeVal,
+          fileName: String(data.fileName||''),
+          replacedFrom: Object.keys(replacedFiles).map(function(f){
+            return { file: f, importedAt: replacedFiles[f].importedAt,
+                     invoices: Object.keys(replacedFiles[f].invoices) };
+          }) });
       } finally {
         xlock.releaseLock();
       }
