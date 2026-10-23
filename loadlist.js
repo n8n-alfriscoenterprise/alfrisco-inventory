@@ -116,6 +116,35 @@ function _llLocLabel(loc){
   return '📍 From ' + loc;        // a location we don't know yet
 }
 
+// A blank Location almost always means the invoice was imported BEFORE location
+// tracking existed — not that it is untagged in Xero. The old wording told the
+// user to go and tag it in Xero, which is wrong advice when the tag is already
+// there. Name the invoices instead, so it is obvious what to re-export.
+function _llNoLocNote(locGrp){
+  const invs = {};
+  (locGrp.groups||[]).forEach(function(g){
+    (g.items||[]).forEach(function(it){
+      (it.lines||[]).forEach(function(l){ if(l.invoiceNumber) invs[l.invoiceNumber]=true; });
+    });
+  });
+  const list = Object.keys(invs).sort();
+  const shown = list.slice(0,10).join(', ') + (list.length>10 ? ' +'+(list.length-10)+' more' : '');
+  return '<div class="ll-loc-note">'
+    + 'No pull location recorded for '
+    + (list.length ? '<strong>'+_llEscH(shown)+'</strong>' : 'these lines')
+    + '. Usually this means the invoice was imported before location tracking was '
+    + 'added — the Location may already be set in Xero. Re-export '
+    + (list.length===1 ? 'that invoice' : 'those invoices') + ' from Xero and import again '
+    + 'to pick up the tag. If it really is blank in Xero, set it there first.'
+    + '</div>';
+}
+
+function _llEscH(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 function _llGroupByLocation(items){
   const byLoc = {};
   (items||[]).forEach(function(it){
@@ -238,9 +267,7 @@ function renderLoadList(){
     +'<span class="ll-loc-qty">'+locGrp.qty+' bag'+(locGrp.qty!==1?'s':'')
       +' · '+locGrp.count+' item'+(locGrp.count!==1?'s':'')+'</span>'
     +'</div>'
-    +(locGrp.location===LL_NOLOC
-      ? '<div class="ll-loc-note">These lines have no Location set in Xero, so where to pull them from isn’t recorded. Tag them in Xero and re-import.</div>'
-      : '');
+    +(locGrp.location===LL_NOLOC ? _llNoLocNote(locGrp) : '');
   locGrp.groups.forEach(function(grp){
   html+='<div class="ll-cat-head'+(grp.category===LL_NOCAT?' ll-cat-nocat':'')+'">'
     +'<span class="ll-cat-name">'+grp.category+'</span>'
