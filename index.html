@@ -283,6 +283,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Aria
 .rcp-inv-num{font-size:11px;font-weight:700;text-align:center;margin-bottom:3px}
 .rcp-row{display:flex;justify-content:space-between;font-size:9px;margin:1px 0}
 .rcp-section-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:3px 0 2px;color:#555}
+/* Pull-location band on the printed load sheet */
+.rcp-loc-head{font-size:11px;font-weight:800;letter-spacing:.3px;margin:8px 0 2px;
+  padding:2px 0;border-top:2px solid #000;border-bottom:2px solid #000;text-align:center}
 /* Category heading on the printed load sheet — mirrors the on-screen grouping */
 .rcp-cat-head{font-size:10px;font-weight:700;letter-spacing:.3px;margin:6px 0 2px;
   padding-bottom:1px;border-bottom:1px solid #000}
@@ -1178,6 +1181,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(10,92,70,.10)}
 .ll-stat{background:white;border-radius:10px;padding:10px 4px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .ll-stat-val{font-size:18px;font-weight:800;color:#0A5C46}
 .ll-stat-lbl{font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
+/* Pull-location bands — warehouse first, then retail, untagged last */
+.ll-loc-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  margin:16px 0 2px;padding:8px 10px;border-radius:9px;background:#0A5C46;color:#fff}
+.ll-loc-head:first-child{margin-top:2px}
+.ll-loc-name{font-size:12.5px;font-weight:800;letter-spacing:.3px}
+.ll-loc-qty{font-size:10.5px;font-weight:700;opacity:.85;white-space:nowrap}
+.ll-loc-head.ll-loc-nolo{background:#FCEBEB;color:#A32D2D}
+.ll-loc-note{font-size:10.5px;color:#A32D2D;background:#FFF6E5;border:1px solid #F0C36D;
+  border-radius:8px;padding:7px 10px;margin:4px 2px 2px;line-height:1.5}
 /* Category headings in the load list — A–Z, biggest quantity first inside each */
 .ll-cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
   margin:12px 2px 2px;padding-bottom:4px;border-bottom:2px solid #0A5C46}

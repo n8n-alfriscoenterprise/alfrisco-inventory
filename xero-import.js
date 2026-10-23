@@ -75,10 +75,32 @@ function parseXiCSV(text){
     dueDate:'DueDate', total:'Total', amountPaid:'InvoiceAmountPaid',
     amountDue:'InvoiceAmountDue', skuCode:'InventoryItemCode', description:'Description',
     quantity:'Quantity', unitAmount:'UnitAmount', lineAmount:'LineAmount',
-    status:'Status', type:'Type',
-    division:'TrackingOption2'   // selling unit, e.g. "Wholesale-Bajaj1" → routes the Load List
+    status:'Status', type:'Type'
   };
   Object.entries(needed).forEach(([k,v])=>{ col[k]=headers.indexOf(v); });
+
+  // Xero writes tracking categories as pairs: TrackingName1/TrackingOption1,
+  // TrackingName2/TrackingOption2. WHICH slot holds "Location" and which holds
+  // "Division" is not guaranteed — it depends on how the categories were set up
+  // — so resolve them by reading the Name values out of the data rather than
+  // assuming a position. A third category added later is simply ignored here,
+  // not mistaken for one of these two.
+  col.division = -1; col.location = -1;
+  (function(){
+    const firstData = lines.slice(1).find(l => l.trim());
+    const dr = firstData ? parseSiLine(firstData) : [];
+    for(let n = 1; n <= 4; n++){
+      const ni = headers.indexOf('TrackingName'+n);
+      const oi = headers.indexOf('TrackingOption'+n);
+      if(ni < 0 || oi < 0) continue;
+      const name = String(dr[ni] || '').trim().toLowerCase();
+      if(name === 'location')  col.location = oi;
+      if(name === 'division')  col.division = oi;
+    }
+    // Older exports with no TrackingName values: fall back to the previous
+    // behaviour so existing files keep importing exactly as before.
+    if(col.division < 0 && col.location < 0) col.division = headers.indexOf('TrackingOption2');
+  })();
 
   if(col.invoiceNum<0||col.skuCode<0){
     setXiStatus('This doesn\'t look like a Xero Sales Invoice export. Export from Accounts → Sales Invoices and try again.','error');
@@ -118,7 +140,8 @@ function parseXiCSV(text){
       amountPaid:    parseFloat(r[col.amountPaid]) ||0,
       amountDue:     parseFloat(r[col.amountDue])  ||0,
       status:        String(r[col.status]||'').trim(),
-      division:      col.division>=0 ? String(r[col.division]||'').trim() : ''
+      division:      col.division>=0 ? String(r[col.division]||'').trim() : '',
+      location:      col.location>=0 ? String(r[col.location]||'').trim() : ''
     });
   });
 

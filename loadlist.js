@@ -48,16 +48,22 @@ function _llLineVehicle(sku, line){
   return _llOverride.hasOwnProperty(k) ? _llOverride[k] : (line.vehicle||'');
 }
 
-// Build { vehicleId|UNASSIGNED : { sku: {skuCode,itemName,known,qty,lines:[]} } }
+// Build { vehicleId|UNASSIGNED : { sku||location : {skuCode,itemName,location,…} } }
+// Keyed on SKU **and** location: the same product sold from the warehouse on one
+// invoice and off the retail shelf on another is two different things to pick,
+// so it must not collapse into a single line.
 function _llAggregate(){
   const agg = {};
   (_llData && _llData.items ? _llData.items : []).forEach(function(it){
     it.lines.forEach(function(l){
       const veh = _llLineVehicle(it.skuCode, l) || LL_UNASSIGNED;
+      const loc = l.location || '';
+      const key = it.skuCode + '||' + loc;
       if(!agg[veh]) agg[veh] = {};
-      if(!agg[veh][it.skuCode]) agg[veh][it.skuCode] = {skuCode:it.skuCode, itemName:it.itemName, category:it.category||'', known:it.known, qty:0, lines:[]};
-      agg[veh][it.skuCode].qty += l.qty;
-      agg[veh][it.skuCode].lines.push(l);
+      if(!agg[veh][key]) agg[veh][key] = {skuCode:it.skuCode, itemName:it.itemName,
+        category:it.category||'', location:loc, known:it.known, qty:0, lines:[]};
+      agg[veh][key].qty += l.qty;
+      agg[veh][key].lines.push(l);
     });
   });
   return agg;
@@ -93,6 +99,45 @@ function _llGroupByCategory(items){
     });
     return { category: byCat[k].label, items: list,
              qty: list.reduce(function(s,i){ return s + i.qty; }, 0) };
+  });
+}
+
+// Where the stock is pulled from. Warehouse first — it is the main source and
+// the bulk of every load, so that pull gets done before anyone walks to the
+// shop floor. Untagged lines land in their own group at the end so a missing
+// Xero tag is visible rather than silently assumed.
+const LL_NOLOC = '⚠ Location not tagged';
+const LL_LOC_ORDER = ['Distribution WH', 'Retail Store'];
+
+function _llLocLabel(loc){
+  if(loc === 'Distribution WH') return '🏭 From Warehouse';
+  if(loc === 'Retail Store')    return '🏪 From Retail Store';
+  if(loc === LL_NOLOC)          return LL_NOLOC;
+  return '📍 From ' + loc;        // a location we don't know yet
+}
+
+function _llGroupByLocation(items){
+  const byLoc = {};
+  (items||[]).forEach(function(it){
+    const loc = (it.location && it.location.trim()) ? it.location.trim() : LL_NOLOC;
+    if(!byLoc[loc]) byLoc[loc] = [];
+    byLoc[loc].push(it);
+  });
+  const names = Object.keys(byLoc).sort(function(a,b){
+    if(a === LL_NOLOC) return 1;                       // untagged always last
+    if(b === LL_NOLOC) return -1;
+    const ai = LL_LOC_ORDER.indexOf(a), bi = LL_LOC_ORDER.indexOf(b);
+    if(ai >= 0 && bi >= 0) return ai - bi;             // Warehouse before Retail
+    if(ai >= 0) return -1;                             // known before unknown
+    if(bi >= 0) return 1;
+    return a.localeCompare(b, undefined, {sensitivity:'base'});
+  });
+  return names.map(function(loc){
+    const list = byLoc[loc];
+    return { location: loc, label: _llLocLabel(loc),
+             groups: _llGroupByCategory(list),
+             qty: list.reduce(function(s,i){ return s + i.qty; }, 0),
+             count: list.length };
   });
 }
 
@@ -148,13 +193,16 @@ function renderLoadList(){
   const active=_llVehicle;
   let viewItems=[];
   if(active===LL_ALL){
+    // Merge across vehicles on the SKU+location key, so an item picked from two
+    // different places stays as two lines here too
     const merged={};
     Object.keys(agg).forEach(function(veh){
-      Object.keys(agg[veh]).forEach(function(sku){
-        const e=agg[veh][sku];
-        if(!merged[sku]) merged[sku]={skuCode:sku,itemName:e.itemName,category:e.category||'',known:e.known,qty:0,lines:[]};
-        merged[sku].qty+=e.qty;
-        e.lines.forEach(function(l){ merged[sku].lines.push(l); });
+      Object.keys(agg[veh]).forEach(function(key){
+        const e=agg[veh][key];
+        if(!merged[key]) merged[key]={skuCode:e.skuCode,itemName:e.itemName,
+          category:e.category||'',location:e.location||'',known:e.known,qty:0,lines:[]};
+        merged[key].qty+=e.qty;
+        e.lines.forEach(function(l){ merged[key].lines.push(l); });
       });
     });
     viewItems=Object.keys(merged).map(function(k){return merged[k];});
@@ -184,14 +232,23 @@ function renderLoadList(){
   }
 
   html+='<div class="ll-list">';
-  _llGroupByCategory(viewItems).forEach(function(grp){
+  _llGroupByLocation(viewItems).forEach(function(locGrp){
+  html+='<div class="ll-loc-head'+(locGrp.location===LL_NOLOC?' ll-loc-nolo':'')+'">'
+    +'<span class="ll-loc-name">'+locGrp.label+'</span>'
+    +'<span class="ll-loc-qty">'+locGrp.qty+' bag'+(locGrp.qty!==1?'s':'')
+      +' · '+locGrp.count+' item'+(locGrp.count!==1?'s':'')+'</span>'
+    +'</div>'
+    +(locGrp.location===LL_NOLOC
+      ? '<div class="ll-loc-note">These lines have no Location set in Xero, so where to pull them from isn’t recorded. Tag them in Xero and re-import.</div>'
+      : '');
+  locGrp.groups.forEach(function(grp){
   html+='<div class="ll-cat-head'+(grp.category===LL_NOCAT?' ll-cat-nocat':'')+'">'
     +'<span class="ll-cat-name">'+grp.category+'</span>'
     +'<span class="ll-cat-qty">'+grp.qty+' bag'+(grp.qty!==1?'s':'')
       +' · '+grp.items.length+' item'+(grp.items.length!==1?'s':'')+'</span>'
     +'</div>';
   grp.items.forEach(function(it){
-    const ck=active+'|'+it.skuCode;
+    const ck=active+'|'+it.skuCode+'|'+(it.location||'');
     const checked=!!_llChecked[ck];
     const expanded=!!_llExpanded[ck];
     const warn=it.known?'':'<span class="ll-warn-tag">⚠ unknown SKU</span>';
@@ -220,6 +277,7 @@ function renderLoadList(){
       }).join('')+'</div>';
     }
     html+='</div>';
+  });
   });
   });
   html+='</div>';
@@ -375,27 +433,35 @@ function llPrintLoadList(){
   let items;
   if(active===LL_ALL){
     const merged={};
-    Object.keys(agg).forEach(function(veh){ Object.keys(agg[veh]).forEach(function(sku){
-      if(!merged[sku]) merged[sku]={skuCode:sku,itemName:agg[veh][sku].itemName,category:agg[veh][sku].category||'',qty:0};
-      merged[sku].qty+=agg[veh][sku].qty;
+    Object.keys(agg).forEach(function(veh){ Object.keys(agg[veh]).forEach(function(key){
+      const e=agg[veh][key];
+      if(!merged[key]) merged[key]={skuCode:e.skuCode,itemName:e.itemName,
+        category:e.category||'',location:e.location||'',qty:0};
+      merged[key].qty+=e.qty;
     }); });
     items=Object.keys(merged).map(function(k){return merged[k];});
   } else {
     const t=agg[active]||{};
-    items=Object.keys(t).map(function(k){return {skuCode:k,itemName:t[k].itemName,category:t[k].category||'',qty:t[k].qty};});
+    items=Object.keys(t).map(function(k){return {skuCode:t[k].skuCode,itemName:t[k].itemName,
+      category:t[k].category||'',location:t[k].location||'',qty:t[k].qty};});
   }
   if(!items.length){ alert('Nothing to load on '+_llVehLabel(active)+' for this date.'); return; }
 
   const pv=document.getElementById('inv-print-view');
   if(!pv){ alert('Printer view not available on this screen.'); return; }
-  // Same grouping as the screen, so the paper matches what was ticked off
-  const rows=_llGroupByCategory(items).map(function(grp){
-    return '<div class="rcp-cat-head">'+grp.category.toUpperCase()
-      +' — '+grp.qty+'</div>'
-      + grp.items.map(function(it){
-        return '<div class="rcp-row" style="align-items:flex-start;gap:8px">'
-          +'<span style="flex:1">☐ '+it.itemName+'<br><span class="rcp-sku">'+it.skuCode+'</span></span>'
-          +'<span style="font-weight:700;font-size:14px;white-space:nowrap">'+it.qty+'</span></div>';
+  // Same grouping as the screen, so the paper matches what was ticked off:
+  // pull location first (warehouse before retail), then category inside it
+  const rows=_llGroupByLocation(items).map(function(locGrp){
+    return '<div class="rcp-loc-head">'+locGrp.label.replace(/^[^A-Za-z⚠]+/,'').toUpperCase()
+      +' — '+locGrp.qty+'</div>'
+      + locGrp.groups.map(function(grp){
+        return '<div class="rcp-cat-head">'+grp.category.toUpperCase()
+          +' — '+grp.qty+'</div>'
+          + grp.items.map(function(it){
+            return '<div class="rcp-row" style="align-items:flex-start;gap:8px">'
+              +'<span style="flex:1">☐ '+it.itemName+'<br><span class="rcp-sku">'+it.skuCode+'</span></span>'
+              +'<span style="font-weight:700;font-size:14px;white-space:nowrap">'+it.qty+'</span></div>';
+          }).join('');
       }).join('');
   }).join('');
   const logo=(typeof LOGO_SMALL!=='undefined'&&LOGO_SMALL)
